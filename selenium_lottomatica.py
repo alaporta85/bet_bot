@@ -3,13 +3,32 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+
+def scroll_to_element(element):
+    browser.execute_script('return arguments[0].scrollIntoView(false);',
+                           element)
+
 def go_to_league_bets(league):
     
-    if league=='SERIE A':
-        temp = calcio[:-1] + 'ul/li[4]'
-        browser.find_element_by_xpath(temp).click()
-        temp2 = temp + '/ul/li[1]'
-        browser.find_element_by_xpath(temp2).click()
+    countries = {'SERIE A':'ITALIA'}        
+        
+    leagues_container = '//*[@id="better-table-tennis"]'
+    elements = browser.find_elements_by_xpath(leagues_container+'/li')
+    for i in elements:
+        panel = i.find_element_by_xpath('.//a')
+        if panel.text == countries[league]:
+            scroll_to_element(panel)
+            panel.click()
+            break
+        
+    leagues_container2 = '//*[@id="better-table-tennis-ww"]'
+    elements2 = browser.find_elements_by_xpath(leagues_container2+'/li')
+    for i in elements2:
+        panel = i.find_element_by_xpath('.//a')
+        if panel.text == league:
+            scroll_to_element(panel)
+            panel.click()
+            break
         
 def get_quote(team,bet):
     quote = 0
@@ -42,8 +61,9 @@ url = ('https://www.lottomatica.it/scommesse/avvenimenti/'+
        'scommesse-sportive.html')
 browser.get(url)
 
-calcio = ('/html/body/div[4]/section/div[1]/div/div/div[1]/'+
-          'div/div/div/ul/li[1]/a')
+main_container = '/html/body/div[4]/section/div[1]/div/div'
+
+calcio = main_container + '/div[1]/div/div/div/ul/li[1]/a'
 
 WebDriverWait(browser,20).until(EC.element_to_be_clickable((By.XPATH, calcio)))
 
@@ -53,15 +73,14 @@ league,team,bet = text.split('-')
 
 go_to_league_bets(league)
 
-container = ('/html/body/div[4]/section/div[1]/div/div/div[2]/'+
-             'div/div[3]/div[1]/div/div/div[2]')
+all_bets = main_container + '/div[2]/div/div[3]/div[1]/div/div/div[2]'
 
 WebDriverWait(browser,20).until(EC.element_to_be_clickable(
-                                                        (By.XPATH, container)))
+                                                        (By.XPATH, all_bets)))
 
 get_quote(team,bet)
 
-browser.quit()
+#browser.quit()
 
 
 
