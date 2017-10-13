@@ -105,22 +105,24 @@ def get_quote(field, bet):
     # This is the xpath of the box containing all the bets' panels grouped by
     # type (PIU' GIOCATE, CHANCE MIX, TRICOMBO, ...)
 #    all_panels_path = all_days[:-3] + '[1]/div[2]/div/div/div'
-    all_panels_path = ('.//body[contains(@id,"ltm-better-container")]' +
-                       '/div[contains(@class,"super-wrapper")]' +
-                       '/section[contains(@class,"container page-body")]' +
+    all_panels_path = (
+                       './/body[contains(@id,"ltm-better-container")]'+
+                       '/div[contains(@class,"super-wrapper")]'+
+                       '/section[contains(@class,"container page-body")]'+
                        '/div[contains(@class,"col-main")]' +
                        '/div[contains(@class,"col-sm-12 col-md-12 col-lg-12")]' +
                        '/div[contains(@class,"col-sm-12 col-md-12 col-lg-12 col-xs-12")]' +
                        '/div[contains(@class,"col-body")]' +
-                       '/div[contains(@class,"col-sm-12 col-md-12 col-lg-12 col-xs-12 ng-scope")]' +
-                       '/div[contains(@id,"remoteContent")]' +
-                       '/div[contains(@class,"row ng-scope")]')
+                       '/div[contains(@class,"col-sm-12 col-md-12 col-lg-12 col-xs-12 ng-scope")]'+
+                       './/div[contains(@id,"remoteContent")]'
+                       )
 
 #    wait(60, all_panels_path)
 
     all_panels = browser.find_element_by_xpath(all_panels_path)
+    print(all_panels.text)
+        
 
-    print(all_panels.get_attribute('ng-init'))
 
 #    # In each panel look for the chosen field
 #    for panel in all_panels:
