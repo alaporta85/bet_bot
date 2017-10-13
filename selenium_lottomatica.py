@@ -104,70 +104,55 @@ def get_quote(field, bet):
 
     # This is the xpath of the box containing all the bets' panels grouped by
     # type (PIU' GIOCATE, CHANCE MIX, TRICOMBO, ...)
-#    all_panels_path = all_days[:-3] + '[1]/div[2]/div/div/div'
-    all_panels_path = (
-                       './/body[contains(@id,"ltm-better-container")]'+
-                       '/div[contains(@class,"super-wrapper")]'+
-                       '/section[contains(@class,"container page-body")]'+
-                       '/div[contains(@class,"col-main")]' +
-                       '/div[contains(@class,"col-sm-12 col-md-12 col-lg-12")]' +
-                       '/div[contains(@class,"col-sm-12 col-md-12 col-lg-12 col-xs-12")]' +
-                       '/div[contains(@class,"col-body")]' +
-                       '/div[contains(@class,"col-sm-12 col-md-12 col-lg-12 col-xs-12 ng-scope")]'+
-                       './/div[contains(@id,"remoteContent")]'
-                       )
+    all_panels_path = ('//div[@new-component=""]//div[@class="row"]/div')
 
-#    wait(60, all_panels_path)
+    all_panels = browser.find_elements_by_xpath(all_panels_path)
 
-    all_panels = browser.find_element_by_xpath(all_panels_path)
-    print(all_panels.text)
-        
+    # In each panel look for the chosen field
+    for panel in all_panels:
+        panel.click()
 
+        # These are the fields of the panel (ESITO FINALE 1X2, DOPPIA CHANCE,
+        # GOAL/NOGOAL, ...)
+        all_fields = browser.find_elements_by_xpath(
+                '//div[@class="panel-collapse collapse in"]/div')
 
-#    # In each panel look for the chosen field
-#    for panel in all_panels:
-#        panel.click()
-#
-#        # These are the fields of the panel (ESITO FINALE 1X2, DOPPIA CHANCE,
-#        # GOAL/NOGOAL, ...)
-#        all_fields = browser.find_elements_by_xpath(all_days + '/div/div/div')
-#
-#        for new_field in all_fields:
-#            field_name = new_field.find_element_by_xpath('.//div/div').text
-#
-#            # If field is found look for the chosen bet
-#            if field_name == field:
-#
-#                # There are all the bets of the field
-#                all_bets = new_field.find_elements_by_xpath(
-#                        './/div[contains(@class,' +
-#                        '"block-selections-single-event")]/div')
-#
-#                # For each bet of the field we look for the right one
-#                for new_bet in all_bets:
-#                    bet_name = new_bet.find_element_by_xpath(
-#                            './/div[contains(@class,"sel-ls")]').text
-#
-#                    # When it is found, the HTML element and the bet quote are
-#                    # returned
-#                    if bet_name == bet:
-#                        bet_element = new_bet.find_element_by_xpath(
-#                                './/a[contains(@class,"bet-value-quote ' +
-#                                'ng-binding ng-scope")]')
-#
-#                        bet_quote = float(bet_element.text)
-#
-#                        return bet_element, bet_quote
+        for new_field in all_fields:
+            field_name = new_field.find_element_by_xpath(
+                    './/div[@class="text-left col ng-binding"]').text
+
+            # If field is found look for the chosen bet
+            if field_name == field:
+
+                # There are all the bets of the field
+                all_bets = new_field.find_elements_by_xpath(
+                        './/div[@class="block-selections-single-event"]/div')
+
+                # For each bet of the field we look for the right one
+                for new_bet in all_bets:
+                    bet_name = new_bet.find_element_by_xpath(
+                            './/div[@class="sel-ls"]').text
+
+                    # When it is found, the HTML element and the bet quote are
+                    # returned
+                    if bet_name == bet:
+                        bet_element = new_bet.find_element_by_xpath(
+                                './/a[@class="bet-value-quote ' +
+                                'ng-binding ng-scope"]')
+
+                        bet_quote = float(bet_element.text)
+
+                        return bet_element, bet_quote
 
 
-# text = 'SERIE A_JUVENTUS_ESITO FINALE 1X2_2'
-# text = 'SERIE A_JUVENTUS_ESITO 1 TEMPO/FINALE_1-2'
-# text = 'SERIE A_JUVENTUS_SEGNA GOAL SQUADRA OSPITE_SI'
-# text = 'SERIE A_INTER_U/O 1,5 1 TEMPO+U/O 1,5 2TEMPO_OVER + OVER'
-# text = 'LIGUE 1_LILLA_MULTI GOAL 1-4_ALTRO'
-# text = 'PREMIER LEAGUE_ARSENAL_MARGINE VITTORIA 10 ESITI_TEAM 1 CON 3 GOAL '+
-#        'DI SCARTO'
-text = 'PRIMERA DIVISION_CELTA VIGO_ESITO FINALE 1X2_2'
+#text = 'SERIE A_JUVENTUS_ESITO FINALE 1X2_2'
+#text = 'SERIE A_JUVENTUS_ESITO 1 TEMPO/FINALE_1-2'
+#text = 'SERIE A_JUVENTUS_SEGNA GOAL SQUADRA OSPITE_SI'
+#text = 'SERIE A_INTER_U/O 1,5 1 TEMPO+U/O 1,5 2TEMPO_OVER + OVER'
+#text = 'LIGUE 1_LILLA_MULTI GOAL 1-4_ALTRO'
+text = ('PREMIER LEAGUE_ARSENAL_MARGINE VITTORIA 10 ESITI_TEAM 1 CON 3 GOAL ' +
+        'DI SCARTO')
+#text = 'PRIMERA DIVISION_CELTA VIGO_ESITO FINALE 1X2_2'
 
 url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
        'scommesse-sportive.html')
@@ -198,10 +183,10 @@ all_tables = browser.find_elements_by_xpath(all_days)
 
 # Navigate to the webpage containing all the bets of the match
 go_to_match_bets(all_tables, team)
+browser.implicitly_wait(5)
 
 # Store HTML element and quote
-#bet_element, bet_quote = get_quote(field, bet)
-get_quote(field, bet)
-#bet_element.click()
+bet_element, bet_quote = get_quote(field, bet)
+bet_element.click()
 
 browser.quit()
