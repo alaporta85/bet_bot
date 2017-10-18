@@ -1,4 +1,7 @@
 import sqlite3
+def WriteFunction(User, Match, Bet):
+    SQL_String = "INSERT INTO MainTable (User,Match,Bet) VALUES ('" + User + "', '" + Match + "', '" + Bet + "' )"
+    conn.execute(SQL_String)
 
 conn = sqlite3.connect('C:\\bet_bot.db')
 
