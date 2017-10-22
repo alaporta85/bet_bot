@@ -96,14 +96,14 @@ def insert_quote(user, quote):
     db.close()
 
 
-def delete_temp(user_id):
+def delete_content(table_name, user_id):
 
     '''Delete the bet from the temporary folder.'''
 
     db = sqlite3.connect('bet_bot_db')
     c = db.cursor()
 
-    c.execute('''DELETE FROM temporary WHERE id = ?''', (user_id,))
+    c.execute('''DELETE FROM %s WHERE id = %d''' % (table_name, user_id))
 
     db.commit()
     db.close()
@@ -226,7 +226,10 @@ def look_for_quote(text):
             value = bet.split(' ')[3].replace('.', ',')
             if ',' not in value:
                 value = bet.split(' ')[1].replace('.', ',')
-            return 'GOAL/NOGOAL + U/O %s' % value
+            if value != '2,5':
+                BET_CHECK = 0
+            else:
+                return 'GOAL/NOGOAL + U/O 2,5'
 
         elif '+' in bet and ('UNDER' in bet or 'OVER' in bet):
             value = bet.split(' ')[3].replace('.', ',')
@@ -504,5 +507,5 @@ def add_quote(current_url, field, right_bet):
 
 
 #team1, team2, right_bet, bet_quote, field, current_url = look_for_quote(
-#        'chelsea_2 + over 1,5')
+#        'atalanta_gg + over 3,5')
 #add_quote(current_url, field, right_bet)

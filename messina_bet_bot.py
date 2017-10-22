@@ -31,12 +31,10 @@ def quote(bot, update, args):
     bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
     guess = ' '.join(args).upper()
 
-    team1, team2, right_bet, bet_quote, field, url = sl.look_for_quote(guess)
+    try:
+        team1, team2, right_bet, bet_quote, field, url = sl.look_for_quote(
+                guess)
 
-    if type(bet_quote) == str:
-        # If input is wrong
-        bot.send_message(chat_id=update.message.chat_id, text=bet_quote)
-    else:
         # Update tables
         db = sqlite3.connect('bet_bot_db')
         c = db.cursor()
@@ -63,6 +61,11 @@ def quote(bot, update, args):
                                'Use /confirm or /cancel to finalize your bet.')
                          % bet)
 
+    except ValueError:
+        # If input is wrong
+        message = sl.look_for_quote(guess)
+        bot.send_message(chat_id=update.message.chat_id, text=message)
+
 
 def confirm(bot, update):
 
@@ -71,7 +74,7 @@ def confirm(bot, update):
 
     first_name = update.message.from_user.first_name
     user_id = sl.get_value('id', 'temporary', 'user', first_name)
-    sl.delete_temp(user_id)
+    sl.delete_content('temporary', user_id)
 
     db = sqlite3.connect('bet_bot_db')
     c = db.cursor()
@@ -89,11 +92,12 @@ def confirm(bot, update):
 
 def cancel(bot, update):
 
-    '''Delete the bet from the temporary table and update the staus in
-       quote2017'''
+    '''Delete the bet from the temporary and quote2017 tables.'''
 
     first_name = update.message.from_user.first_name
-    sl.delete_temp(first_name)
+    user_id = sl.get_value('id', 'temporary', 'user', first_name)
+    sl.delete_content('temporary', user_id)
+    sl.delete_content('quotes2017', user_id)
     bot.send_message(chat_id=update.message.chat_id,
                      text='%s, your bet has been canceled.' % first_name)
 
