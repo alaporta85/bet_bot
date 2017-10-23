@@ -157,17 +157,23 @@ def get_quote(browser, field, right_bet, click='no'):
             field_name = new_field.find_element_by_xpath(
                     './/div[@class="text-left col ng-binding"]').text
 
-            if field_name == field:
+            if field_name == field and field != 'ESITO FINALE 1X2 HANDICAP':
 
                 all_bets_path = ('.//div[@class="block-selections-' +
                                  'single-event"]/div')
 
-                all_bets = new_field.find_elements_by_xpath(
-                        all_bets_path)
+                all_bets = new_field.find_elements_by_xpath(all_bets_path)
+
+            elif field_name == field and field == 'ESITO FINALE 1X2 HANDICAP':
+
+                all_bets_path = ('.//div[@class="block-selections-' +
+                                 'single-event handicap-markets-single"]/div')
+
+                all_bets = new_field.find_elements_by_xpath(all_bets_path)
 
                 for new_bet in all_bets:
                     bet_name = new_bet.find_element_by_xpath(
-                            './/div[@class="sel-ls"]').text
+                            './/div[@class="sel-ls"]/a').text
 
                     if bet_name == right_bet:
 
@@ -301,7 +307,7 @@ def look_for_quote(text):
             return bet
 
         elif field == 'ESITO FINALE 1X2 HANDICAP':
-            return bet.split(' ')[0]
+            return bet[0]
 
         elif field == 'GOAL/NO GOAL':
             if 'NG' in bet:
@@ -506,6 +512,6 @@ def add_quote(current_url, field, right_bet):
     browser.quit()
 
 
-#team1, team2, right_bet, bet_quote, field, current_url = look_for_quote(
-#        'atalanta_gg + over 3,5')
+team1, team2, right_bet, bet_quote, field, current_url = look_for_quote(
+        'inter_x h')
 #add_quote(current_url, field, right_bet)
