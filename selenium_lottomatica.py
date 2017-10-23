@@ -512,6 +512,6 @@ def add_quote(current_url, field, right_bet):
     browser.quit()
 
 
-team1, team2, right_bet, bet_quote, field, current_url = look_for_quote(
-        'inter_x h')
+#team1, team2, right_bet, bet_quote, field, current_url = look_for_quote(
+#        'inter_x h')
 #add_quote(current_url, field, right_bet)

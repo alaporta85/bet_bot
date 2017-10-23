@@ -102,12 +102,27 @@ def cancel(bot, update):
                      text='%s, your bet has been canceled.' % first_name)
 
 
+def content(bot, update, args):
+    message = sl.get_table_content(args[0])
+    for bet in message:
+        count = 0
+        for field in bet:
+            count += 1
+            if count % 11:
+                bot.send_message(chat_id=update.message.chat_id, text=field)
+            else:
+                bot.send_message(chat_id=update.message.chat_id, text=field +
+                                 '\n')
+
+
 start_handler = CommandHandler('start', start)
 quote_handler = CommandHandler('getquote', quote, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
 cancel_handler = CommandHandler('cancel', cancel)
+content_handler = CommandHandler('content', content, pass_args=True)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(quote_handler)
 dispatcher.add_handler(confirm_handler)
 dispatcher.add_handler(cancel_handler)
+dispatcher.add_handler(content_handler)
 updater.start_polling()
