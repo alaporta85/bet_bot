@@ -20,8 +20,8 @@ def scroll_to_element(browser, true_false, element):
            the webpage positioning the element at the top of the window, if it
            is 'false' the element will be positioned at the bottom.'''
 
-        browser.execute_script('return arguments[0].scrollIntoView(%s);'
-                               % true_false, element)
+        browser.execute_script('return arguments[0].scrollIntoView({});'
+                               .format(true_false), element)
 
 
 def get_quote(browser, field, right_bet, click='no'):
@@ -131,11 +131,16 @@ def look_for_quote(text):
             else:
                 return 'GOAL/NOGOAL + U/O 2,5'
 
+        elif ('+' in bet and ('UNDER' in bet or 'OVER' in bet) and
+              ('1X' in bet or 'X2' in bet or '12' in bet)):
+            value = bet.split(' ')[3].replace(',', '.')
+            return 'DOPPIA CHANCE + UNDER/OVER {}'.format(value)
+
         elif '+' in bet and ('UNDER' in bet or 'OVER' in bet):
             value = bet.split(' ')[3].replace('.', ',')
             if value in '1X2':
                 value = bet.split(' ')[1].replace('.', ',')
-            return 'ESITO FINALE 1X2 + U/O %s' % value
+            return 'ESITO FINALE 1X2 + U/O {}'.format(value)
 
         elif '+' in bet and ('NG' in bet or 'GG' in bet):
             return 'ESITO FINALE 1X2 + GOAL/NOGOAL'
@@ -151,15 +156,15 @@ def look_for_quote(text):
 
         elif ('UNDER' in bet or 'OVER' in bet) and 'PT' in bet:
             value = bet.split(' ')[1].replace('.', ',')
-            return 'UNDER/OVER %s PRIMO TEMPO' % value
+            return 'UNDER/OVER {} PRIMO TEMPO'.format(value)
 
         elif ('UNDER' in bet or 'OVER' in bet) and 'ST' in bet:
             value = bet.split(' ')[1].replace('.', ',')
-            return 'UNDER/OVER %s SECONDO TEMPO' % value
+            return 'UNDER/OVER {} SECONDO TEMPO'.format(value)
 
         elif 'UNDER' in bet or 'OVER' in bet:
             value = bet.split(' ')[1].replace('.', ',')
-            return 'UNDER / OVER %s' % value
+            return 'UNDER / OVER {}'.format(value)
 
         elif 'PT' in bet:
             return 'ESITO 1 TEMPO 1X2'
@@ -181,6 +186,9 @@ def look_for_quote(text):
                 return 'GOAL + UNDER'
             elif 'GG' in bet and 'OVER' in bet:
                 return 'GOAL + OVER'
+
+        elif 'DOPPIA CHANCE + UNDER/OVER' in field:
+            return ' '.join(bet.split(' ')[:3])
 
         elif 'ESITO FINALE 1X2 + U/O' in field:
             new_bet = ' '.join(bet.split(' ')[:3])
@@ -359,7 +367,7 @@ def look_for_quote(text):
         field = get_field(bet)
         if not BET_CHECK:
             browser.quit()
-            return 'Wrong: %s' % bet
+            return 'Wrong: {}'.format(bet)
         right_bet = format_bet(field, bet)
 
     # On the other hand, if the input has the form league_team_field_bet we
@@ -372,13 +380,13 @@ def look_for_quote(text):
         right_bet = format_bet(field, bet)
         if not BET_CHECK:
             browser.quit()
-            return 'Wrong: %s' % bet
+            return 'Wrong: {}'.format(bet)
 
     # Navigate to page containing the matches of our league
     go_to_league_bets(team)
     if not TEAM_CHECK:
         browser.quit()
-        return 'Wrong: %s' % team
+        return 'Wrong: {}'.format(team)
 
     # Xpath of the box containing the matches grouped by day
     all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
@@ -394,7 +402,7 @@ def look_for_quote(text):
     bet_quote = get_quote(browser, field, right_bet)
     current_url = browser.current_url
     browser.quit()
-    return team1, team2, right_bet, bet_quote, field, current_url
+    return league, team1, team2, right_bet, bet_quote, field, current_url
 
 
 def add_quote(current_url, field, right_bet):
@@ -406,6 +414,6 @@ def add_quote(current_url, field, right_bet):
     browser.quit()
 
 
-#team1, team2, right_bet, bet_quote, field, current_url = look_for_quote(
-#        'inter_gg + over 2.5')
+#league, team1, team2, right_bet, bet_quote, field, current_url = (
+#        look_for_quote('inter_x'))
 #add_quote(current_url, field, right_bet)
