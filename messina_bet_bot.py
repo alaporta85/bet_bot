@@ -1,6 +1,7 @@
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 import selenium_lottomatica as sl
+import db_functions as dbf
 import datetime
 import sqlite3
 
@@ -36,8 +37,7 @@ def quote(bot, update, args):
                 guess)
 
         # Update tables
-        db = sqlite3.connect('bet_bot_db')
-        c = db.cursor()
+        db, c = dbf.start_db()
         c.execute('''INSERT INTO quotes2017 (user, date, team1, team2, field,
                                              bet, quote)
                   VALUES (?, ?, ?, ?, ?, ?, ?)''',
@@ -73,17 +73,15 @@ def confirm(bot, update):
        quote2017'''
 
     first_name = update.message.from_user.first_name
-    user_id = sl.get_value('id', 'temporary', 'user', first_name)
-    sl.delete_content('temporary', user_id)
+    user_id = dbf.get_value('id', 'temporary', 'user', first_name)
+    dbf.delete_content('temporary', user_id)
 
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
+    db, c = dbf.start_db()
 
     c.execute('''UPDATE quotes2017 SET status = 'Waiting' WHERE id = ?''',
               (user_id,))
 
     db.commit()
-    db.close()
 
     bot.send_message(chat_id=update.message.chat_id,
                      text='%s, your bet has been placed correctly.'
@@ -95,24 +93,28 @@ def cancel(bot, update):
     '''Delete the bet from the temporary and quote2017 tables.'''
 
     first_name = update.message.from_user.first_name
-    user_id = sl.get_value('id', 'temporary', 'user', first_name)
-    sl.delete_content('temporary', user_id)
-    sl.delete_content('quotes2017', user_id)
+    user_id = dbf.get_value('id', 'temporary', 'user', first_name)
+    dbf.delete_content('temporary', user_id)
+    dbf.delete_content('quotes2017', user_id)
     bot.send_message(chat_id=update.message.chat_id,
                      text='%s, your bet has been canceled.' % first_name)
 
 
 def content(bot, update, args):
-    message = sl.get_table_content(args[0])
-    for bet in message:
-        count = 0
-        for field in bet:
-            count += 1
-            if count % 11:
-                bot.send_message(chat_id=update.message.chat_id, text=field)
-            else:
-                bot.send_message(chat_id=update.message.chat_id, text=field +
-                                 '\n')
+    message = dbf.get_table_content(args[0])
+    if not len(message):
+        bot.send_message(chat_id=update.message.chat_id, text='Empty')
+    else:
+        for bet in message:
+            count = 0
+            for field in bet:
+                count += 1
+                if count % 11:
+                    bot.send_message(chat_id=update.message.chat_id,
+                                     text=field)
+                else:
+                    bot.send_message(chat_id=update.message.chat_id,
+                                     text=field + '\n')
 
 
 start_handler = CommandHandler('start', start)

@@ -2,111 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import sqlite3
 import pickle
-
-
-def print_tables():
-
-    '''Print tables in the database.'''
-
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
-
-    tables = c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-
-    names = [table[0] for table in tables]
-    db.close()
-
-    for name in names:
-        print(name)
-
-
-def print_columns(table_name):
-
-    '''Print columns'names in the database.'''
-
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
-
-    c.execute('select * from %s' % table_name)
-
-    names = [description[0] for description in c.description]
-    db.close()
-
-    for name in names:
-        print(name)
-
-
-def get_table_content(table_name):
-
-    '''Return rows' content of the table.'''
-
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
-
-    content = c.execute('''SELECT * FROM %s''' % table_name)
-
-    return list(content)
-
-
-def get_value(column, table_name, WHERE_KEY, WHERE_VALUE):
-
-    '''Return a specific value addressed by the inputs parameters.'''
-
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
-
-    c.execute('''SELECT %s FROM %s WHERE %s = "%s"''' % (column,
-                                                         table_name,
-                                                         WHERE_KEY,
-                                                         WHERE_VALUE))
-
-    res = c.fetchone()
-
-    db.close()
-
-    return res[0]
-
-
-def empty_table(table_name):
-
-    '''Delete the bet from the temporary folder.'''
-
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
-
-    c.execute('''DELETE FROM %s''' % table_name)
-
-    db.commit()
-    db.close()
-
-
-def insert_quote(user, quote):
-
-    '''Update user's data with the new quote.'''
-
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
-
-    c.execute('''INSERT INTO quotes2017 (user, quote)
-    VALUES (?, ?)''', (user, quote))
-
-    db.commit()
-    db.close()
-
-
-def delete_content(table_name, user_id):
-
-    '''Delete the bet from the temporary folder.'''
-
-    db = sqlite3.connect('bet_bot_db')
-    c = db.cursor()
-
-    c.execute('''DELETE FROM %s WHERE id = %d''' % (table_name, user_id))
-
-    db.commit()
-    db.close()
 
 
 def wait(browser, seconds, element):
@@ -157,17 +53,15 @@ def get_quote(browser, field, right_bet, click='no'):
             field_name = new_field.find_element_by_xpath(
                     './/div[@class="text-left col ng-binding"]').text
 
-            if field_name == field and field != 'ESITO FINALE 1X2 HANDICAP':
+            if field_name == field:
 
-                all_bets_path = ('.//div[@class="block-selections-' +
-                                 'single-event"]/div')
-
-                all_bets = new_field.find_elements_by_xpath(all_bets_path)
-
-            elif field_name == field and field == 'ESITO FINALE 1X2 HANDICAP':
-
-                all_bets_path = ('.//div[@class="block-selections-' +
-                                 'single-event handicap-markets-single"]/div')
+                if field == 'ESITO FINALE 1X2 HANDICAP':
+                    all_bets_path = ('.//div[@class="block-selections-' +
+                                     'single-event handicap-markets-' +
+                                     'single"]/div')
+                else:
+                    all_bets_path = ('.//div[@class="block-selections-' +
+                                     'single-event"]/div')
 
                 all_bets = new_field.find_elements_by_xpath(all_bets_path)
 
@@ -513,5 +407,5 @@ def add_quote(current_url, field, right_bet):
 
 
 #team1, team2, right_bet, bet_quote, field, current_url = look_for_quote(
-#        'inter_x h')
+#        'inter_gg + over 2.5')
 #add_quote(current_url, field, right_bet)
