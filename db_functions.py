@@ -32,7 +32,7 @@ def print_columns(table_name):
 
     db, c = start_db()
 
-    c.execute('select * from %s' % table_name)
+    c.execute('SELECT * FROM {}'.format(table_name))
 
     names = [description[0] for description in c.description]
 
@@ -48,7 +48,7 @@ def get_table_content(table_name):
 
     db, c = start_db()
 
-    content = list(c.execute('''SELECT * FROM %s''' % table_name))
+    content = list(c.execute('''SELECT * FROM {}'''.format(table_name)))
 
     db.close()
 
@@ -61,10 +61,10 @@ def get_value(column, table_name, WHERE_KEY, WHERE_VALUE):
 
     db, c = start_db()
 
-    c.execute('''SELECT %s FROM %s WHERE %s = "%s"''' % (column,
-                                                         table_name,
-                                                         WHERE_KEY,
-                                                         WHERE_VALUE))
+    c.execute('''SELECT {} FROM {} WHERE {} = "{}"'''.format(column,
+                                                             table_name,
+                                                             WHERE_KEY,
+                                                             WHERE_VALUE))
 
     res = c.fetchone()
 
@@ -82,7 +82,7 @@ def empty_table(table_name):
 
     db, c = start_db()
 
-    c.execute('''DELETE FROM %s''' % table_name)
+    c.execute('''DELETE FROM {}'''.format(table_name))
 
     db.commit()
     db.close()
@@ -107,7 +107,7 @@ def delete_content(table_name, user_id):
 
     db, c = start_db()
 
-    c.execute('''DELETE FROM %s WHERE id = %d''' % (table_name, user_id))
+    c.execute('''DELETE FROM {} WHERE id = {}'''.format(table_name, user_id))
 
     db.commit()
     db.close()
