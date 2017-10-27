@@ -1,12 +1,10 @@
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 import selenium_lottomatica as sl
-import db_functions as dbf
+from Functions import db_functions as dbf
+from Functions import selenium_functions as sf
 import datetime
 
 f = open('token.txt', 'r')
@@ -84,27 +82,36 @@ def quote(bot, update, args):
     guess = ' '.join(args).upper()
 
     try:
+        db, c = dbf.start_db()
+
+        confirmed_matches = list(c.execute('''SELECT team1, team2 FROM matches
+                                           WHERE status = "Confirmed"'''))
+        confirmed_teams = [team for match in confirmed_matches for team
+                           in match]
+
         league, team1, team2, bet, bet_quote, field, url = (
                 sl.look_for_quote(guess))
 
-        # Update table
-        db, c = dbf.start_db()
-        c.execute('''INSERT INTO matches (url, user, date, league, team1,
-                                          team2, field, bet, quote, status)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                  (url, first_name, date, league, team1, team2,
-                   field, bet, bet_quote, 'Not Confirmed'))
+        if team1 not in confirmed_teams:
+            # Update table
+            c.execute('''INSERT INTO matches (url, user, date, league, team1,
+                                              team2, field, bet, quote, status)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (url, first_name, date, league, team1, team2,
+                       field, bet, bet_quote, 'Not Confirmed'))
 
-        db.commit()
-        db.close()
+            db.commit()
+            db.close()
 
-        printed_bet = '{} - {} {} {} @{}'.format(team1, team2, field, bet,
-                                                 bet_quote)
+            printed_bet = '{} - {} {} {} @{}'.format(team1, team2, field, bet,
+                                                     bet_quote)
 
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=('{}\n' +
-                               'Use /confirm or /cancel to finalize your bet.')
-                         .format(printed_bet))
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=('{}\n' + 'Use /confirm or /cancel to ' +
+                                   'finalize your bet.').format(printed_bet))
+        else:
+            message = 'Match already chosen. Please change your bet.'
+            bot.send_message(chat_id=update.message.chat_id, text=message)
 
     except SyntaxError as e:
         # If input is wrong
@@ -239,7 +246,7 @@ def play_bet(bot, update, args):
         try:
             n = ('.//nav[@id="toolbarForHidden"]/ul/' +
                  'li[@class="toolbar-nav-item ng-scope"]/a')
-            sl.wait(browser, 20, n)
+            sf.wait(browser, 20, n)
 
             browser.find_element_by_xpath(n).click()
         except TimeoutException:
