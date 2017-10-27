@@ -9,12 +9,15 @@ import selenium_lottomatica as sl
 import db_functions as dbf
 import datetime
 
-f = open('/Users/andrea/Desktop/token.txt', 'r')
-updater = Updater(token=f.readline())
+f = open('token.txt', 'r')
+#updater = Updater(token=f.readline())
+token = f.readline()
 f.close()
-dispatcher = updater.dispatcher
 
+print(token)
+#dispatcher = updater.dispatcher
 
+#%%
 def todays_date():
 
     date = str(datetime.date.today())
