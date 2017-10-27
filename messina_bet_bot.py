@@ -10,14 +10,12 @@ import db_functions as dbf
 import datetime
 
 f = open('token.txt', 'r')
-#updater = Updater(token=f.readline())
-token = f.readline()
+updater = Updater(token=f.readline())
 f.close()
 
-print(token)
-#dispatcher = updater.dispatcher
+dispatcher = updater.dispatcher
 
-#%%
+
 def todays_date():
 
     date = str(datetime.date.today())
