@@ -1,0 +1,58 @@
+There are 7 leagues available:
+
+    - SERIE A
+    - SERIE B
+    - PREMIER LEAGUE
+    - PRIMERA DIVISION
+    - BUNDESLIGA
+    - LIGUE 1
+    - EREDIVISIE
+
+
+If the bet is one of the following:
+
+    - ESITO FINALE 1X2
+    - UNDER/OVER
+    - ESITO 1 TEMPO 1X2
+    - UNDER/OVER PRIMO TEMPO
+    - UNDER/OVER SECONDO TEMPO
+    - GOAL/NO GOAL
+    - ESITO FINALE 1X2 HANDICAP
+    - ESITO FINALE 1X2 + GOAL/NOGOAL
+    - ESITO FINALE 1X2 + U/O
+    - DOPPIA CHANCE + UNDER/OVER
+    - GOAL/NOGOAL + U/O 2,5
+
+The message has to be sent in the form 'team_bet'.
+
+    Example1: milan_x pt
+    Example2: milan_gg + over 2.5
+    Example3: milan_under 3.5 pt
+
+
+IMPORTANT:
+
+    1. 'team' can be either team1 or team2, it does NOT matter.
+    2. 'team' and 'bet' ALWAYS need to be separated by '_'.
+    3. different parts of the bet need a blank space as separator:
+
+        - wrong: milan_over2.5
+        - correct: milan_over 2.5
+
+    4. 'combo' bets need the sign ' + ' as separator (notice blank spaces):
+
+        - wrong: milan_gg over 2.5
+        - wrong: milan_gg+over 2.5
+        - correct: milan_gg + over 2.5
+
+    5. CAPS do NOT matter: 'milan' and 'MILAN' they both work.
+
+
+If the bet is not between those fields, message has to be sent in the form
+'league_team_field_bet'.
+
+    Example1: serie a_milan_esito 1 tempo/finale_1-x
+    Example2: primera division_real madrid_pari/dispari_pari
+    Example3: ligue 1_nizza_tricombo_1 ng under
+
+In this case all inputs need to be EXACTLY as in the webpage.
