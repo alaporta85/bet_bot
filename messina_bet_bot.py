@@ -9,6 +9,7 @@ import datetime
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -293,6 +294,16 @@ def play_bet(bot, update, args):
 
         # If this number is equal to the number of bets chosen to play
         if matches_played == len(matches_to_play):
+            ticket = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
+                      '//p[@class="arrow-label linkable"]')
+            browser.find_element_by_xpath(ticket).click()
+
+            input_euros = ('.//div[contains(@class,"text-right ' +
+                           'amount-sign")]/input')
+            euros_box = browser.find_element_by_xpath(input_euros)
+            euros_box.send_keys(Keys.COMMAND, "a")
+            euros_box.send_keys(euros)
+
             bot.send_message(chat_id=update.message.chat_id,
                              text='All matches added correctly')
         else:
