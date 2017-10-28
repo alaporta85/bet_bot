@@ -6,12 +6,26 @@ import selenium_lottomatica as sl
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 import datetime
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
 f.close()
 
 dispatcher = updater.dispatcher
+
+
+def nickname(name):
+
+    nicknames = {'Andrea': 'Testazza',
+                 'Fabrizio': 'Nonno',
+                 'Damiano': 'Pacco',
+                 'Francesco': 'Zoppo',
+                 'Gabriele': 'Nano'}
+
+    return nicknames[name]
 
 
 def todays_date():
@@ -65,6 +79,19 @@ def ask_help(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
+def list_of_commands(bot, update):
+
+    f = open('Messages/list_of_commands.txt', 'r')
+    content = f.readlines()
+    f.close()
+
+    message = ''
+    for row in content:
+        message += row
+
+    bot.send_message(chat_id=update.message.chat_id, text=message)
+
+
 def quote(bot, update, args):
 
     '''Try to find all the parameters from look_for_quote function. If found,
@@ -73,7 +100,7 @@ def quote(bot, update, args):
        the cases when some error occurred.'''
 
     # User sending the message
-    first_name = update.message.from_user.first_name
+    first_name = nickname(update.message.from_user.first_name)
 
     # Today's date
     date = todays_date()
@@ -130,7 +157,7 @@ def confirm(bot, update):
        entry in the "bets" table and update the bet_id in the "matches" table.
        Else, it just uses the bet_id.'''
 
-    first_name = update.message.from_user.first_name
+    first_name = nickname(update.message.from_user.first_name)
     date = todays_date()
 
     bet_id = dbf.get_value('bets_id', 'bets', 'date', date)
@@ -163,7 +190,7 @@ def cancel(bot, update):
 
     '''Delete the bet "matches" table.'''
 
-    first_name = update.message.from_user.first_name
+    first_name = nickname(update.message.from_user.first_name)
     db, c = dbf.start_db()
     c.execute('''DELETE FROM matches WHERE user = ? and status = ?''',
               (first_name, 'Not Confirmed'))
@@ -273,7 +300,7 @@ def play_bet(bot, update, args):
                              text=('Something went wrong, try tagain the' +
                                    ' command /play.'))
 
-        browser.quit()
+#        browser.quit()
 
     else:
         bot.send_message(chat_id=update.message.chat_id,
@@ -281,16 +308,44 @@ def play_bet(bot, update, args):
                                'Ex: /play 5'))
 
 
+def summary(bot, update):
+    bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
+    db, c = dbf.start_db()
+    summary = list(c.execute('''SELECT user, team1, team2, field, bet
+                             FROM bets INNER JOIN matches on
+                             matches.bets_id = ?''', (bet_id,)))
+
+    db.close()
+    message = ''
+    if summary:
+        for bet in summary:
+            user = bet[0]
+            team1 = bet[1].title()
+            team2 = bet[2].title()
+            field = bet[3]
+            result = bet[4]
+            message += '{}: {}-{} / {} ---> {}\n'.format(user, team1, team2,
+                                                         field, result)
+    else:
+        message = 'No bets yet. Choose the first one.'
+
+    bot.send_message(chat_id=update.message.chat_id, text=message)
+
+
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help', ask_help)
+commands_handler = CommandHandler('commands', list_of_commands)
 quote_handler = CommandHandler('getquote', quote, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
 cancel_handler = CommandHandler('cancel', cancel)
 play_bet_handler = CommandHandler('play', play_bet, pass_args=True)
+summary_handler = CommandHandler('summary', summary)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
+dispatcher.add_handler(commands_handler)
 dispatcher.add_handler(quote_handler)
 dispatcher.add_handler(confirm_handler)
 dispatcher.add_handler(cancel_handler)
 dispatcher.add_handler(play_bet_handler)
+dispatcher.add_handler(summary_handler)
 updater.start_polling()

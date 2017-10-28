@@ -1,0 +1,9 @@
+/help: Instructions to place the bet correctly
+
+/getquote: Look for the bet and send a message showing all
+           the details. You will be asked to either confirm
+           or cancel the bet.
+
+/confirm: Confirm the bet
+
+/cancel: Cancel the bet

@@ -23,6 +23,9 @@ def check_connection(browser, url):
         return False
 
 
+#def check_start_firefox(browser)
+
+
 def wait(browser, seconds, element):
 
     '''Forces the script to wait before doing any other action.'''

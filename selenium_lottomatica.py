@@ -90,7 +90,9 @@ def look_for_quote(text):
 def add_quote(browser, current_url, field, right_bet):
 
     # Go to Lottomatica webpage
+    print('uno')
     browser.get(current_url)
+    print('due')
     if sf.check_connection(browser, current_url):
         sf.get_quote(browser, field, right_bet, 'yes')
     else:
