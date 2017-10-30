@@ -29,6 +29,15 @@ def nickname(name):
     return nicknames[name]
 
 
+def login(browser):
+    f = open('login.txt', 'r')
+    credentials = f.readlines()
+    f.close()
+
+    username = credentials[0][9:-1]
+    password = credentials[1][8:]
+
+
 def todays_date():
 
     date = str(datetime.date.today())
