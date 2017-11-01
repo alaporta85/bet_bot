@@ -1,14 +1,11 @@
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 import selenium_lottomatica as sl
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 import datetime
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 
 f = open('token.txt', 'r')
@@ -30,12 +27,36 @@ def nickname(name):
 
 
 def login(browser):
+
     f = open('login.txt', 'r')
     credentials = f.readlines()
     f.close()
 
-    username = credentials[0][9:-1]
-    password = credentials[1][8:]
+    username = credentials[0][10:-1]
+    password = credentials[1][10:]
+
+    user_path = './/input[@placeholder="Username"]'
+    pass_path = './/input[@placeholder="Password"]'
+    button_path = './/button[@class="button-submit"]'
+
+    user_list = browser.find_elements_by_xpath(user_path)
+    pass_list = browser.find_elements_by_xpath(pass_path)
+    button_list = browser.find_elements_by_xpath(button_path)
+
+    for element in user_list:
+        if element.is_displayed():
+            element.send_keys(username)
+            break
+
+    for element in pass_list:
+        if element.is_displayed():
+            element.send_keys(password)
+            break
+
+    for element in button_list:
+        if element.is_displayed():
+            element.click()
+            break
 
 
 def todays_date():
@@ -66,6 +87,20 @@ def handle_play_conn_err(browser, team1, team2):
     browser.quit()
     message = ('Problems with the match {} - {}. '.format(team1, team2) +
                'Possible reason: bad internet connection. Please try again.')
+
+    return message
+
+
+def played_bets(summary):
+    message = ''
+    for bet in summary:
+        user = bet[0]
+        team1 = bet[1].title()
+        team2 = bet[2].title()
+        field = bet[3]
+        result = bet[4]
+        message += '{}: {}-{} / {} ---> {}\n'.format(user, team1, team2,
+                                                     field, result)
 
     return message
 
@@ -121,15 +156,14 @@ def quote(bot, update, args):
     try:
         db, c = dbf.start_db()
 
-        confirmed_matches = list(c.execute('''SELECT team1, team2 FROM matches
-                                           WHERE status = "Confirmed"'''))
-        confirmed_teams = [team for match in confirmed_matches for team
-                           in match]
+        confirmed_matches = list(c.execute('''SELECT team1, team2, league
+                                           FROM matches WHERE
+                                           status = "Confirmed"'''))
 
         league, team1, team2, bet, bet_quote, field, url = (
                 sl.look_for_quote(guess))
 
-        if team1 not in confirmed_teams:
+        if (team1, team2, league) not in confirmed_matches:
             # Update table
             c.execute('''INSERT INTO matches (url, user, date, league, team1,
                                               team2, field, bet, quote, status)
@@ -216,8 +250,18 @@ def play_bet(bot, update, args):
        to bet.'''
 
     if args:
+        try:
+            euros = int(args[0])
+            if euros < 2:
+                message = 'Minimum amount is 2 Euros.'
+                return bot.send_message(chat_id=update.message.chat_id,
+                                        text=message)
+        except ValueError:
+            message = 'Amount has to be integer.'
+            return bot.send_message(chat_id=update.message.chat_id,
+                                    text=message)
         bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
-        euros = int(args[0])
+
         # Group inside a list all the bets beloning to the bet with result
         # 'Unknown'
         bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
@@ -229,54 +273,51 @@ def play_bet(bot, update, args):
 
         db.close()
         browser = webdriver.Firefox()
-#        last_league = 0
+        last_league = ''
+        count = 0
         for match in matches_to_play:
             team1 = match[0]
             team2 = match[1]
             field = match[2]
             bet = match[3]
             url = match[4]
-#            league = match[5]
-            try:
-                sl.add_quote(browser, url, field, bet)
-            except ConnectionError:
-                browser.quit()
-                message = handle_play_conn_err(browser, team1, team2)
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=message)
-                break
-#            if not count:
-#                try:
-#                    sl.add_quote(browser, url, field, bet)
-#                    last_league = league
-#                    count += 1
-#                except ConnectionError:
-#                    message = handle_play_conn_err(browser, team1, team2)
-#                    bot.send_message(chat_id=update.message.chat_id,
-#                                     text=message)
-#                    break
-#
-#            elif count and league == last_league:
-#                try:
-#                    sl.find_league_button(browser, league)
-#                    add_bet(browser, team1, field, bet)
-#                    count += 1
-#                except ConnectionError:
-#                    message = handle_play_conn_err(browser, team1, team2)
-#                    bot.send_message(chat_id=update.message.chat_id,
-#                                     text=message)
-#                    break
-#            else:
-#                try:
-#                    sl.find_country_button(browser, league)
-#                    sl.find_league_button(browser, league)
-#                    add_bet(browser, team1, field, bet)
-#                    count += 1
-#                except ConnectionError:
-#                    message = handle_play_conn_err(browser, team1, team2)
-#                    bot.send_message(chat_id=update.message.chat_id,
-#                                     text=message)
-#                    break
+            league = match[5]
+#            try:
+#                sl.add_quote(browser, url, field, bet)
+#            except ConnectionError:
+#                browser.quit()
+#                message = handle_play_conn_err(browser, team1, team2)
+#                bot.send_message(chat_id=update.message.chat_id,
+#                                 text=message)
+#                break
+
+            if not count:
+                try:
+                    sl.add_first_bet(browser, url, field, bet)
+                    last_league = league
+                    count += 1
+                except ConnectionError:
+                    message = handle_play_conn_err(browser, team1, team2)
+                    return bot.send_message(chat_id=update.message.chat_id,
+                                            text=message)
+
+            elif count and league == last_league:
+                try:
+                    sl.find_league_button(browser, league)
+                    sl.add_following_bets(browser, team1, field, bet)
+                except ConnectionError:
+                    message = handle_play_conn_err(browser, team1, team2)
+                    return bot.send_message(chat_id=update.message.chat_id,
+                                            text=message)
+            else:
+                try:
+                    sl.find_country_button(browser, league)
+                    sl.find_league_button(browser, league)
+                    sl.add_following_bets(browser, team1, field, bet)
+                except ConnectionError:
+                    message = handle_play_conn_err(browser, team1, team2)
+                    return bot.send_message(chat_id=update.message.chat_id,
+                                            text=message)
 
         browser.implicitly_wait(10)
         # Find the basket with all the bets
@@ -303,6 +344,7 @@ def play_bet(bot, update, args):
 
         # If this number is equal to the number of bets chosen to play
         if matches_played == len(matches_to_play):
+
             ticket = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
                       '//p[@class="arrow-label linkable"]')
             browser.find_element_by_xpath(ticket).click()
@@ -312,15 +354,63 @@ def play_bet(bot, update, args):
             euros_box = browser.find_element_by_xpath(input_euros)
             euros_box.send_keys(Keys.COMMAND, "a")
             euros_box.send_keys(euros)
+            browser.implicitly_wait(5)
 
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='All matches added correctly')
+            win_path = ('.//div[@class="row ticket-bet-infos"]//' +
+                        'p[@class="amount"]/strong')
+            win_container = browser.find_element_by_xpath(win_path)
+
+            possible_win_default = float(win_container.text[2:]
+                                         .replace(',', '.'))
+            possible_win = round(possible_win_default * (euros/2), 2)
+
+            login(browser)
+            browser.implicitly_wait(10)
+
+            button_location = './/div[@class="change-bet ng-scope"]'
+
+            sf.scroll_to_element(browser, 'true',
+                                 browser.find_element_by_xpath(
+                                         button_location))
+
+            try:
+                button_path = ('.//button[@class="button-default no-margin-' +
+                               'bottom ng-scope"]')
+    
+                button_list = browser.find_elements_by_xpath(button_path)
+            except NoSuchElementException:
+                print('aggiorna')
+                button_path = ('.//button[@class="button-default"]')
+                button_list = browser.find_elements_by_xpath(button_path)
+                print(len(button_list))
+                for element in button_list:
+                    if element.is_displayed():
+                        print(element.text)
+    ###                    element.click()
+                        break
+
+            for element in button_list:
+                if element.is_displayed():
+                    print(element.text)
+###                    element.click()
+                    break
+            message = 'Bet placed correctly.\n\n'
+            bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
+            db, c = dbf.start_db()
+            summary = list(c.execute('''SELECT user, team1, team2, field, bet
+                                     FROM bets INNER JOIN matches on
+                                     matches.bets_id = ?''', (bet_id,)))
+
+            db.close()
+            message += (played_bets(summary) + '\nPossible win: {}'.format(
+                    possible_win))
+            bot.send_message(chat_id=update.message.chat_id, text=message)
         else:
             bot.send_message(chat_id=update.message.chat_id,
                              text=('Something went wrong, try tagain the' +
                                    ' command /play.'))
 
-#        browser.quit()
+        browser.quit()
 
     else:
         bot.send_message(chat_id=update.message.chat_id,
@@ -336,16 +426,8 @@ def summary(bot, update):
                              matches.bets_id = ?''', (bet_id,)))
 
     db.close()
-    message = ''
     if summary:
-        for bet in summary:
-            user = bet[0]
-            team1 = bet[1].title()
-            team2 = bet[2].title()
-            field = bet[3]
-            result = bet[4]
-            message += '{}: {}-{} / {} ---> {}\n'.format(user, team1, team2,
-                                                         field, result)
+        message = played_bets(summary)
     else:
         message = 'No bets yet. Choose the first one.'
 
@@ -369,3 +451,4 @@ dispatcher.add_handler(cancel_handler)
 dispatcher.add_handler(play_bet_handler)
 dispatcher.add_handler(summary_handler)
 updater.start_polling()
+updater.idle()

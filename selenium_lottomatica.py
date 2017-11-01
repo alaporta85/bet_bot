@@ -1,6 +1,8 @@
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from Functions import selenium_functions as sf
+from selenium.webdriver.common.keys import Keys
+from Functions import db_functions as dbf
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
@@ -13,9 +15,7 @@ def look_for_quote(text):
 
     # Start the browser and go to Lottomatica webpage
     browser = webdriver.Firefox()
-    print('browser started')            # For debug
     browser.get(url)
-    print('start url ' + url)           # For debug
 
     if sf.check_connection(browser, url):
 
@@ -55,24 +55,14 @@ def look_for_quote(text):
 
         # Navigate to page containing the matches of our league
         try:
-            team, league = sf.go_to_league_bets(browser, input_team)
+            team1, team2, league = sf.go_to_league_bets(browser, input_team)
         except SyntaxError:
             browser.quit()
             raise SyntaxError('{}: Team not valid or competition '
                               .format(input_team) + 'not allowed.')
+        except ConnectionError as e:
+            return str(e)
 
-        # Xpath of the box containing the matches grouped by day
-        all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-        try:
-            sf.wait(browser, 20, all_days)
-            all_tables = browser.find_elements_by_xpath(all_days)
-        except TimeoutException:
-            browser.quit()
-            raise ConnectionError(conn_err_message)
-
-        # Navigate to the webpage containing all the bets of the match and
-        # store the two teams
-        team1, team2 = sf.go_to_match_bets(browser, all_tables, team)
         browser.implicitly_wait(5)
 
         # Store the quote
@@ -87,18 +77,250 @@ def look_for_quote(text):
                               'Please try again.')
 
 
-def add_quote(browser, current_url, field, right_bet):
+def add_first_bet(browser, current_url, field, right_bet):
+
+    '''Add the quote to the basket by taking directly the url of the bet.
+       This is used inside the play_bet function to play the first match.'''
 
     # Go to Lottomatica webpage
-    print('uno')
     browser.get(current_url)
-    print('due')
     if sf.check_connection(browser, current_url):
         sf.get_quote(browser, field, right_bet, 'yes')
     else:
         raise ConnectionError
 
 
+def add_following_bets(browser, team, field, bet):
+
+    '''Add all the other quotes after the first one. It does NOT use the url
+       but look for each button instead.'''
+
+    all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
+    try:
+        sf.wait(browser, 20, all_days)
+        all_tables = browser.find_elements_by_xpath(all_days)
+    except TimeoutException:
+        browser.quit()
+        raise ConnectionError
+    sf.go_to_match_bets(browser, all_tables, team)
+    browser.implicitly_wait(5)
+    # Store the quote
+    sf.get_quote(browser, field, bet, 'yes')
+
+
+def login(browser):
+
+    f = open('login.txt', 'r')
+    credentials = f.readlines()
+    f.close()
+
+    username = credentials[0][10:-1]
+    password = credentials[1][10:]
+
+    user_path = './/input[@placeholder="Username"]'
+    pass_path = './/input[@placeholder="Password"]'
+    button_path = './/button[@class="button-submit"]'
+
+    user_list = browser.find_elements_by_xpath(user_path)
+    pass_list = browser.find_elements_by_xpath(pass_path)
+    button_list = browser.find_elements_by_xpath(button_path)
+
+    for element in user_list:
+        if element.is_displayed():
+            element.send_keys(username)
+            break
+
+    for element in pass_list:
+        if element.is_displayed():
+            element.send_keys(password)
+            break
+
+    for element in button_list:
+        if element.is_displayed():
+            element.click()
+            break
+
+
+def played_bets(summary):
+
+    '''Return a string with the matches chosen until that moment.'''
+
+    message = ''
+    for bet in summary:
+        user = bet[0]
+        team1 = bet[1].title()
+        team2 = bet[2].title()
+        field = bet[3]
+        result = bet[4]
+        message += '{}: {}-{} / {} ---> {}\n'.format(user, team1, team2,
+                                                     field, result)
+
+    return message
+
+
+def play_bet(args):
+
+    '''Manage the login and play the bet. Args input is the amount of euros
+       to bet.'''
+
+    if args:
+        try:
+            euros = int(args)
+            if euros < 2:
+                message = 'Minimum amount is 2 Euros.'
+                return message
+        except ValueError:
+            message = 'Amount has to be integer.'
+            return message
+        print('Please wait...')
+
+        # Group inside a list all the bets beloning to the bet with result
+        # 'Unknown'
+        bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
+        db, c = dbf.start_db()
+        matches_to_play = list(c.execute('''SELECT team1, team2, field, bet,
+                                         url, league FROM bets INNER JOIN
+                                         matches on matches.bets_id = ?''',
+                                         (bet_id,)))
+
+        db.close()
+        browser = webdriver.Firefox()
+        last_league = 0
+        count = 0
+        for match in matches_to_play:
+            team1 = match[0]
+            team2 = match[1]
+            field = match[2]
+            bet = match[3]
+            url = match[4]
+            league = match[5]
+
+            message = ('Problems with the match {} - {}. '.format(team1,
+                       team2) + 'Possible reason: bad internet ' +
+                       'connection. Please try again.')
+
+            if not count:
+                try:
+                    add_first_bet(browser, url, field, bet)
+                    last_league = league
+                    count += 1
+                except ConnectionError:
+                    print(message)
+                    return message
+
+            elif count and league == last_league:
+                try:
+                    sf.find_league_button(browser, league)
+                    add_following_bets(browser, team1, field, bet)
+                    count += 1
+                except ConnectionError:
+                    print(message)
+                    return message
+            else:
+                try:
+                    sf.find_country_button(browser, league)
+                    sf.find_league_button(browser, league)
+                    add_following_bets(browser, team1, field, bet)
+                    count += 1
+                except ConnectionError:
+                    print(message)
+                    return message
+
+        browser.implicitly_wait(10)
+        # Find the basket with all the bets
+        try:
+            n = ('.//nav[@id="toolbarForHidden"]/ul/' +
+                 'li[@class="toolbar-nav-item ng-scope"]/a')
+            sf.wait(browser, 20, n)
+
+            browser.find_element_by_xpath(n).click()
+        except TimeoutException:
+            browser.quit()
+            print('Problem during placing the bet. ' +
+                  'Please check your internet ' +
+                  'connection and try again.')
+
+        summary_path = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
+                        '//ul//span[contains(@class,"col-sm-12")]')
+
+        summary_element = browser.find_element_by_xpath(summary_path)
+
+        # and extract the actual number of bets present in the basket
+        matches_played = int(summary_element.text.split(' ')[2][1:-1])
+
+        # If this number is equal to the number of bets chosen to play
+        if matches_played == len(matches_to_play):
+
+            ticket = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
+                      '//p[@class="arrow-label linkable"]')
+            browser.find_element_by_xpath(ticket).click()
+
+            input_euros = ('.//div[contains(@class,"text-right ' +
+                           'amount-sign")]/input')
+            euros_box = browser.find_element_by_xpath(input_euros)
+            euros_box.send_keys(Keys.COMMAND, "a")
+            euros_box.send_keys(euros)
+            browser.implicitly_wait(5)
+
+            win_path = ('.//div[@class="row ticket-bet-infos"]//' +
+                        'p[@class="amount"]/strong')
+            win_container = browser.find_element_by_xpath(win_path)
+
+            possible_win_default = float(win_container.text[2:]
+                                         .replace(',', '.'))
+            possible_win = round(possible_win_default * (euros/2), 2)
+
+            login(browser)
+            browser.implicitly_wait(10)
+
+            button_location = './/div[@class="change-bet ng-scope"]'
+
+            sf.scroll_to_element(browser, 'true',
+                                 browser.find_element_by_xpath(
+                                         button_location))
+
+            try:
+                button_path = ('.//button[@class="button-default no-margin-' +
+                               'bottom ng-scope"]')
+
+                button_list = browser.find_elements_by_xpath(button_path)
+            except NoSuchElementException:
+                print('aggiorna')
+                button_path = ('.//button[@class="button-default"]')
+                button_list = browser.find_elements_by_xpath(button_path)
+                print(len(button_list))
+                for element in button_list:
+                    if element.is_displayed():
+                        print(element.text)
+    ###                    element.click()
+                        break
+
+            for element in button_list:
+                if element.is_displayed():
+                    print(element.text)
+###                    element.click()
+                    break
+            message = 'Bet placed correctly.\n\n'
+            bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
+            db, c = dbf.start_db()
+            summary = list(c.execute('''SELECT user, team1, team2, field, bet
+                                     FROM bets INNER JOIN matches on
+                                     matches.bets_id = ?''', (bet_id,)))
+
+            db.close()
+            message += (played_bets(summary) + '\nPossible win: {}'.format(
+                    possible_win))
+            print(message)
+        else:
+            print('Something went wrong, try tagain the command /play.')
+
+        browser.quit()
+
+    else:
+        print('Please insert the amount to bet. Ex: /play 5')
+
+
 #league, team1, team2, right_bet, bet_quote, field, current_url = (
-#        look_for_quote('watford_over 3,5'))
+#        look_for_quote('juve_gg'))
 #add_quote(current_url, field, right_bet)
+#play_bet(10)
