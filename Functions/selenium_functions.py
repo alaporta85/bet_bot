@@ -14,7 +14,6 @@ def check_connection(browser, url):
 
     '''Check if browser is able to get the url.'''
 
-    browser.implicitly_wait(10)
     new_url = browser.current_url
     if new_url == url:
         return True
@@ -23,12 +22,23 @@ def check_connection(browser, url):
         return False
 
 
-def wait(browser, seconds, element):
+def wait_clickable(browser, seconds, element):
 
-    '''Forces the script to wait before doing any other action.'''
+    '''Forces the script to wait for the element to be clickable before doing
+       any other action.'''
 
     WebDriverWait(
             browser, seconds).until(EC.element_to_be_clickable(
+                    (By.XPATH, element)))
+
+
+def wait_visible(browser, seconds, element):
+
+    '''Forces the script to wait for the element to be visible before doing
+       any other action.'''
+
+    WebDriverWait(
+            browser, seconds).until(EC.visibility_of_element_located(
                     (By.XPATH, element)))
 
 
@@ -47,7 +57,7 @@ def click_calcio_button(browser, scroll='no'):
     # Xpath of the button called 'CALCIO'
     calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
     try:
-        wait(browser, 20, calcio)
+        wait_clickable(browser, 20, calcio)
         calcio_button = browser.find_element_by_xpath(calcio)
 
         if scroll == 'yes':
@@ -65,7 +75,7 @@ def click_oggi_domani_button(browser, scroll='no'):
     oggi_domani = ('.//div[@id="navigationContainer"]//' +
                    'a[contains(@class,"col-lg-6 col-md-6")]')
     try:
-        wait(browser, 20, oggi_domani)
+        wait_clickable(browser, 20, oggi_domani)
         oggi_domani_button = browser.find_element_by_xpath(oggi_domani)
 
         if scroll == 'yes':
@@ -90,9 +100,14 @@ def find_country_button(browser, league):
                  'EREDIVISIE': 'OLANDA',
                  'CHAMPIONS LEAGUE': 'EUROPA'}
 
-    countries_container = '//*[@id="better-table-tennis"]'
-    all_countries = browser.find_elements_by_xpath(
-            countries_container + '/li')
+    countries_container = './/ul[@id="better-table-tennis"]'
+    try:
+        wait_clickable(browser, 20, countries_container)
+        all_countries = browser.find_elements_by_xpath(
+                countries_container + '/li')
+    except TimeoutException:
+        browser.quit()
+        raise ConnectionError(conn_err_message)
     for country in all_countries:
         panel = country.find_element_by_xpath('.//a')
         if panel.text == countries[league]:
@@ -103,13 +118,9 @@ def find_country_button(browser, league):
 
 def find_league_button(browser, league):
 
-    nat_leagues_container = '//*[@id="better-table-tennis-ww"]'
-    try:
-        wait(20, nat_leagues_container)
-        all_nat_leagues = browser.find_elements_by_xpath(
-                nat_leagues_container + '/li')
-    except TimeoutException:
-        raise ConnectionError
+    nat_leagues_container = './/ul[@id="better-table-tennis-ww"]'
+    all_nat_leagues = browser.find_elements_by_xpath(
+            nat_leagues_container + '/li')
     for nat_league in all_nat_leagues:
         panel = nat_league.find_element_by_xpath('.//a')
         if panel.text == league:
@@ -126,10 +137,10 @@ def simulate_hover_and_click(browser, element):
         webdriver.ActionChains(
                 browser).move_to_element(element).click(element).perform()
     except MoveTargetOutOfBoundsException:
-        raise ConnectionError
+        raise ConnectionError(conn_err_message)
 
 
-def get_field(bet):
+def get_field(browser, bet):
 
     '''It takes the input from the user and return the corresponding field
        found on the webpage. Example:
@@ -146,7 +157,8 @@ def get_field(bet):
         if ',' not in value:
             value = bet.split(' ')[1].replace('.', ',')
         if value != '2,5':
-            raise SyntaxError
+            browser.quit()
+            raise SyntaxError(bet + ': Bet not valid.')
         else:
             return 'GOAL/NOGOAL + U/O 2,5'
 
@@ -189,7 +201,7 @@ def get_field(bet):
         return 'ESITO 1 TEMPO 1X2'
 
     else:
-        raise SyntaxError
+        raise SyntaxError(bet + ': Bet not valid.')
 
 
 def format_bet(field, bet):
@@ -343,7 +355,7 @@ def go_to_league_bets(browser, input_team):
             # Xpath of the box containing the matches grouped by day
             all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
             try:
-                wait(browser, 20, all_days)
+                wait_clickable(browser, 20, all_days)
                 all_tables = browser.find_elements_by_xpath(all_days)
             except TimeoutException:
                 browser.quit()
@@ -354,7 +366,9 @@ def go_to_league_bets(browser, input_team):
                 final_league = league
                 break
     else:
-        raise SyntaxError
+        browser.quit()
+        raise SyntaxError('{}: Team not valid or competition '
+                          .format(input_team) + 'not allowed.')
 
     return team1, team2, final_league
 
@@ -371,8 +385,7 @@ def get_quote(browser, field, right_bet, click='no'):
 
     # Wait for the panels to be visible
     try:
-        WebDriverWait(browser, 20).until(EC.visibility_of_element_located(
-                            (By.XPATH, all_panels_path)))
+        wait_visible(browser, 20, all_panels_path)
         all_panels = browser.find_elements_by_xpath(all_panels_path)
     except TimeoutException:
         browser.quit()
@@ -413,7 +426,7 @@ def get_quote(browser, field, right_bet, click='no'):
                                             'selectionClick(selection)"]')
 
                         try:
-                            wait(browser, 20, bet_element_path)
+                            wait_clickable(browser, 20, bet_element_path)
                             bet_element = new_bet.find_element_by_xpath(
                                     bet_element_path)
                         except TimeoutException:

@@ -101,13 +101,13 @@ def insert_quote(user, quote):
     db.close()
 
 
-def delete_content(table_name, user_id):
+def delete_content(table_name, team1):
 
     '''Delete the bet from the temporary folder.'''
 
     db, c = start_db()
 
-    c.execute('''DELETE FROM {} WHERE id = {}'''.format(table_name, user_id))
+    c.execute('''DELETE FROM {} WHERE team1 = {}'''.format(table_name, team1))
 
     db.commit()
     db.close()

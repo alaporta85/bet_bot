@@ -1,3 +1,4 @@
+import time
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from Functions import selenium_functions as sf
@@ -17,64 +18,55 @@ def look_for_quote(text):
     browser = webdriver.Firefox()
     browser.get(url)
 
-    if sf.check_connection(browser, url):
+    # 'OGGI E DOMANI' button
+#    sf.click_oggi_domani_button(browser, scroll='yes')
 
-        # 'OGGI E DOMANI' button
-    #    sf.click_oggi_domani_button(browser, scroll='yes')
+    # 'CALCIO' button
+    sf.click_calcio_button(browser, 'yes')
 
-        # 'CALCIO' button
-        sf.click_calcio_button(browser, 'yes')
-
-        # In case the input bet has the form team_bet we use the function
-        # get_field to find the right field and then format the bet. In this
-        # case the inputs do NOT need to be correct. Most of the cases are
-        # handled by the code to return the correct element
-        if len(text.split('_')) == 2:
-            try:
-                input_team, bet = text.split('_')
-                input_team, bet = input_team.upper(), bet.upper()
-                field = sf.get_field(bet)
-            except SyntaxError:
-                browser.quit()
-                raise SyntaxError(bet + ': Bet not valid.')
-            right_bet = sf.format_bet(field, bet)
-
-        # On the other hand, if the input has the form league_team_field_bet we
-        # directly use all of them to format the bet. In this case ALL the
-        # inputs need to be EXACTLY as in the webpage
-        else:
-            try:
-                league, input_team, field, bet = text.split('_')
-                league, input_team, field, bet = (league.upper(),
-                                                  input_team.upper(),
-                                                  field.upper(), bet.upper())
-            except SyntaxError:
-                browser.quit()
-                raise SyntaxError(bet + ': Bet not valid.')
-            right_bet = sf.format_bet(field, bet)
-
-        # Navigate to page containing the matches of our league
+    # In case the input bet has the form team_bet we use the function
+    # get_field to find the right field and then format the bet. In this
+    # case the inputs do NOT need to be correct. Most of the cases are
+    # handled by the code to return the correct element
+    if len(text.split('_')) == 2:
         try:
-            team1, team2, league = sf.go_to_league_bets(browser, input_team)
-        except SyntaxError:
-            browser.quit()
-            raise SyntaxError('{}: Team not valid or competition '
-                              .format(input_team) + 'not allowed.')
-        except ConnectionError as e:
-            return str(e)
+            input_team, bet = text.split('_')
+            input_team, bet = input_team.upper(), bet.upper()
+            field = sf.get_field(browser, bet)
+        except SyntaxError as e:
+            raise SyntaxError(str(e))
+        right_bet = sf.format_bet(field, bet)
 
-        browser.implicitly_wait(5)
+    # On the other hand, if the input has the form league_team_field_bet we
+    # directly use all of them to format the bet. In this case ALL the
+    # inputs need to be EXACTLY as in the webpage
+#    else:
+#        try:
+#            league, input_team, field, bet = text.split('_')
+#            league, input_team, field, bet = (league.upper(),
+#                                              input_team.upper(),
+#                                              field.upper(), bet.upper())
+#        except SyntaxError:
+#            browser.quit()
+#            raise SyntaxError(bet + ': Bet not valid.')
+#        right_bet = sf.format_bet(field, bet)
 
-        # Store the quote
+    # Navigate to page containing the matches of our league
+    try:
+        team1, team2, league = sf.go_to_league_bets(browser, input_team)
+    except SyntaxError as e:
+        raise SyntaxError(str(e))
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
+
+    # Store the quote
+    try:
         bet_quote = sf.get_quote(browser, field, right_bet)
-        current_url = browser.current_url
-        browser.quit()
-        return league, team1, team2, right_bet, bet_quote, field, current_url
-
-    else:
-        browser.quit()
-        raise ConnectionError('Lottomatica webpage not found. ' +
-                              'Please try again.')
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
+    current_url = browser.current_url
+    browser.quit()
+    return league, team1, team2, right_bet, bet_quote, field, current_url
 
 
 def add_first_bet(browser, current_url, field, right_bet):
@@ -85,27 +77,33 @@ def add_first_bet(browser, current_url, field, right_bet):
     # Go to Lottomatica webpage
     browser.get(current_url)
     if sf.check_connection(browser, current_url):
-        sf.get_quote(browser, field, right_bet, 'yes')
+        try:
+            sf.get_quote(browser, field, right_bet, 'yes')
+        except ConnectionError as e:
+            raise ConnectionError(str(e))
     else:
         raise ConnectionError
 
 
-def add_following_bets(browser, team, field, bet):
+def add_following_bets(browser, team, field, right_bet):
 
     '''Add all the other quotes after the first one. It does NOT use the url
        but look for each button instead.'''
 
     all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
     try:
-        sf.wait(browser, 20, all_days)
+        sf.wait_clickable(browser, 20, all_days)
         all_tables = browser.find_elements_by_xpath(all_days)
     except TimeoutException:
         browser.quit()
         raise ConnectionError
     sf.go_to_match_bets(browser, all_tables, team)
-    browser.implicitly_wait(5)
+
     # Store the quote
-    sf.get_quote(browser, field, bet, 'yes')
+    try:
+        sf.get_quote(browser, field, right_bet, 'yes')
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
 
 
 def login(browser):
@@ -185,7 +183,7 @@ def play_bet(args):
 
         db.close()
         browser = webdriver.Firefox()
-        last_league = 0
+        last_league = ''
         count = 0
         for match in matches_to_play:
             team1 = match[0]
@@ -204,6 +202,7 @@ def play_bet(args):
                     add_first_bet(browser, url, field, bet)
                     last_league = league
                     count += 1
+                    time.sleep(5)
                 except ConnectionError:
                     print(message)
                     return message
@@ -212,7 +211,8 @@ def play_bet(args):
                 try:
                     sf.find_league_button(browser, league)
                     add_following_bets(browser, team1, field, bet)
-                    count += 1
+                    last_league = league
+                    time.sleep(5)
                 except ConnectionError:
                     print(message)
                     return message
@@ -221,19 +221,21 @@ def play_bet(args):
                     sf.find_country_button(browser, league)
                     sf.find_league_button(browser, league)
                     add_following_bets(browser, team1, field, bet)
-                    count += 1
+                    last_league = league
+                    time.sleep(5)
                 except ConnectionError:
                     print(message)
                     return message
 
-        browser.implicitly_wait(10)
+        time.sleep(5)
+
         # Find the basket with all the bets
         try:
-            n = ('.//nav[@id="toolbarForHidden"]/ul/' +
-                 'li[@class="toolbar-nav-item ng-scope"]/a')
-            sf.wait(browser, 20, n)
+            basket = ('.//nav[@id="toolbarForHidden"]/ul/' +
+                      'li[@class="toolbar-nav-item ng-scope"]/a')
+            sf.wait_clickable(browser, 20, basket)
 
-            browser.find_element_by_xpath(n).click()
+            browser.find_element_by_xpath(basket).click()
         except TimeoutException:
             browser.quit()
             print('Problem during placing the bet. ' +
@@ -260,20 +262,27 @@ def play_bet(args):
             euros_box = browser.find_element_by_xpath(input_euros)
             euros_box.send_keys(Keys.COMMAND, "a")
             euros_box.send_keys(euros)
-            browser.implicitly_wait(5)
 
             win_path = ('.//div[@class="row ticket-bet-infos"]//' +
                         'p[@class="amount"]/strong')
             win_container = browser.find_element_by_xpath(win_path)
+            sf.scroll_to_element(browser, 'false', win_container)
 
-            possible_win_default = float(win_container.text[2:]
-                                         .replace(',', '.'))
+            possible_win_default = win_container.text[2:].replace(',', '.')
+            if len(possible_win_default.split('.')) == 2:
+                possible_win_default = float(possible_win_default)
+            else:
+                possible_win_default = int(''.join(
+                        possible_win_default.split('.')[:-1]))
             possible_win = round(possible_win_default * (euros/2), 2)
 
             login(browser)
-            browser.implicitly_wait(10)
 
             button_location = './/div[@class="change-bet ng-scope"]'
+            try:
+                sf.wait_visible(browser, 20, button_location)
+            except TimeoutException:
+                print('adios')
 
             sf.scroll_to_element(browser, 'true',
                                  browser.find_element_by_xpath(
@@ -308,13 +317,13 @@ def play_bet(args):
                                      matches.bets_id = ?''', (bet_id,)))
 
             db.close()
-            message += (played_bets(summary) + '\nPossible win: {}'.format(
-                    possible_win))
+            message += (played_bets(summary) + ('\nPossible win: {} euros.'
+                                                .format(possible_win)))
             print(message)
         else:
             print('Something went wrong, try tagain the command /play.')
 
-        browser.quit()
+#        browser.quit()
 
     else:
         print('Please insert the amount to bet. Ex: /play 5')

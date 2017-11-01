@@ -6,6 +6,7 @@ import selenium_lottomatica as sl
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 import datetime
+import time
 from selenium.webdriver.common.keys import Keys
 
 f = open('token.txt', 'r')
@@ -67,16 +68,6 @@ def todays_date():
                              date.split('-')[0])
 
     return date
-
-
-#def add_bet(browser, team, field, bet):
-#    all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-#    sl.wait(browser, 60, all_days)
-#    all_tables = browser.find_elements_by_xpath(all_days)
-#    sl.go_to_match_bets(browser, all_tables, team)
-#    browser.implicitly_wait(5)
-#    # Store the quote
-#    sl.get_quote(browser, field, bet, 'yes')
 
 
 def handle_play_conn_err(browser, team1, team2):
@@ -296,6 +287,7 @@ def play_bet(bot, update, args):
                     sl.add_first_bet(browser, url, field, bet)
                     last_league = league
                     count += 1
+                    time.sleep(5)
                 except ConnectionError:
                     message = handle_play_conn_err(browser, team1, team2)
                     return bot.send_message(chat_id=update.message.chat_id,
@@ -303,30 +295,35 @@ def play_bet(bot, update, args):
 
             elif count and league == last_league:
                 try:
-                    sl.find_league_button(browser, league)
+                    sf.find_league_button(browser, league)
                     sl.add_following_bets(browser, team1, field, bet)
+                    last_league = league
+                    time.sleep(5)
                 except ConnectionError:
                     message = handle_play_conn_err(browser, team1, team2)
                     return bot.send_message(chat_id=update.message.chat_id,
                                             text=message)
             else:
                 try:
-                    sl.find_country_button(browser, league)
-                    sl.find_league_button(browser, league)
+                    sf.find_country_button(browser, league)
+                    sf.find_league_button(browser, league)
                     sl.add_following_bets(browser, team1, field, bet)
+                    last_league = league
+                    time.sleep(5)
                 except ConnectionError:
                     message = handle_play_conn_err(browser, team1, team2)
                     return bot.send_message(chat_id=update.message.chat_id,
                                             text=message)
 
-        browser.implicitly_wait(10)
+        time.sleep(5)
+
         # Find the basket with all the bets
         try:
-            n = ('.//nav[@id="toolbarForHidden"]/ul/' +
-                 'li[@class="toolbar-nav-item ng-scope"]/a')
-            sf.wait(browser, 20, n)
+            basket = ('.//nav[@id="toolbarForHidden"]/ul/' +
+                      'li[@class="toolbar-nav-item ng-scope"]/a')
+            sf.wait_clickable(browser, 20, basket)
 
-            browser.find_element_by_xpath(n).click()
+            browser.find_element_by_xpath(basket).click()
         except TimeoutException:
             browser.quit()
             bot.send_message(chat_id=update.message.chat_id,
@@ -354,20 +351,31 @@ def play_bet(bot, update, args):
             euros_box = browser.find_element_by_xpath(input_euros)
             euros_box.send_keys(Keys.COMMAND, "a")
             euros_box.send_keys(euros)
-            browser.implicitly_wait(5)
 
             win_path = ('.//div[@class="row ticket-bet-infos"]//' +
                         'p[@class="amount"]/strong')
             win_container = browser.find_element_by_xpath(win_path)
+            sf.scroll_to_element(browser, 'false', win_container)
 
-            possible_win_default = float(win_container.text[2:]
-                                         .replace(',', '.'))
+            possible_win_default = win_container.text[2:].replace(',', '.')
+            if len(possible_win_default.split('.')) == 2:
+                possible_win_default = float(possible_win_default)
+            else:
+                possible_win_default = int(''.join(
+                        possible_win_default.split('.')[:-1]))
             possible_win = round(possible_win_default * (euros/2), 2)
 
             login(browser)
-            browser.implicitly_wait(10)
 
             button_location = './/div[@class="change-bet ng-scope"]'
+            try:
+                sf.wait_visible(browser, 20, button_location)
+            except TimeoutException:
+                browser.quit()
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text=('Problem during placing the bet. ' +
+                                       'Please check if the bet is valid or ' +
+                                       'the connection and try again.'))
 
             sf.scroll_to_element(browser, 'true',
                                  browser.find_element_by_xpath(
@@ -376,7 +384,7 @@ def play_bet(bot, update, args):
             try:
                 button_path = ('.//button[@class="button-default no-margin-' +
                                'bottom ng-scope"]')
-    
+
                 button_list = browser.find_elements_by_xpath(button_path)
             except NoSuchElementException:
                 print('aggiorna')
@@ -407,7 +415,7 @@ def play_bet(bot, update, args):
             bot.send_message(chat_id=update.message.chat_id, text=message)
         else:
             bot.send_message(chat_id=update.message.chat_id,
-                             text=('Something went wrong, try tagain the' +
+                             text=('Something went wrong, try again the' +
                                    ' command /play.'))
 
         browser.quit()
