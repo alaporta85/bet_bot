@@ -10,18 +10,6 @@ conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
 
-def check_connection(browser, url):
-
-    '''Check if browser is able to get the url.'''
-
-    new_url = browser.current_url
-    if new_url == url:
-        return True
-    else:
-        browser.quit()
-        return False
-
-
 def wait_clickable(browser, seconds, element):
 
     '''Forces the script to wait for the element to be clickable before doing
@@ -269,7 +257,7 @@ def right_team(team_input, team_lottom):
         return False
 
 
-def go_to_match_bets(browser, all_tables, team):
+def click_match_button(browser, all_tables, team):
 
     '''Drives the browser to the webpage containing all the bets relative
        to the match which the input team is playing.'''
@@ -307,7 +295,7 @@ def go_to_match_bets(browser, all_tables, team):
     return result, team1, team2
 
 
-def go_to_league_bets(browser, input_team):
+def go_to_all_bets(browser, input_team):
 
     '''Find all the competitions of input_team. There are 2 options:
 
@@ -355,13 +343,14 @@ def go_to_league_bets(browser, input_team):
             # Xpath of the box containing the matches grouped by day
             all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
             try:
-                wait_clickable(browser, 20, all_days)
+                wait_visible(browser, 20, all_days)
                 all_tables = browser.find_elements_by_xpath(all_days)
             except TimeoutException:
                 browser.quit()
                 raise ConnectionError(conn_err_message)
 
-            result, team1, team2 = go_to_match_bets(browser, all_tables, team)
+            result, team1, team2 = click_match_button(browser, all_tables,
+                                                      team)
             if result:
                 final_league = league
                 break

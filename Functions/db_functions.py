@@ -86,28 +86,3 @@ def empty_table(table_name):
 
     db.commit()
     db.close()
-
-
-def insert_quote(user, quote):
-
-    '''Update user's data with the new quote.'''
-
-    db, c = start_db()
-
-    c.execute('''INSERT INTO quotes2017 (user, quote)
-    VALUES (?, ?)''', (user, quote))
-
-    db.commit()
-    db.close()
-
-
-def delete_content(table_name, team1):
-
-    '''Delete the bet from the temporary folder.'''
-
-    db, c = start_db()
-
-    c.execute('''DELETE FROM {} WHERE team1 = {}'''.format(table_name, team1))
-
-    db.commit()
-    db.close()
