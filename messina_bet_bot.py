@@ -22,7 +22,8 @@ def nickname(name):
                  'Fabrizio': 'Nonno',
                  'Damiano': 'Pacco',
                  'Francesco': 'Zoppo',
-                 'Gabriele': 'Nano'}
+                 'Gabriele': 'Nano',
+                 'Ana Belen': 'Ana'}
 
     return nicknames[name]
 
@@ -152,20 +153,57 @@ def quote(bot, update, args):
     # Today's date
     date = todays_date()
 
+    db, c = dbf.start_db()
+
+    # This a list of the users who have their bets in the status
+    # 'Not Confirmed'
+    users_list = list(c.execute('''SELECT user FROM matches WHERE
+                                status = "Not Confirmed"'''))
+    users_list = [element[0] for element in users_list]
+
+    if first_name in users_list:
+
+        ref_list = list(c.execute('''SELECT team1, team2, field, bet, quote
+                                  FROM matches WHERE status = "Not Confirmed"
+                                  AND user = ?''', (first_name,)))
+        db.close()
+        print(ref_list)
+
+        team1, team2, field, bet, bet_quote = ref_list[0]
+
+        printed_bet = '{} - {} {} {} @{}'.format(team1, team2, field, bet,
+                                                 bet_quote)
+
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='{}, you still have one bet to confirm.\n'
+                                .format(first_name) +
+                                ('{}\n' + 'Use /confirm or /cancel to ' +
+                                 'finalize your bet.').format(printed_bet))
+
     bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
     guess = ' '.join(args).upper()
 
+    # This is used to decide whether to add or not the new bet as
+    # 'Not Confirmed'. In the code below, this bet_id will be used to create
+    # a list with all the matches belonging to that bet. If this list is empty
+    # than the bet will be added always. On the other hand, in the case there
+    # should be some matches already confirmed we first check if the bet has
+    # been already chosen
+    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
+
     try:
-        db, c = dbf.start_db()
 
         confirmed_matches = list(c.execute('''SELECT team1, team2, league
                                            FROM matches WHERE
-                                           status = "Confirmed"'''))
+                                           status = "Confirmed"
+                                           AND bets_id = ?''', (bet_id,)))
 
         league, team1, team2, bet, bet_quote, field, url = (
                 sl.look_for_quote(guess))
 
-        if (team1, team2, league) not in confirmed_matches:
+        if (not confirmed_matches
+           or (team1, team2, league) not in confirmed_matches):
+
             # Update table
             c.execute('''INSERT INTO matches (url, user, date, league, team1,
                                               team2, field, bet, quote, status)
@@ -197,31 +235,91 @@ def quote(bot, update, args):
 
 def confirm(bot, update):
 
-    '''Update the status of the bet in the "matches" table from "Not confirmed
+    '''Update the status of the bet in the "matches" table from "Not Confirmed
        to "Confirmed". If it is the first bet of the day it creates a new
        entry in the "bets" table and update the bet_id in the "matches" table.
-       Else, it just uses the bet_id.'''
+       Else, it just uses the bet_id. It also checks whether there are others
+       Not Confirmed bets of the same match. If yes, they will be deleted from
+       the "matches" table.'''
 
     first_name = nickname(update.message.from_user.first_name)
     date = todays_date()
 
-    bet_id = dbf.get_value('bets_id', 'bets', 'date', date)
-
     db, c = dbf.start_db()
+
+    # This a list of the users who have their bets in the status
+    # 'Not Confirmed'
+    users_list = list(c.execute('''SELECT user FROM matches WHERE
+                                status = "Not Confirmed"'''))
+    users_list = [element[0] for element in users_list]
+
+    if first_name not in users_list:
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='{}, you have no bet to confirm.'
+                                .format(first_name))
+
+    # Check if there is any bet with status 'Pending' in the 'bets' table
+    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
 
     if not bet_id:
 
+        # If not, we create it and update 'matches' table
         c.execute('''INSERT INTO bets (date, status, result) VALUES (?, ?, ?)
                   ''', (date, 'Pending', 'Unknown'))
+
         last_id = c.lastrowid
 
-        c.execute('''UPDATE matches SET bets_id = ?, status = ? WHERE user = ?
-                  AND status = ?''', (last_id, 'Confirmed',
-                                      first_name, 'Not Confirmed'))
+        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
+                  WHERE user = ? AND status = "Not Confirmed"''',
+                  (last_id, first_name))
+
+        db.commit()
+
+        # This is a list that we will take as reference. It contains a tuple
+        # with the 2 teams and the league chosen by the person who is
+        # confirming the bet. It will be used later to check whether there are
+        # others Not Confirmed bets of the same match
+        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
+                                  INNER JOIN matches on
+                                  matches.bets_id = bets.bets_id WHERE
+                                  bets.bets_id = ? AND user = ?''',
+                                  (last_id, first_name)))
+
     else:
-        c.execute('''UPDATE matches SET bets_id = ?, status = ? WHERE user = ?
-                  AND status = ?''', (bet_id, 'Confirmed',
-                                      first_name, 'Not Confirmed'))
+
+        # If a Pending bet exists we just update the 'matches' table
+        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
+                  WHERE user = ? AND status = "Not Confirmed"''',
+                  (bet_id, first_name))
+
+        db.commit()
+
+        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
+                                  INNER JOIN matches on
+                                  matches.bets_id = bets.bets_id WHERE
+                                  bets.bets_id = ? AND user = ?''',
+                                  (bet_id, first_name)))
+
+    # Now we delete all the bets of the same match which have not been
+    # confirmed
+    not_confirmed_matches = list(c.execute('''SELECT matches_id, user, team1,
+                                           team2, league FROM matches WHERE
+                                           status = "Not Confirmed"'''))
+
+    for match in not_confirmed_matches:
+        match_id = match[0]
+        user = match[1]
+        team1 = match[2]
+        team2 = match[3]
+        league = match[4]
+        if (team1, team2, league) in ref_list:
+            c.execute('''DELETE FROM matches WHERE matches_id = ?''',
+                      (match_id,))
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=('{}, your bet on the match '.format(user) +
+                                   '{} - {} has '.format(team1, team2) +
+                                   'been canceled because ' +
+                                   '{} confirmed first.'.format(first_name)))
 
     db.commit()
     db.close()
@@ -237,8 +335,19 @@ def cancel(bot, update):
 
     first_name = nickname(update.message.from_user.first_name)
     db, c = dbf.start_db()
-    c.execute('''DELETE FROM matches WHERE user = ? and status = ?''',
-              (first_name, 'Not Confirmed'))
+
+    users_list = list(c.execute('''SELECT user FROM matches WHERE
+                                status = "Not Confirmed"'''))
+    users_list = [element[0] for element in users_list]
+
+    if first_name not in users_list:
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='{}, you have no bet to cancel.'
+                                .format(first_name))
+
+    c.execute('''DELETE FROM matches WHERE user = ? AND
+              status = "Not Confirmed"''', (first_name,))
+
     db.commit()
     db.close()
     bot.send_message(chat_id=update.message.chat_id,
@@ -264,6 +373,13 @@ def play_bet(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id,
                                 text=message)
 
+    # Group inside a list all the bets beloning to the bet with result
+    # 'Unknown'
+    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
+    if not bet_id:
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='No bets to play.')
+
     # This message will be updated during the process to keep track of all
     # the steps
     dynamic_message = 'Please wait while placing the bet.\nMatches added: {}'
@@ -273,14 +389,11 @@ def play_bet(bot, update, args):
     # Message_id will be used to update the message
     mess_id = sent.message_id
 
-    # Group inside a list all the bets beloning to the bet with result
-    # 'Unknown'
-    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
     db, c = dbf.start_db()
     matches_to_play = list(c.execute('''SELECT team1, team2, field, bet,
-                                     url, league FROM bets INNER JOIN
-                                     matches on matches.bets_id = ?''',
-                                     (bet_id,)))
+                                     url, league FROM bets INNER JOIN matches
+                                     on matches.bets_id = bets.bets_id WHERE
+                                     bets.bets_id = ?''', (bet_id,)))
 
     db.close()
     browser = webdriver.Firefox()
@@ -465,8 +578,9 @@ def play_bet(bot, update, args):
         bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
         db, c = dbf.start_db()
         summary = list(c.execute('''SELECT user, team1, team2, field, bet
-                                 FROM bets INNER JOIN matches on
-                                 matches.bets_id = ?''', (bet_id,)))
+                             FROM bets INNER JOIN matches on
+                             matches.bets_id = bets.bets_id WHERE
+                             bets.bets_id = ?''', (bet_id,)))
 
         db.close()
         message += (played_bets(summary) + '\nPossible win: {}'.format(
@@ -481,11 +595,13 @@ def play_bet(bot, update, args):
 
 
 def summary(bot, update):
-    bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
+    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
+    print(bet_id)
     db, c = dbf.start_db()
     summary = list(c.execute('''SELECT user, team1, team2, field, bet
                              FROM bets INNER JOIN matches on
-                             matches.bets_id = ?''', (bet_id,)))
+                             matches.bets_id = bets.bets_id WHERE
+                             bets.bets_id = ?''', (bet_id,)))
 
     db.close()
     if summary:

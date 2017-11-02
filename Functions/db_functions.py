@@ -61,18 +61,18 @@ def get_value(column, table_name, WHERE_KEY, WHERE_VALUE):
 
     db, c = start_db()
 
-    c.execute('''SELECT {} FROM {} WHERE {} = "{}"'''.format(column,
-                                                             table_name,
-                                                             WHERE_KEY,
-                                                             WHERE_VALUE))
-
-    res = c.fetchone()
+    res = list(c.execute('''SELECT {} FROM {} WHERE {} = "{}"'''.format(
+            column, table_name, WHERE_KEY, WHERE_VALUE)))
 
     db.close()
+
+    res = [element[0] for element in res]
 
     try:
         return res[0]
     except TypeError:
+        return 0
+    except IndexError:
         return 0
 
 
