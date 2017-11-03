@@ -125,7 +125,10 @@ def check_single_bet(browser, anumber):
         return False
 
 
-def go_to_personal_area(browser):
+def go_to_personal_area(browser, LIMIT_1):
+
+    '''Used in update_results() function to navigate until the personal area
+       after the login.'''
 
     current_url = browser.current_url
 
@@ -142,16 +145,23 @@ def go_to_personal_area(browser):
         area_pers_button2.click()
 
     except (TimeoutException, ElementNotInteractableException):
-        print('recursive personal area')
-        browser.get(current_url)
-        time.sleep(3)
-        go_to_personal_area(browser)
-#        browser.quit()
-#        raise ConnectionError('Unable to go to the section: AREA PERSONALE.' +
-#                              'Please try again.')
+
+        LIMIT_1 += 1
+
+        if LIMIT_1 < 3:
+            print('recursive personal area')
+            browser.get(current_url)
+            time.sleep(3)
+            go_to_personal_area(browser, LIMIT_1)
+        else:
+            raise ConnectionError('Unable to go to the section: ' +
+                                  'AREA PERSONALE. Please try again.')
 
 
-def go_to_placed_bets(browser):
+def go_to_placed_bets(browser, LIMIT_2):
+
+    '''Used in update_results() function to navigate until the page containing
+       all the past bets.'''
 
     FILTER = 'Ultimi 30 giorni'
     current_url = browser.current_url
@@ -182,17 +192,24 @@ def go_to_placed_bets(browser):
         sf.scroll_to_element(browser, 'false', mostra_button)
         mostra_button.click()
 
-    except TimeoutException:
-        print('recursive movimenti e giocate')
-        browser.get(current_url)
-        time.sleep(3)
-        go_to_placed_bets(browser)
-#        browser.quit()
-#        raise ConnectionError('Unable to go to the section: MOVIMENTI E ' +
-#                              'GIOCATE. Please try again.')
+    except (TimeoutException, ElementNotInteractableException):
+
+        LIMIT_2 += 1
+
+        if LIMIT_2 < 3:
+            print('recursive movimenti e giocate')
+            browser.get(current_url)
+            time.sleep(3)
+            go_to_placed_bets(browser, LIMIT_2)
+        else:
+            raise ConnectionError('Unable to go to the section: MOVIMENTI E' +
+                                  ' GIOCATE. Please try again.')
 
 
-def analyze_details_table(browser, ref_id):
+def analyze_details_table(browser, ref_id, c, LIMIT_4):
+
+    '''Used in analyze_main_table function to update the column 'result' in the
+       table 'matches' of the database.'''
 
     current_url = browser.current_url
 
@@ -210,21 +227,34 @@ def analyze_details_table(browser, ref_id):
                     './/div[contains(@class,"ng-scope")]')
             result = result_element.get_attribute('ng-switch-when')
 
-#            match_id = c.execute('''SELECT matches_id FROM bets INNER JOIN
-#                                 matches on matches.bets_id = bets.bets_id
-#                                 WHERE bets.bets_id = ? AND team1 = ? AND
-#                                 team2 = ?''', (ref_id, team1, team2))
-            print(team1, team2)
-            print(result)
+            c.execute('''SELECT matches_id FROM bets INNER JOIN matches on
+                      matches.bets_id = bets.bets_id WHERE bets.bets_id = ? AND
+                      team1 = ? AND team2 = ?''', (ref_id, team1, team2))
 
-    except TimeoutException:
-        print('recursive details table')
-        browser.get(current_url)
-        time.sleep(3)
-        analyze_details_table(browser, ref_id)
+            match_id = c.fetchone()[0]
+
+            c.execute('''UPDATE matches SET result = ? WHERE matches_id = ?''',
+                      (result, match_id))
+
+    except (TimeoutException, ElementNotInteractableException):
+
+        LIMIT_4 += 1
+
+        if LIMIT_4 < 3:
+            print('recursive details table')
+            browser.get(current_url)
+            time.sleep(3)
+            analyze_details_table(browser, ref_id, c, LIMIT_4)
+        else:
+            raise ConnectionError('Unable to find past bets. ' +
+                                  'Please try again.')
 
 
-def analyze_main_table(browser, ref_list):
+def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
+
+    '''Used in update_results() function to update the column 'result' in the
+       table 'bets' of the database. It also calls the function
+       analyze_details_table for each row of the table.'''
 
     current_url = browser.current_url
 
@@ -236,7 +266,7 @@ def analyze_main_table(browser, ref_list):
 
         db, c = dbf.start_db()
 
-        for ref_bet in ref_list[:1]:
+        for ref_bet in ref_list:
             ref_id = ref_bet[0]
             ref_date = ref_bet[1]
 
@@ -249,6 +279,7 @@ def analyze_main_table(browser, ref_list):
                             '"statement.state"]').text
                     c.execute('''UPDATE bets SET result = ? WHERE
                               bets_id = ?''', (new_status, ref_id))
+                    db.commit()
 
                     main_window = browser.current_window_handle
                     bet.find_element_by_xpath('.//a').click()
@@ -257,7 +288,7 @@ def analyze_main_table(browser, ref_list):
                     new_window = browser.window_handles[-1]
                     browser.switch_to_window(new_window)
 
-                    analyze_details_table(browser, ref_id)
+                    analyze_details_table(browser, ref_id, c, LIMIT_4)
 
                     browser.close()
 
@@ -266,23 +297,34 @@ def analyze_main_table(browser, ref_list):
         db.commit()
         db.close()
 
-    except TimeoutException:
-        print('recursive main table')
-        browser.get(current_url)
-        time.sleep(3)
-        analyze_main_table(browser, ref_list)
-#        browser.quit()
-#        raise ConnectionError('Unable to find past bets. Please try again.')
+    except (TimeoutException, ElementNotInteractableException):
+
+        LIMIT_3 += 1
+
+        if LIMIT_3 < 3:
+            print('recursive main table')
+            browser.get(current_url)
+            time.sleep(3)
+            analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4)
+        else:
+            raise ConnectionError('Unable to find past bets. ' +
+                                  'Please try again.')
 
 
 def update_results():
 
+    '''Updates the 'result' columns in both 'bets' and 'matches' tables in the
+       database.'''
+
+    LIMIT_1 = 0
+    LIMIT_2 = 0
+    LIMIT_3 = 0
+    LIMIT_4 = 0
+
     db, c = dbf.start_db()
-#    ref_list = list(c.execute('''SELECT bets_id, ddmmyy FROM bets WHERE
-#                              status = "Placed" AND result = "Unknown" '''))
+    ref_list = list(c.execute('''SELECT bets_id, ddmmyy FROM bets WHERE
+                              status = "Placed" AND result = "Unknown" '''))
     db.close()
-    ref_list = [(1, '22/10/2017'), (2, '25/10/2017')]
-#    print(ref_list)
 
     if not ref_list:
         print('No bets to update.')
@@ -291,6 +333,7 @@ def update_results():
     url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
            'scommesse-sportive.html')
     browser = webdriver.Firefox()
+    time.sleep(3)
     browser.get(url)
     time.sleep(3)
 
@@ -298,21 +341,21 @@ def update_results():
     time.sleep(5)
 
     try:
-        go_to_personal_area(browser)
+        go_to_personal_area(browser, LIMIT_1)
 
-        go_to_placed_bets(browser)
+        go_to_placed_bets(browser, LIMIT_2)
 
-        analyze_main_table(browser, ref_list)
+        analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4)
 
     except ConnectionError as e:
         browser.quit()
         print(str(e))
         return str(e)
 
-#    browser.quit()
+    browser.quit()
 
 
 #league, team1, team2, right_bet, bet_quote, field, current_url = (
 #        look_for_quote('juve_gg'))
 
-#update_results()
+update_results()
