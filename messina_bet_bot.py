@@ -205,7 +205,7 @@ def quote(bot, update, args):
            or (team1, team2, league) not in confirmed_matches):
 
             # Update table
-            c.execute('''INSERT INTO matches (url, user, date, league, team1,
+            c.execute('''INSERT INTO matches (url, user, ddmmyy, league, team1,
                                               team2, field, bet, quote, status)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                       (url, first_name, date, league, team1, team2,
@@ -264,7 +264,7 @@ def confirm(bot, update):
     if not bet_id:
 
         # If not, we create it and update 'matches' table
-        c.execute('''INSERT INTO bets (date, status, result) VALUES (?, ?, ?)
+        c.execute('''INSERT INTO bets (ddmmyy, status, result) VALUES (?, ?, ?)
                   ''', (date, 'Pending', 'Unknown'))
 
         last_id = c.lastrowid

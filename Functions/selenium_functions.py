@@ -189,6 +189,7 @@ def get_field(browser, bet):
         return 'ESITO 1 TEMPO 1X2'
 
     else:
+        browser.quit()
         raise SyntaxError(bet + ': Bet not valid.')
 
 
