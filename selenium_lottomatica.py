@@ -1,10 +1,11 @@
 import time
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import ElementNotInteractableException
 from Functions import selenium_functions as sf
-
-conn_err_message = ('An error occurred. This might be due to some problems ' +
-                    'with the internet connection. Please try again.')
+from Functions import db_functions as dbf
+import messina_bet_bot as mbb
 
 
 def look_for_quote(text):
@@ -124,7 +125,133 @@ def check_single_bet(browser, anumber):
         return False
 
 
+def go_to_personal_area(browser):
+
+    try:
+        area_pers_path1 = './/a[@title="Area Personale"]'
+        sf.wait_clickable(browser, 20, area_pers_path1)
+        area_pers_button1 = browser.find_element_by_xpath(area_pers_path1)
+        area_pers_button1.click()
+
+        area_pers_path2 = ('.//div[@id="profile-home"]/' +
+                           'a[@href="/area-personale"]')
+        sf.wait_clickable(browser, 20, area_pers_path2)
+        area_pers_button2 = browser.find_element_by_xpath(area_pers_path2)
+        area_pers_button2.click()
+
+    except (TimeoutException, ElementNotInteractableException):
+        browser.quit()
+        raise ConnectionError('Unable to go to the section: AREA PERSONALE.' +
+                              'Please try again.')
+
+
+def go_to_placed_bets(browser):
+
+    FILTER = 'Ultimi 30 giorni'
+
+    try:
+        placed_bets_path = './/a[@id="pl-movimenti"]'
+        sf.wait_clickable(browser, 20, placed_bets_path)
+        placed_bets_button = browser.find_element_by_xpath(placed_bets_path)
+        placed_bets_button.click()
+        time.sleep(5)
+
+        date_filters_path = ('.//div[@id="movement-filters"]/' +
+                             'div[@id="games-filter"]//' +
+                             'label[@class="radio-inline"]')
+        sf.wait_visible(browser, 20, date_filters_path)
+        date_filters_list = browser.find_elements_by_xpath(date_filters_path)
+        for afilter in date_filters_list:
+            new_filter = afilter.text
+            if new_filter == FILTER:
+                sf.scroll_to_element(browser, 'false', afilter)
+                afilter.click()
+                break
+
+        mostra_path = ('.//div[@class="btn-group btn-group-justified"]' +
+                       '/a[@class="btn button-submit"]')
+        sf.wait_clickable(browser, 20, mostra_path)
+        mostra_button = browser.find_element_by_xpath(mostra_path)
+        sf.scroll_to_element(browser, 'false', mostra_button)
+        mostra_button.click()
+
+    except TimeoutException:
+        browser.quit()
+        raise ConnectionError('Unable to go to the section: MOVIMENTI E ' +
+                              'GIOCATE. Please try again.')
+
+
+def analyze_table(browser, ref_list):
+
+    try:
+        table_path = ('.//table[@id="tabellaRisultatiTransazioni"]')
+        sf.wait_visible(browser, 20, table_path)
+        bets_list = browser.find_elements_by_xpath(table_path +
+                                                   '//tr[@class="ng-scope"]')
+
+        db, c = dbf.start_db()
+
+        for ref_bet in ref_list:
+            ref_id = ref_bet[0]
+            ref_date = ref_bet[1]
+
+            for bet in bets_list:
+                date = (bet.find_element_by_xpath(
+                        './/td[@class="ng-binding"]').text)[:10]
+                if date == ref_date:
+                    new_status = bet.find_element_by_xpath(
+                            './/translate-label[@key-default=' +
+                            '"statement.state"]').text
+                    c.execute('''UPDATE bets SET result = ? WHERE
+                              bets_id = ?''', (new_status, ref_id))
+                    bet.find_element_by_xpath('.//a').click()
+                    break
+        db.commit()
+        db.close()
+
+    except TimeoutException:
+        browser.quit()
+        raise ConnectionError('Unable to find past bets. Please try again.')
+
+
+def update_results():
+
+    db, c = dbf.start_db()
+#    ref_list = list(c.execute('''SELECT bets_id, ddmmyy FROM bets WHERE
+#                              status = "Placed" AND result = "Unknown" '''))
+    db.close()
+    ref_list = [(1, '22/10/2017'), (2, '25/10/2017')]
+#    print(ref_list)
+
+    if not ref_list:
+        print('No bets to update.')
+        return 'No bets to update.'
+
+    url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
+           'scommesse-sportive.html')
+    browser = webdriver.Firefox()
+    browser.get(url)
+    time.sleep(3)
+
+    mbb.login(browser)
+    time.sleep(5)
+
+    try:
+        go_to_personal_area(browser)
+
+        go_to_placed_bets(browser)
+
+        analyze_table(browser, ref_list)
+
+    except ConnectionError as e:
+        browser.quit()
+        print(str(e))
+        return str(e)
+
+#    browser.quit()
+
+
 #league, team1, team2, right_bet, bet_quote, field, current_url = (
 #        look_for_quote('juve_gg'))
-#add_quote(current_url, field, right_bet)
-#play_bet(4)
+
+update_results()

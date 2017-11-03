@@ -1,6 +1,6 @@
 import time
 import datetime
-import selenium_lottomatica as sl
+#import selenium_lottomatica as sl
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from selenium import webdriver
@@ -58,7 +58,6 @@ def login(browser):
     for element in button_list:
         if element.is_displayed():
             sf.scroll_to_element(browser, 'false', element)
-            print(element.text)
             element.click()
             break
 
@@ -66,7 +65,7 @@ def login(browser):
 def todays_date():
 
     date = str(datetime.date.today())
-    date = '{}-{}-{}'.format(date.split('-')[2],
+    date = '{}/{}/{}'.format(date.split('-')[2],
                              date.split('-')[1],
                              date.split('-')[0])
 
