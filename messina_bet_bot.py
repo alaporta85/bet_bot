@@ -597,7 +597,8 @@ def update_results(bot, update):
 
         bf.go_to_placed_bets(browser, LIMIT_2)
 
-        bf.analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4)
+        bets_updated = bf.analyze_main_table(browser, ref_list, LIMIT_3,
+                                             LIMIT_4)
 
     except ConnectionError as e:
         browser.quit()
@@ -605,8 +606,13 @@ def update_results(bot, update):
 
     browser.quit()
 
-    bot.send_message(chat_id=update.message.chat_id, text=('Database updated' +
-                                                           ' correctly.'))
+    if bets_updated:
+        bot.send_message(chat_id=update.message.chat_id, text=(
+                'Database updated correctly.'))
+    else:
+        bot.send_message(chat_id=update.message.chat_id, text=(
+                "No completed bets were found. Wait for your bet's status " +
+                "to be updated by Lottomatica and then try again."))
 
 
 def summary(bot, update):

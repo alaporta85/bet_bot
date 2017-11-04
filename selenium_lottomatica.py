@@ -1,5 +1,4 @@
 import time
-from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from Functions import selenium_functions as sf
@@ -7,63 +6,33 @@ from Functions import selenium_functions as sf
 
 def look_for_quote(text):
 
-    url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
-           'scommesse-sportive.html')
+    LIMIT_1 = 0
 
-    # Start the browser, go to Lottomatica webpage and wait
-    browser = webdriver.Firefox()
-    browser.get(url)
-    time.sleep(3)
+    input_team = text.split('_')[0].upper()
+    input_bet = text.split('_')[1].upper()
 
-    # 'OGGI E DOMANI' button
-#    sf.click_oggi_domani_button(browser, scroll='yes')
+    if len(text.split('_')) != 2:
+        raise SyntaxError('Wrong format. Input text must have the ' +
+                          'structure "team_bet".')
 
-    # 'CALCIO' button
-    sf.click_calcio_button(browser, 'yes')
-
-    # In case the input bet has the form team_bet we use the function
-    # get_field to find the right field and then format the bet. In this
-    # case the inputs do NOT need to be correct. Most of the cases are
-    # handled by the code to return the correct element
-    if len(text.split('_')) == 2:
-        try:
-            input_team, bet = text.split('_')
-            input_team, bet = input_team.upper(), bet.upper()
-            field = sf.get_field(browser, bet)
-        except SyntaxError as e:
-            raise SyntaxError(str(e))
-        right_bet = sf.format_bet(field, bet)
-
-    # On the other hand, if the input has the form league_team_field_bet we
-    # directly use all of them to format the bet. In this case ALL the
-    # inputs need to be EXACTLY as in the webpage
-#    else:
-#        try:
-#            league, input_team, field, bet = text.split('_')
-#            league, input_team, field, bet = (league.upper(),
-#                                              input_team.upper(),
-#                                              field.upper(), bet.upper())
-#        except SyntaxError:
-#            browser.quit()
-#            raise SyntaxError(bet + ': Bet not valid.')
-#        right_bet = sf.format_bet(field, bet)
-
-    # Navigate to page containing the bet of the match we have chosen
     try:
+        browser = sf.go_to_lottomatica(LIMIT_1)
+
+        field, bet = sf.text_short(browser, input_bet)
+
         team1, team2, league = sf.go_to_all_bets(browser, input_team)
+
+        quote = sf.get_quote(browser, field, bet)
+
+        current_url = browser.current_url
+        browser.quit()
+
+        return league, team1, team2, bet, quote, field, current_url
+
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
     except SyntaxError as e:
         raise SyntaxError(str(e))
-    except ConnectionError as e:
-        raise ConnectionError(str(e))
-
-    # Store the quote
-    try:
-        bet_quote = sf.get_quote(browser, field, right_bet)
-    except ConnectionError as e:
-        raise ConnectionError(str(e))
-    current_url = browser.current_url
-    browser.quit()
-    return league, team1, team2, right_bet, bet_quote, field, current_url
 
 
 def add_first_bet(browser, current_url, field, right_bet):
@@ -123,4 +92,4 @@ def check_single_bet(browser, anumber):
 
 
 #league, team1, team2, right_bet, bet_quote, field, current_url = (
-#        look_for_quote('juve_gg'))
+#        look_for_quote('*juve_1'))

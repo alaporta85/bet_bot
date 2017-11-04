@@ -1,10 +1,12 @@
+import time
+import pickle
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium import webdriver
-import pickle
+
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
@@ -40,21 +42,64 @@ def scroll_to_element(browser, true_false, element):
                            .format(true_false), element)
 
 
-def click_calcio_button(browser, scroll='no'):
+def simulate_hover_and_click(browser, element):
 
-    # Xpath of the button called 'CALCIO'
-    calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
+    '''Handles the cases when hover is needed before clicking.'''
+
     try:
+        webdriver.ActionChains(
+                browser).move_to_element(element).click(element).perform()
+    except MoveTargetOutOfBoundsException:
+        raise ConnectionError(conn_err_message)
+
+
+def go_to_lottomatica(LIMIT_1):
+
+    url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
+           'scommesse-sportive.html')
+
+    try:
+        browser = webdriver.Firefox()
+        time.sleep(3)
+        browser.get(url)
+
+        calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
         wait_clickable(browser, 20, calcio)
         calcio_button = browser.find_element_by_xpath(calcio)
 
-        if scroll == 'yes':
-            scroll_to_element(browser, 'true', calcio_button)
-            scroll_to_element(browser, 'false', calcio_button)
+        scroll_to_element(browser, 'true', calcio_button)
+        scroll_to_element(browser, 'false', calcio_button)
+
         calcio_button.click()
+
+        return browser
+
     except TimeoutException:
-        browser.quit()
-        raise ConnectionError(conn_err_message)
+
+        LIMIT_1 += 1
+
+        if LIMIT_1 < 3:
+            print('recursive go_to_lottomatica')
+            browser.quit()
+            go_to_lottomatica(LIMIT_1)
+        else:
+            raise ConnectionError('Unable to reach Lottomatica webpage. ' +
+                                  'Please try again.')
+
+
+def text_short(browser, input_bet):
+
+    # In case the input bet has the form team_bet we use the function
+    # get_field to find the right field and then format the bet. In this
+    # case the inputs do NOT need to be correct. Most of the cases are
+    # handled by the code to return the correct element
+    try:
+        field = get_field(browser, input_bet)
+    except SyntaxError as e:
+        raise SyntaxError(str(e))
+    right_bet = format_bet(field, input_bet)
+
+    return field, right_bet
 
 
 def click_oggi_domani_button(browser, scroll='no'):
@@ -115,17 +160,6 @@ def find_league_button(browser, league):
             scroll_to_element(browser, 'false', panel)
             panel.click()
             break
-
-
-def simulate_hover_and_click(browser, element):
-
-    '''Handles the cases when hover is needed before clicking.'''
-
-    try:
-        webdriver.ActionChains(
-                browser).move_to_element(element).click(element).perform()
-    except MoveTargetOutOfBoundsException:
-        raise ConnectionError(conn_err_message)
 
 
 def get_field(browser, bet):
@@ -293,7 +327,7 @@ def click_match_button(browser, all_tables, team):
         if result:
             break
 
-    return result, team1, team2
+    return team1, team2
 
 
 def go_to_all_bets(browser, input_team):
@@ -315,8 +349,6 @@ def go_to_all_bets(browser, input_team):
     '''
 
     team = ''
-    leagues = []
-    final_league = ''
 
     # Load the dict with leagues (keys) and countries (values)
     f = open('/Users/andrea/Desktop/bet_bot/main_leagues_teams_lotto.pckl',
@@ -324,43 +356,50 @@ def go_to_all_bets(browser, input_team):
     all_teams = pickle.load(f)
     f.close()
 
-    # If input_team is found between the teams of a certain league, the league
-    # is added to the list of possible leagues
-    for new_league in all_teams:
-        for new_team in all_teams[new_league]:
+    if '*' in input_team:
+        league = 'CHAMPIONS LEAGUE'
+        input_team = input_team.replace('*', '')
+        for new_team in all_teams[league]:
             if right_team(input_team, new_team):
                 team = new_team
-                leagues.append(new_league)
                 break
+
+    else:
+        for new_league in all_teams:
+            if new_league != 'CHAMPIONS LEAGUE':
+                for new_team in all_teams[new_league]:
+                    if right_team(input_team, new_team):
+                        team = new_team
+                        league = new_league
+                        break
+                if team:
+                    break
 
     if team:
-        for league in leagues:
-            # Find the country button and click it
-            find_country_button(browser, league)
 
-            # Find the national league button and click it
-            find_league_button(browser, league)
+        # Find the country button and click it
+        find_country_button(browser, league)
 
-            # Xpath of the box containing the matches grouped by day
-            all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-            try:
-                wait_visible(browser, 20, all_days)
-                all_tables = browser.find_elements_by_xpath(all_days)
-            except TimeoutException:
-                browser.quit()
-                raise ConnectionError(conn_err_message)
+        # Find the national league button and click it
+        find_league_button(browser, league)
 
-            result, team1, team2 = click_match_button(browser, all_tables,
-                                                      team)
-            if result:
-                final_league = league
-                break
+        # Xpath of the box containing the matches grouped by day
+        all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
+        try:
+            wait_visible(browser, 20, all_days)
+            all_tables = browser.find_elements_by_xpath(all_days)
+        except TimeoutException:
+            browser.quit()
+            raise ConnectionError(conn_err_message)
+
+        team1, team2 = click_match_button(browser, all_tables, team)
+
     else:
         browser.quit()
         raise SyntaxError('{}: Team not valid or competition '
                           .format(input_team) + 'not allowed.')
 
-    return team1, team2, final_league
+    return team1, team2, league
 
 
 def get_quote(browser, field, right_bet, click='no'):

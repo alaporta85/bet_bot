@@ -98,12 +98,12 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
         sf.wait_visible(browser, 20, new_table_path)
         new_bets_list = browser.find_elements_by_xpath(
                 new_table_path + '//tr[@class="ng-scope"]')
-        for i in new_bets_list:
+        for new_bet in new_bets_list:
 
-            match = i.find_element_by_xpath('.//td[6]').text
+            match = new_bet.find_element_by_xpath('.//td[6]').text
             team1 = match.split(' - ')[0]
             team2 = match.split(' - ')[1]
-            result_element = i.find_element_by_xpath(
+            result_element = new_bet.find_element_by_xpath(
                     './/div[contains(@class,"ng-scope")]')
             result = result_element.get_attribute('ng-switch-when')
 
@@ -137,6 +137,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
        analyze_details_table for each row of the table.'''
 
     current_url = browser.current_url
+    bets_updated = 0
 
     try:
         table_path = ('.//table[@id="tabellaRisultatiTransazioni"]')
@@ -162,6 +163,9 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
                             './/td[@class="ng-binding"]').text[:10]
 
                     if date == ref_date:
+
+                        bets_updated += 1
+
                         new_status = bet.find_element_by_xpath(
                                 './/translate-label[@key-default=' +
                                 '"statement.state"]').text
@@ -184,6 +188,8 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
                         break
         db.commit()
         db.close()
+
+        return bets_updated
 
     except (TimeoutException, ElementNotInteractableException):
 
