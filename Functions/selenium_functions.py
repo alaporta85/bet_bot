@@ -439,3 +439,37 @@ def get_quote(browser, field, right_bet, click='no'):
 
         if CLICK_CHECK:
             break
+
+
+def login(browser):
+
+    f = open('login.txt', 'r')
+    credentials = f.readlines()
+    f.close()
+
+    username = credentials[0][10:-1]
+    password = credentials[1][10:]
+
+    user_path = './/input[@placeholder="Username"]'
+    pass_path = './/input[@placeholder="Password"]'
+    button_path = './/button[@class="button-submit"]'
+
+    user_list = browser.find_elements_by_xpath(user_path)
+    pass_list = browser.find_elements_by_xpath(pass_path)
+    button_list = browser.find_elements_by_xpath(button_path)
+
+    for element in user_list:
+        if element.is_displayed():
+            element.send_keys(username)
+            break
+
+    for element in pass_list:
+        if element.is_displayed():
+            element.send_keys(password)
+            break
+
+    for element in button_list:
+        if element.is_displayed():
+            scroll_to_element(browser, 'false', element)
+            element.click()
+            break

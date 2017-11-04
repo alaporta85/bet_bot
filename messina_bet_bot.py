@@ -1,6 +1,6 @@
 import time
 import datetime
-#import selenium_lottomatica as sl
+import selenium_lottomatica as sl
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from selenium import webdriver
@@ -8,6 +8,7 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
+from Functions import bot_functions as bf
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -26,40 +27,6 @@ def nickname(name):
                  'Ana Belen': 'Ana'}
 
     return nicknames[name]
-
-
-def login(browser):
-
-    f = open('login.txt', 'r')
-    credentials = f.readlines()
-    f.close()
-
-    username = credentials[0][10:-1]
-    password = credentials[1][10:]
-
-    user_path = './/input[@placeholder="Username"]'
-    pass_path = './/input[@placeholder="Password"]'
-    button_path = './/button[@class="button-submit"]'
-
-    user_list = browser.find_elements_by_xpath(user_path)
-    pass_list = browser.find_elements_by_xpath(pass_path)
-    button_list = browser.find_elements_by_xpath(button_path)
-
-    for element in user_list:
-        if element.is_displayed():
-            element.send_keys(username)
-            break
-
-    for element in pass_list:
-        if element.is_displayed():
-            element.send_keys(password)
-            break
-
-    for element in button_list:
-        if element.is_displayed():
-            sf.scroll_to_element(browser, 'false', element)
-            element.click()
-            break
 
 
 def todays_date():
@@ -521,7 +488,7 @@ def play_bet(bot, update, args):
         possible_win = round(possible_win_default * (euros/2), 2)
 
         # Make the login
-        login(browser)
+        sf.login(browser)
         bot.edit_message_text(chat_id=update.message.chat_id,
                               message_id=mess_id,
                               text='Login...')
@@ -593,6 +560,55 @@ def play_bet(bot, update, args):
     browser.quit()
 
 
+def update_results(bot, update):
+
+    '''Updates the 'result' columns in both 'bets' and 'matches' tables in the
+       database.'''
+
+    LIMIT_1 = 0
+    LIMIT_2 = 0
+    LIMIT_3 = 0
+    LIMIT_4 = 0
+
+    db, c = dbf.start_db()
+    ref_list = list(c.execute('''SELECT bets_id, ddmmyy FROM bets WHERE
+                              status = "Placed" AND result = "Unknown" '''))
+    db.close()
+
+    if not ref_list:
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='No bets to update.')
+
+    bot.send_message(chat_id=update.message.chat_id,
+                     text='Updating database...')
+
+    url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
+           'scommesse-sportive.html')
+    browser = webdriver.Firefox()
+    time.sleep(3)
+    browser.get(url)
+    time.sleep(3)
+
+    sf.login(browser)
+    time.sleep(5)
+
+    try:
+        bf.go_to_personal_area(browser, LIMIT_1)
+
+        bf.go_to_placed_bets(browser, LIMIT_2)
+
+        bf.analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4)
+
+    except ConnectionError as e:
+        browser.quit()
+        return bot.send_message(chat_id=update.message.chat_id, text=str(e))
+
+    browser.quit()
+
+    bot.send_message(chat_id=update.message.chat_id, text=('Database updated' +
+                                                           ' correctly.'))
+
+
 def summary(bot, update):
     bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
     print(bet_id)
@@ -618,6 +634,7 @@ quote_handler = CommandHandler('getquote', quote, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
 cancel_handler = CommandHandler('cancel', cancel)
 play_bet_handler = CommandHandler('play', play_bet, pass_args=True)
+update_handler = CommandHandler('update', update_results)
 summary_handler = CommandHandler('summary', summary)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
@@ -626,6 +643,7 @@ dispatcher.add_handler(quote_handler)
 dispatcher.add_handler(confirm_handler)
 dispatcher.add_handler(cancel_handler)
 dispatcher.add_handler(play_bet_handler)
+dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
 updater.start_polling()
 #updater.idle()
