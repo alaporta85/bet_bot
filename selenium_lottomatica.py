@@ -1,38 +1,6 @@
 import time
-from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from Functions import selenium_functions as sf
-
-
-def look_for_quote(text):
-
-    LIMIT_1 = 0
-
-    input_team = text.split('_')[0].upper()
-    input_bet = text.split('_')[1].upper()
-
-    if len(text.split('_')) != 2:
-        raise SyntaxError('Wrong format. Input text must have the ' +
-                          'structure "team_bet".')
-
-    try:
-        browser = sf.go_to_lottomatica(LIMIT_1)
-
-        field, bet = sf.text_short(browser, input_bet)
-
-        team1, team2, league = sf.go_to_all_bets(browser, input_team)
-
-        quote = sf.get_quote(browser, field, bet)
-
-        current_url = browser.current_url
-        browser.quit()
-
-        return league, team1, team2, bet, quote, field, current_url
-
-    except ConnectionError as e:
-        raise ConnectionError(str(e))
-    except SyntaxError as e:
-        raise SyntaxError(str(e))
 
 
 def add_first_bet(browser, current_url, field, right_bet):
@@ -43,8 +11,10 @@ def add_first_bet(browser, current_url, field, right_bet):
     browser.get(current_url)
     time.sleep(3)
 
+    LIMIT_GET_QUOTE = 0
+
     try:
-        sf.get_quote(browser, field, right_bet, 'yes')
+        sf.get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, 'yes')
     except ConnectionError as e:
         raise ConnectionError(str(e))
 
@@ -54,19 +24,14 @@ def add_following_bets(browser, team, field, right_bet):
     '''Add all the other quotes after the first one. It does NOT use the url
        but look for each button instead.'''
 
-    # Navigate to the right page
-    all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-    try:
-        sf.wait_clickable(browser, 20, all_days)
-        all_tables = browser.find_elements_by_xpath(all_days)
-    except TimeoutException:
-        browser.quit()
-        raise ConnectionError
-    sf.click_match_button(browser, all_tables, team)
+    LIMIT_MATCH_BUTTON = 0
+    LIMIT_GET_QUOTE = 0
 
-    # Store the quote
     try:
-        sf.get_quote(browser, field, right_bet, 'yes')
+        sf.click_match_button(browser, team, LIMIT_MATCH_BUTTON)
+
+        sf.get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, 'yes')
+
     except ConnectionError as e:
         raise ConnectionError(str(e))
 

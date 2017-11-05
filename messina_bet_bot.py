@@ -146,8 +146,11 @@ def quote(bot, update, args):
                                 ('{}\n' + 'Use /confirm or /cancel to ' +
                                  'finalize your bet.').format(printed_bet))
 
-    bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
     guess = ' '.join(args).upper()
+    if len(guess.split('_')) != 2:
+        message = ('Wrong format. Input text must ' +
+                   'have the structure "team_bet".')
+        return bot.send_message(chat_id=update.message.chat_id, text=message)
 
     # This is used to decide whether to add or not the new bet as
     # 'Not Confirmed'. In the code below, this bet_id will be used to create
@@ -157,6 +160,8 @@ def quote(bot, update, args):
     # been already chosen
     bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
 
+    bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
+
     try:
 
         confirmed_matches = list(c.execute('''SELECT team1, team2, league
@@ -165,7 +170,7 @@ def quote(bot, update, args):
                                            AND bets_id = ?''', (bet_id,)))
 
         league, team1, team2, bet, bet_quote, field, url = (
-                sl.look_for_quote(guess))
+                sf.look_for_quote(guess))
 
         if (not confirmed_matches
            or (team1, team2, league) not in confirmed_matches):
@@ -325,6 +330,8 @@ def play_bet(bot, update, args):
     '''Manage the login and play the bet. Args input is the amount of euros
        to bet.'''
 
+    LIMIT_COUNTRY = 0
+
     if not args:
         return bot.send_message(chat_id=update.message.chat_id, text=(
                 'Please insert the amount to bet. Ex: /play 5'))
@@ -376,9 +383,9 @@ def play_bet(bot, update, args):
 
         if not count:
             try:
-                sl.add_first_bet(browser, url, field, bet)
+                sf.add_first_bet(browser, url, field, bet)
                 time.sleep(5)
-                if not sl.check_single_bet(browser, count):
+                if not sf.check_single_bet(browser, count):
                     message = handle_play_conn_err(browser, team1, team2)
                     return bot.send_message(chat_id=update.message.chat_id,
                                             text=message)
@@ -396,9 +403,9 @@ def play_bet(bot, update, args):
         elif league == last_league:
             try:
                 sf.find_league_button(browser, league)
-                sl.add_following_bets(browser, team1, field, bet)
+                sf.add_following_bets(browser, team1, field, bet)
                 time.sleep(5)
-                if not sl.check_single_bet(browser, count):
+                if not sf.check_single_bet(browser, count):
                     message = handle_play_conn_err(browser, team1, team2)
                     return bot.send_message(chat_id=update.message.chat_id,
                                             text=message)
@@ -414,11 +421,11 @@ def play_bet(bot, update, args):
                                         text=message)
         else:
             try:
-                sf.find_country_button(browser, league)
+                sf.find_country_button(browser, league, LIMIT_COUNTRY)
                 sf.find_league_button(browser, league)
-                sl.add_following_bets(browser, team1, field, bet)
+                sf.add_following_bets(browser, team1, field, bet)
                 time.sleep(5)
-                if not sl.check_single_bet(browser, count):
+                if not sf.check_single_bet(browser, count):
                     message = handle_play_conn_err(browser, team1, team2)
                     return bot.send_message(chat_id=update.message.chat_id,
                                             text=message)
@@ -616,8 +623,8 @@ def update_results(bot, update):
 
 
 def summary(bot, update):
+
     bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
-    print(bet_id)
     db, c = dbf.start_db()
     summary = list(c.execute('''SELECT user, team1, team2, field, bet
                              FROM bets INNER JOIN matches on

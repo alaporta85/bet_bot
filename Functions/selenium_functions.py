@@ -1,6 +1,7 @@
 import time
 import pickle
 from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -63,14 +64,7 @@ def go_to_lottomatica(LIMIT_1):
         time.sleep(3)
         browser.get(url)
 
-        calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
-        wait_clickable(browser, 20, calcio)
-        calcio_button = browser.find_element_by_xpath(calcio)
-
-        scroll_to_element(browser, 'true', calcio_button)
-        scroll_to_element(browser, 'false', calcio_button)
-
-        calcio_button.click()
+        click_calcio_button(browser)
 
         return browser
 
@@ -102,9 +96,20 @@ def text_short(browser, input_bet):
     return field, right_bet
 
 
+def click_calcio_button(browser):
+
+    calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
+    wait_clickable(browser, 20, calcio)
+    calcio_button = browser.find_element_by_xpath(calcio)
+
+    scroll_to_element(browser, 'true', calcio_button)
+    scroll_to_element(browser, 'false', calcio_button)
+
+    calcio_button.click()
+
+
 def click_oggi_domani_button(browser, scroll='no'):
 
-    # Xpath of the button called 'OGGI E DOMANI'
     oggi_domani = ('.//div[@id="navigationContainer"]//' +
                    'a[contains(@class,"col-lg-6 col-md-6")]')
     try:
@@ -121,7 +126,9 @@ def click_oggi_domani_button(browser, scroll='no'):
         raise ConnectionError(conn_err_message)
 
 
-def find_country_button(browser, league):
+def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
+
+    current_url = browser.current_url
 
     countries = {'SERIE A': 'ITALIA',
                  'SERIE B': 'ITALIA',
@@ -138,14 +145,26 @@ def find_country_button(browser, league):
         wait_clickable(browser, 20, countries_container)
         all_countries = browser.find_elements_by_xpath(
                 countries_container + '/li')
+        LIMIT_COUNTRY_BUTTON = 0
+
     except TimeoutException:
-        browser.quit()
-        raise ConnectionError(conn_err_message)
+        LIMIT_COUNTRY_BUTTON += 1
+        if LIMIT_COUNTRY_BUTTON < 3:
+            print('recursive country button')
+            browser.get(current_url)
+            time.sleep(3)
+            click_calcio_button(browser)
+            find_country_button(browser, league, LIMIT_COUNTRY_BUTTON)
+        else:
+            browser.quit()
+            raise ConnectionError(conn_err_message)
+
     for country in all_countries:
         panel = country.find_element_by_xpath('.//a')
         if panel.text == countries[league]:
             scroll_to_element(browser, 'false', panel)
             panel.click()
+            time.sleep(2)
             break
 
 
@@ -292,63 +311,71 @@ def right_team(team_input, team_lottom):
         return False
 
 
-def click_match_button(browser, all_tables, team):
+def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
 
-    '''Drives the browser to the webpage containing all the bets relative
-       to the match which the input team is playing.'''
+    '''Find the match realtive to the team and select it.'''
 
+    current_url = browser.current_url
     result = False
 
-    for table in all_tables:
+    try:
+        all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
+        wait_visible(browser, 20, all_days)
+        all_tables = browser.find_elements_by_xpath(all_days)
 
-        all_matches = table.find_elements_by_xpath(
-                './/tbody/tr[contains(@class,"ng-scope")]')
+        for table in all_tables:
 
-        for match in all_matches:
+            all_matches = table.find_elements_by_xpath(
+                    './/tbody/tr[contains(@class,"ng-scope")]')
 
-            match_text = match.find_element_by_xpath(
-                    './/td[contains(@colspan,"1")]/a/strong').text
+            for match in all_matches:
 
-            team1 = match_text.split(' - ')[0]
-            team2 = match_text.split(' - ')[1]
+                match_text = match.find_element_by_xpath(
+                        './/td[contains(@colspan,"1")]/a/strong').text
 
-            if (team == team1 or team == team2
-               or team in team1 or team in team2
-               or team1 in team or team2 in team):
+                team1 = match_text.split(' - ')[0]
+                team2 = match_text.split(' - ')[1]
 
-                match_box = match.find_element_by_xpath(
-                        './/td[contains(@colspan,"1")]/a')
+                if (team == team1 or team == team2
+                   or team in team1 or team in team2
+                   or team1 in team or team2 in team):
 
-                scroll_to_element(browser, 'false', match_box)
+                    match_box = match.find_element_by_xpath(
+                            './/td[contains(@colspan,"1")]/a')
 
-                simulate_hover_and_click(browser, match_box)
-                result = True
+                    scroll_to_element(browser, 'false', match_box)
+
+                    simulate_hover_and_click(browser, match_box)
+                    result = True
+                    LIMIT_MATCH_BUTTON = 0
+                    break
+            if result:
                 break
-        if result:
-            break
+
+    except TimeoutException:
+
+        LIMIT_MATCH_BUTTON += 1
+
+        if LIMIT_MATCH_BUTTON < 3:
+            print('recursive match button')
+            browser.get(current_url)
+            time.sleep(3)
+            click_match_button(browser, team, LIMIT_MATCH_BUTTON)
+        else:
+            browser.quit()
+            raise ConnectionError(conn_err_message)
 
     return team1, team2
 
 
 def go_to_all_bets(browser, input_team):
 
-    '''Find all the competitions of input_team. There are 2 options:
-
-        - Bets in different competitions are allowed for the team: return
-          the closest in time.
-
-        - Only the bet of one competition is allowed: return it.
-
-       Example: JUVENTUS plays in CHAMPIONS LEAGUE next Tuesday and then in
-       SERIE A the following Sunday.
-
-        - If you look for the quote on Monday or Tuesday you will get the one
-          relative to the CHAMPIONS LEAGUE because is closest in time.
-
-        - Starting from Wednesday you will get the quote relative to SERIE A.
-    '''
+    '''Drives the browser to the webpage containing all the bets relative
+       to the match which the input team is playing.'''
 
     team = ''
+    LIMIT_COUNTRY_BUTTON = 0
+    LIMIT_MATCH_BUTTON = 0
 
     # Load the dict with leagues (keys) and countries (values)
     f = open('/Users/andrea/Desktop/bet_bot/main_leagues_teams_lotto.pckl',
@@ -377,22 +404,11 @@ def go_to_all_bets(browser, input_team):
 
     if team:
 
-        # Find the country button and click it
-        find_country_button(browser, league)
+        find_country_button(browser, league, LIMIT_COUNTRY_BUTTON)
 
-        # Find the national league button and click it
         find_league_button(browser, league)
 
-        # Xpath of the box containing the matches grouped by day
-        all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-        try:
-            wait_visible(browser, 20, all_days)
-            all_tables = browser.find_elements_by_xpath(all_days)
-        except TimeoutException:
-            browser.quit()
-            raise ConnectionError(conn_err_message)
-
-        team1, team2 = click_match_button(browser, all_tables, team)
+        team1, team2 = click_match_button(browser, team, LIMIT_MATCH_BUTTON)
 
     else:
         browser.quit()
@@ -402,82 +418,106 @@ def go_to_all_bets(browser, input_team):
     return team1, team2, league
 
 
-def get_quote(browser, field, right_bet, click='no'):
-
-    '''When 'click=no' return the quote, when 'click=yes' click the bet.'''
-
-    CLICK_CHECK = False
+def find_all_panels(browser):
 
     # This is the xpath of the box containing all the bets' panels grouped
     # by type (PIU' GIOCATE, CHANCE MIX, TRICOMBO, ...)
     all_panels_path = ('//div[@new-component=""]//div[@class="row"]/div')
 
-    # Wait for the panels to be visible
+    wait_visible(browser, 20, all_panels_path)
+    all_panels = browser.find_elements_by_xpath(all_panels_path)
+
+    return all_panels
+
+
+def find_all_fields(browser):
+
+    # These are the fields of the panel (ESITO FINALE 1X2, DOPPIA
+    # CHANCE, GOAL/NOGOAL, ...)
+    all_fields_path = '//div[@class="panel-collapse collapse in"]/div'
+
+    all_fields = browser.find_elements_by_xpath(all_fields_path)
+
+    return all_fields
+
+
+def find_all_bets(browser, field, new_field):
+
+    if field == 'ESITO FINALE 1X2 HANDICAP':
+        all_bets_path = ('.//div[@class="block-selections-single-event ' +
+                         'handicap-markets-single"]/div')
+    else:
+        all_bets_path = ('.//div[@class="block-selections-single-event"]/div')
+
+    all_bets = new_field.find_elements_by_xpath(all_bets_path)
+
+    return all_bets
+
+
+def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no'):
+
+    '''When 'click=no' return the quote, when 'click=yes' click the bet.'''
+
+    current_url = browser.current_url
+    CLICK_CHECK = False
+
     try:
-        wait_visible(browser, 20, all_panels_path)
-        all_panels = browser.find_elements_by_xpath(all_panels_path)
-    except TimeoutException:
-        browser.quit()
-        raise ConnectionError(conn_err_message)
+        all_panels = find_all_panels(browser)
 
-    for panel in all_panels:
-        panel.click()
+        for panel in all_panels:
+            panel.click()
+            all_fields = find_all_fields(browser)
 
-        # These are the fields of the panel (ESITO FINALE 1X2, DOPPIA
-        # CHANCE, GOAL/NOGOAL, ...)
-        all_fields_path = '//div[@class="panel-collapse collapse in"]/div'
+            for new_field in all_fields:
+                field_name = new_field.find_element_by_xpath(
+                        './/div[@class="text-left col ng-binding"]').text
 
-        all_fields = browser.find_elements_by_xpath(all_fields_path)
+                if field_name == field:
+                    all_bets = find_all_bets(browser, field, new_field)
 
-        for new_field in all_fields:
-            field_name = new_field.find_element_by_xpath(
-                    './/div[@class="text-left col ng-binding"]').text
+                    for new_bet in all_bets:
+                        bet_name = new_bet.find_element_by_xpath(
+                                './/div[@class="sel-ls"]/a').text
 
-            if field_name == field:
+                        if bet_name == right_bet:
 
-                if field == 'ESITO FINALE 1X2 HANDICAP':
-                    all_bets_path = ('.//div[@class="block-selections-' +
-                                     'single-event handicap-markets-' +
-                                     'single"]/div')
-                else:
-                    all_bets_path = ('.//div[@class="block-selections-' +
-                                     'single-event"]/div')
+                            bet_element_path = ('.//a[@ng-click="remCrt.' +
+                                                'selectionClick(selection)"]')
 
-                all_bets = new_field.find_elements_by_xpath(all_bets_path)
-
-                for new_bet in all_bets:
-                    bet_name = new_bet.find_element_by_xpath(
-                            './/div[@class="sel-ls"]/a').text
-
-                    if bet_name == right_bet:
-
-                        bet_element_path = ('.//a[@ng-click="remCrt.' +
-                                            'selectionClick(selection)"]')
-
-                        try:
                             wait_clickable(browser, 20, bet_element_path)
                             bet_element = new_bet.find_element_by_xpath(
                                     bet_element_path)
-                        except TimeoutException:
-                            browser.quit()
-                            raise ConnectionError(conn_err_message)
 
-                        if click == 'yes':
-                            CLICK_CHECK = True
-                            scroll_to_element(browser, 'true', bet_element)
-                            scroll_to_element(browser, 'false', bet_element)
-                            simulate_hover_and_click(browser, bet_element)
-                            break
+                            if click == 'yes':
+                                CLICK_CHECK = True
+                                scroll_to_element(browser, 'true', bet_element)
+                                scroll_to_element(browser, 'false',
+                                                  bet_element)
+                                simulate_hover_and_click(browser, bet_element)
+                                break
 
-                        else:
-                            bet_quote = float(bet_element.text)
-                            return bet_quote
+                            else:
+                                bet_quote = float(bet_element.text)
+                                return bet_quote
 
-                if CLICK_CHECK:
-                    break
+                    if CLICK_CHECK:
+                        break
 
-        if CLICK_CHECK:
-            break
+            if CLICK_CHECK:
+                break
+
+    except TimeoutException:
+
+        LIMIT_GET_QUOTE += 1
+
+        if LIMIT_GET_QUOTE < 3:
+            print('recursive get quote')
+            browser.get(current_url)
+            time.sleep(3)
+            get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no')
+        else:
+            browser.quit()
+            raise ConnectionError(conn_err_message)
 
 
 def login(browser):
@@ -512,3 +552,88 @@ def login(browser):
             scroll_to_element(browser, 'false', element)
             element.click()
             break
+
+
+def look_for_quote(text):
+
+    LIMIT_1 = 0
+    LIMIT_GET_QUOTE = 0
+
+    input_team = text.split('_')[0].upper()
+    input_bet = text.split('_')[1].upper()
+
+#    if len(text.split('_')) != 2:
+#        raise SyntaxError('Wrong format. Input text must have the ' +
+#                          'structure "team_bet".')
+
+    try:
+        browser = go_to_lottomatica(LIMIT_1)
+
+        field, bet = text_short(browser, input_bet)
+
+        team1, team2, league = go_to_all_bets(browser, input_team)
+
+        quote = get_quote(browser, field, bet, LIMIT_GET_QUOTE)
+
+        current_url = browser.current_url
+        browser.quit()
+
+        return league, team1, team2, bet, quote, field, current_url
+
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
+    except SyntaxError as e:
+        raise SyntaxError(str(e))
+
+
+def add_first_bet(browser, current_url, field, right_bet):
+
+    '''Add the quote to the basket by taking directly the url of the bet.
+       This is used inside the play_bet function to play the first match.'''
+
+    browser.get(current_url)
+    time.sleep(3)
+
+    LIMIT_GET_QUOTE = 0
+
+    try:
+        get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, 'yes')
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
+
+
+def add_following_bets(browser, team, field, right_bet):
+
+    '''Add all the other quotes after the first one. It does NOT use the url
+       but look for each button instead.'''
+
+    LIMIT_MATCH_BUTTON = 0
+    LIMIT_GET_QUOTE = 0
+
+    try:
+        click_match_button(browser, team, LIMIT_MATCH_BUTTON)
+
+        get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, 'yes')
+
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
+
+
+def check_single_bet(browser, anumber):
+
+    '''Check whether the bet is inserted correctly.'''
+
+    basket = ('.//ul[@class="toolbar-nav-list"]/li[contains(@class,' +
+              '"ng-scope")]/a/span[contains(@class,"pill pill")]')
+
+    try:
+        current_number = int(browser.find_element_by_xpath(basket).text)
+
+        if current_number == anumber + 1:
+            return True
+        else:
+            browser.quit()
+            return False
+    except NoSuchElementException:
+        browser.quit()
+        return False
