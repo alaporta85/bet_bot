@@ -106,9 +106,9 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
             match = new_bet.find_element_by_xpath('.//td[6]').text
             team1 = match.split(' - ')[0]
             team2 = match.split(' - ')[1]
-            result_element = new_bet.find_element_by_xpath(
+            label_element = new_bet.find_element_by_xpath(
                     './/div[contains(@class,"ng-scope")]')
-            result = result_element.get_attribute('ng-switch-when')
+            label = label_element.get_attribute('ng-switch-when')
 
             c.execute('''SELECT matches_id FROM bets INNER JOIN matches on
                       matches.bets_id = bets.bets_id WHERE bets.bets_id = ? AND
@@ -116,8 +116,8 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
 
             match_id = c.fetchone()[0]
 
-            c.execute('''UPDATE matches SET result = ? WHERE matches_id = ?''',
-                      (result, match_id))
+            c.execute('''UPDATE matches SET label = ? WHERE matches_id = ?''',
+                      (label, match_id))
 
     except (TimeoutException, ElementNotInteractableException):
 

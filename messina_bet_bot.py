@@ -1,3 +1,4 @@
+import os
 import time
 import datetime
 from telegram.ext import Updater
@@ -8,6 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 from Functions import bot_functions as bf
+from Functions import stats_functions as stf
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -22,8 +24,7 @@ def nickname(name):
                  'Fabrizio': 'Nonno',
                  'Damiano': 'Pacco',
                  'Francesco': 'Zoppo',
-                 'Gabriele': 'Nano',
-                 'Ana Belen': 'Ana'}
+                 'Gabriele': 'Nano'}
 
     return nicknames[name]
 
@@ -511,6 +512,13 @@ def summary(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
+def score(bot, update):
+    stf.perc_success()
+    bot.send_photo(chat_id=update.message.chat_id, photo=open('score.png',
+                                                              'rb'))
+    os.remove('score.png')
+
+
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help', ask_help)
 commands_handler = CommandHandler('commands', list_of_commands)
@@ -520,6 +528,7 @@ cancel_handler = CommandHandler('cancel', cancel)
 play_bet_handler = CommandHandler('play', play_bet, pass_args=True)
 update_handler = CommandHandler('update', update_results)
 summary_handler = CommandHandler('summary', summary)
+score_handler = CommandHandler('score', score)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(commands_handler)
@@ -529,5 +538,6 @@ dispatcher.add_handler(cancel_handler)
 dispatcher.add_handler(play_bet_handler)
 dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
+dispatcher.add_handler(score_handler)
 updater.start_polling()
 #updater.idle()

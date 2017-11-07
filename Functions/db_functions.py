@@ -3,7 +3,7 @@ import sqlite3
 
 def start_db():
 
-    db = sqlite3.connect('bet_bot_db')
+    db = sqlite3.connect('bet_bot_db_stats')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
