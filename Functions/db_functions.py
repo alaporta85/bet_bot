@@ -1,4 +1,5 @@
 import sqlite3
+from Functions import logging as log
 
 
 def start_db():
