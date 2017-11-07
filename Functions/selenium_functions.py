@@ -12,6 +12,8 @@ from selenium import webdriver
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
+chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
+
 
 def wait_clickable(browser, seconds, element):
 
@@ -60,8 +62,9 @@ def go_to_lottomatica(LIMIT_1):
            'scommesse-sportive.html')
 
     try:
-        browser = webdriver.Firefox()
+        browser = webdriver.Chrome(chrome_path)
         time.sleep(3)
+        browser.set_window_size(1400, 800)
         browser.get(url)
 
         click_calcio_button(browser)
@@ -619,9 +622,12 @@ def add_following_bets(browser, team, field, right_bet):
         raise ConnectionError(str(e))
 
 
-def check_single_bet(browser, anumber):
+def check_single_bet(browser, anumber, team1, team2):
 
     '''Check whether the bet is inserted correctly.'''
+
+    message = ('Problems with the match {} - {}. '.format(team1, team2) +
+               'Possible reason: bad internet connection. Please try again.')
 
     basket = ('.//ul[@class="toolbar-nav-list"]/li[contains(@class,' +
               '"ng-scope")]/a/span[contains(@class,"pill pill")]')
@@ -629,11 +635,10 @@ def check_single_bet(browser, anumber):
     try:
         current_number = int(browser.find_element_by_xpath(basket).text)
 
-        if current_number == anumber + 1:
-            return True
-        else:
+        if current_number != anumber + 1:
             browser.quit()
-            return False
+            raise ConnectionError(message)
+
     except NoSuchElementException:
         browser.quit()
-        return False
+        raise ConnectionError(message)

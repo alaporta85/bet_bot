@@ -1,8 +1,11 @@
 import time
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
+#import db_functions as dbf
+#import selenium_functions as sf
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementNotInteractableException
+from selenium.webdriver.common.keys import Keys
 
 
 def go_to_personal_area(browser, LIMIT_1):
@@ -203,3 +206,156 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
         else:
             raise ConnectionError('Unable to find past bets. ' +
                                   'Please try again.')
+
+
+def check_still_to_confirm(db, c, first_name):
+
+    # This a list of the users who have their bets in the status
+    # 'Not Confirmed'
+    users_list = list(c.execute('''SELECT user FROM matches WHERE
+                                status = "Not Confirmed"'''))
+    users_list = [element[0] for element in users_list]
+
+    if first_name in users_list:
+
+        ref_list = list(c.execute('''SELECT team1, team2, field, bet, quote
+                                  FROM matches WHERE status = "Not Confirmed"
+                                  AND user = ?''', (first_name,)))
+        db.close()
+
+        team1, team2, field, bet, bet_quote = ref_list[0]
+
+        printed_bet = '{} - {} {} {} @{}'.format(team1, team2, field, bet,
+                                                 bet_quote)
+
+        message = ('{}, you still have one bet to confirm.\n'.format(
+                   first_name) + ('{}\n' + 'Use /confirm or /cancel to ' +
+                   'finalize your bet.').format(printed_bet))
+
+        return message
+
+    else:
+        return False
+
+
+def update_tables_and_ref_list(db, c, first_name, date, bet_id):
+
+    if not bet_id:
+
+        # If not, we create it and update 'matches' table
+        c.execute('''INSERT INTO bets (ddmmyy, status, result) VALUES (?, ?, ?)
+                  ''', (date, 'Pending', 'Unknown'))
+
+        last_id = c.lastrowid
+
+        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
+                  WHERE user = ? AND status = "Not Confirmed"''',
+                  (last_id, first_name))
+
+        db.commit()
+
+        # This is a list that we will take as reference. It contains a tuple
+        # with the 2 teams and the league chosen by the person who is
+        # confirming the bet. It will be used later to check whether there are
+        # others Not Confirmed bets of the same match
+        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
+                                  INNER JOIN matches on
+                                  matches.bets_id = bets.bets_id WHERE
+                                  bets.bets_id = ? AND user = ?''',
+                                  (last_id, first_name)))
+
+    else:
+
+        # If a Pending bet exists we just update the 'matches' table
+        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
+                  WHERE user = ? AND status = "Not Confirmed"''',
+                  (bet_id, first_name))
+
+        db.commit()
+
+        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
+                                  INNER JOIN matches on
+                                  matches.bets_id = bets.bets_id WHERE
+                                  bets.bets_id = ? AND user = ?''',
+                                  (bet_id, first_name)))
+
+    return ref_list
+
+
+def check_if_duplicate(c, first_name, match, ref_list, not_confirmed_matches):
+
+    message = ''
+
+    match_id = match[0]
+    user = match[1]
+    team1 = match[2]
+    team2 = match[3]
+    league = match[4]
+
+    if (team1, team2, league) in ref_list:
+        c.execute('''DELETE FROM matches WHERE matches_id = ?''',
+                  (match_id,))
+        message = ('{}, your bet on the match '.format(user) +
+                   '{} - {} has '.format(team1, team2) +
+                   'been canceled because ' +
+                   '{} confirmed first.'.format(first_name))
+
+    return message
+
+
+def add_bet_to_basket(browser, match, count, LIMIT_COUNTRY, mess_id,
+                      dynamic_message,
+                      matches_to_play):
+
+    team1 = match[0]
+    team2 = match[1]
+    field = match[2]
+    bet = match[3]
+    url = match[4]
+
+    try:
+        sf.add_first_bet(browser, url, field, bet)
+        time.sleep(5)
+        sf.check_single_bet(browser, count, team1, team2)
+        return dynamic_message.format(count + 1)
+
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
+
+
+def insert_euros(browser, matches_to_play, matches_played, euros):
+
+#    ticket = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
+#              '//p[@class="arrow-label linkable"]')
+#    browser.find_element_by_xpath(ticket).click()
+
+    input_euros = ('.//div[contains(@class,"text-right ' +
+                   'amount-sign")]/input')
+    euros_box = browser.find_element_by_xpath(input_euros)
+    euros_box.send_keys(Keys.COMMAND, "a")
+    euros_box.send_keys(Keys.LEFT)
+    euros_box.send_keys(euros)
+    euros_box.send_keys(Keys.DELETE)
+
+    win_path = ('.//div[@class="row ticket-bet-infos"]//' +
+                'p[@class="amount"]/strong')
+    win_container = browser.find_element_by_xpath(win_path)
+    sf.scroll_to_element(browser, 'false', win_container)
+
+    possible_win_default = win_container.text[2:].replace(',', '.')
+
+    # Manipulate the possible win's format to avoid errors
+    if len(possible_win_default.split('.')) == 2:
+        possible_win_default = float(possible_win_default)
+    else:
+        possible_win_default = float(''.join(
+                possible_win_default.split('.')[:-1]))
+    possible_win = round(possible_win_default * (euros/2), 2)
+
+    return possible_win
+
+
+#browser = sf.go_to_lottomatica(0)
+#team1, team2, league = sf.go_to_all_bets(browser, 'MILAN')
+#sf.get_quote(browser, 'ESITO FINALE 1X2', '2', 0, click='yes')
+#insert_euros(browser, 0, 0, 3)

@@ -1,6 +1,5 @@
 import time
 import datetime
-import selenium_lottomatica as sl
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from selenium import webdriver
@@ -121,30 +120,10 @@ def quote(bot, update, args):
 
     db, c = dbf.start_db()
 
-    # This a list of the users who have their bets in the status
-    # 'Not Confirmed'
-    users_list = list(c.execute('''SELECT user FROM matches WHERE
-                                status = "Not Confirmed"'''))
-    users_list = [element[0] for element in users_list]
-
-    if first_name in users_list:
-
-        ref_list = list(c.execute('''SELECT team1, team2, field, bet, quote
-                                  FROM matches WHERE status = "Not Confirmed"
-                                  AND user = ?''', (first_name,)))
-        db.close()
-        print(ref_list)
-
-        team1, team2, field, bet, bet_quote = ref_list[0]
-
-        printed_bet = '{} - {} {} {} @{}'.format(team1, team2, field, bet,
-                                                 bet_quote)
-
+    warning_message = bf.check_still_to_confirm(db, c, first_name)
+    if warning_message:
         return bot.send_message(chat_id=update.message.chat_id,
-                                text='{}, you still have one bet to confirm.\n'
-                                .format(first_name) +
-                                ('{}\n' + 'Use /confirm or /cancel to ' +
-                                 'finalize your bet.').format(printed_bet))
+                                text=warning_message)
 
     guess = ' '.join(args).upper()
     if len(guess.split('_')) != 2:
@@ -152,22 +131,17 @@ def quote(bot, update, args):
                    'have the structure "team_bet".')
         return bot.send_message(chat_id=update.message.chat_id, text=message)
 
-    # This is used to decide whether to add or not the new bet as
-    # 'Not Confirmed'. In the code below, this bet_id will be used to create
-    # a list with all the matches belonging to that bet. If this list is empty
-    # than the bet will be added always. On the other hand, in the case there
-    # should be some matches already confirmed we first check if the bet has
-    # been already chosen
+    # Used to create the list confirmed_matches. This list will be used to
+    # check whether a match has already been chosen
     bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
+    confirmed_matches = list(c.execute('''SELECT team1, team2, league
+                                       FROM matches WHERE
+                                       status = "Confirmed"
+                                       AND bets_id = ?''', (bet_id,)))
 
     bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
 
     try:
-
-        confirmed_matches = list(c.execute('''SELECT team1, team2, league
-                                           FROM matches WHERE
-                                           status = "Confirmed"
-                                           AND bets_id = ?''', (bet_id,)))
 
         league, team1, team2, bet, bet_quote, field, url = (
                 sf.look_for_quote(guess))
@@ -232,44 +206,7 @@ def confirm(bot, update):
     # Check if there is any bet with status 'Pending' in the 'bets' table
     bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
 
-    if not bet_id:
-
-        # If not, we create it and update 'matches' table
-        c.execute('''INSERT INTO bets (ddmmyy, status, result) VALUES (?, ?, ?)
-                  ''', (date, 'Pending', 'Unknown'))
-
-        last_id = c.lastrowid
-
-        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
-                  WHERE user = ? AND status = "Not Confirmed"''',
-                  (last_id, first_name))
-
-        db.commit()
-
-        # This is a list that we will take as reference. It contains a tuple
-        # with the 2 teams and the league chosen by the person who is
-        # confirming the bet. It will be used later to check whether there are
-        # others Not Confirmed bets of the same match
-        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
-                                  INNER JOIN matches on
-                                  matches.bets_id = bets.bets_id WHERE
-                                  bets.bets_id = ? AND user = ?''',
-                                  (last_id, first_name)))
-
-    else:
-
-        # If a Pending bet exists we just update the 'matches' table
-        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
-                  WHERE user = ? AND status = "Not Confirmed"''',
-                  (bet_id, first_name))
-
-        db.commit()
-
-        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
-                                  INNER JOIN matches on
-                                  matches.bets_id = bets.bets_id WHERE
-                                  bets.bets_id = ? AND user = ?''',
-                                  (bet_id, first_name)))
+    ref_list = bf.update_tables_and_ref_list(db, c, first_name, date, bet_id)
 
     # Now we delete all the bets of the same match which have not been
     # confirmed
@@ -278,19 +215,10 @@ def confirm(bot, update):
                                            status = "Not Confirmed"'''))
 
     for match in not_confirmed_matches:
-        match_id = match[0]
-        user = match[1]
-        team1 = match[2]
-        team2 = match[3]
-        league = match[4]
-        if (team1, team2, league) in ref_list:
-            c.execute('''DELETE FROM matches WHERE matches_id = ?''',
-                      (match_id,))
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=('{}, your bet on the match '.format(user) +
-                                   '{} - {} has '.format(team1, team2) +
-                                   'been canceled because ' +
-                                   '{} confirmed first.'.format(first_name)))
+        dupl_message = bf.check_if_duplicate(c, first_name, ref_list,
+                                             not_confirmed_matches)
+        if dupl_message:
+            bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
 
     db.commit()
     db.close()
@@ -302,7 +230,7 @@ def confirm(bot, update):
 
 def cancel(bot, update):
 
-    '''Delete the bet "matches" table.'''
+    '''Delete the "Not Confirmed" bet from "matches" table.'''
 
     first_name = nickname(update.message.from_user.first_name)
     db, c = dbf.start_db()
@@ -331,6 +259,7 @@ def play_bet(bot, update, args):
        to bet.'''
 
     LIMIT_COUNTRY = 0
+    LIMIT_1 = 0
 
     if not args:
         return bot.send_message(chat_id=update.message.chat_id, text=(
@@ -346,8 +275,25 @@ def play_bet(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id,
                                 text=message)
 
-    # Group inside a list all the bets beloning to the bet with result
-    # 'Unknown'
+    db, c = dbf.start_db()
+    not_conf_list = list(c.execute('''SELECT user, team1, team2, field, bet
+                                   FROM matches WHERE
+                                   status = "Not Confirmed" '''))
+    if not_conf_list:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text='There are still Not Confirmed bets:')
+        for match in not_conf_list:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=('{}\n{} - {}\n{}\n{}'.format(match[0],
+                                   match[1], match[2], match[3], match[4])))
+
+        db.close()
+
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text=('/confirm or /cancel each of them and ' +
+                                      'then play again.'))
+
+    # bet_id of the Pending bet
     bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
     if not bet_id:
         return bot.send_message(chat_id=update.message.chat_id,
@@ -362,83 +308,27 @@ def play_bet(bot, update, args):
     # Message_id will be used to update the message
     mess_id = sent.message_id
 
-    db, c = dbf.start_db()
     matches_to_play = list(c.execute('''SELECT team1, team2, field, bet,
                                      url, league FROM bets INNER JOIN matches
                                      on matches.bets_id = bets.bets_id WHERE
                                      bets.bets_id = ?''', (bet_id,)))
 
     db.close()
-    browser = webdriver.Firefox()
-    last_league = ''
+    browser = sf.go_to_lottomatica(LIMIT_1)
     count = 0
     for match in matches_to_play:
+        try:
+            basket_message = bf.add_bet_to_basket(browser, match, count,
+                                                  LIMIT_COUNTRY,
+                                                  mess_id, dynamic_message,
+                                                  matches_to_play)
 
-        team1 = match[0]
-        team2 = match[1]
-        field = match[2]
-        bet = match[3]
-        url = match[4]
-        league = match[5]
-
-        if not count:
-            try:
-                sf.add_first_bet(browser, url, field, bet)
-                time.sleep(5)
-                if not sf.check_single_bet(browser, count):
-                    message = handle_play_conn_err(browser, team1, team2)
-                    return bot.send_message(chat_id=update.message.chat_id,
-                                            text=message)
-                last_league = league
-                count += 1
-                bot.edit_message_text(chat_id=update.message.chat_id,
-                                      message_id=mess_id,
-                                      text=dynamic_message.format(count))
-
-            except ConnectionError:
-                message = handle_play_conn_err(browser, team1, team2)
-                return bot.send_message(chat_id=update.message.chat_id,
-                                        text=message)
-
-        elif league == last_league:
-            try:
-                sf.find_league_button(browser, league)
-                sf.add_following_bets(browser, team1, field, bet)
-                time.sleep(5)
-                if not sf.check_single_bet(browser, count):
-                    message = handle_play_conn_err(browser, team1, team2)
-                    return bot.send_message(chat_id=update.message.chat_id,
-                                            text=message)
-                last_league = league
-                count += 1
-                bot.edit_message_text(chat_id=update.message.chat_id,
-                                      message_id=mess_id,
-                                      text=dynamic_message.format(count))
-
-            except ConnectionError:
-                message = handle_play_conn_err(browser, team1, team2)
-                return bot.send_message(chat_id=update.message.chat_id,
-                                        text=message)
-        else:
-            try:
-                sf.find_country_button(browser, league, LIMIT_COUNTRY)
-                sf.find_league_button(browser, league)
-                sf.add_following_bets(browser, team1, field, bet)
-                time.sleep(5)
-                if not sf.check_single_bet(browser, count):
-                    message = handle_play_conn_err(browser, team1, team2)
-                    return bot.send_message(chat_id=update.message.chat_id,
-                                            text=message)
-                last_league = league
-                count += 1
-                bot.edit_message_text(chat_id=update.message.chat_id,
-                                      message_id=mess_id,
-                                      text=dynamic_message.format(count))
-
-            except ConnectionError:
-                message = handle_play_conn_err(browser, team1, team2)
-                return bot.send_message(chat_id=update.message.chat_id,
-                                        text=message)
+            bot.edit_message_text(chat_id=update.message.chat_id,
+                                  message_id=mess_id, text=basket_message)
+            count += 1
+        except ConnectionError as e:
+            return bot.send_message(chat_id=update.message.chat_id,
+                                    text=str(e))
 
     time.sleep(5)
     bot.edit_message_text(chat_id=update.message.chat_id, message_id=mess_id,
@@ -465,106 +355,86 @@ def play_bet(bot, update, args):
 
     # and extract the actual number of bets present in the basket
     matches_played = int(summary_element.text.split(' ')[2][1:-1])
+    browser.find_element_by_xpath(basket).click()
 
     # If this number is equal to the number of bets chosen to play
     if matches_played == len(matches_to_play):
 
-        ticket = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
-                  '//p[@class="arrow-label linkable"]')
-        browser.find_element_by_xpath(ticket).click()
-
-        input_euros = ('.//div[contains(@class,"text-right ' +
-                       'amount-sign")]/input')
-        euros_box = browser.find_element_by_xpath(input_euros)
-        euros_box.send_keys(Keys.COMMAND, "a")
-        euros_box.send_keys(euros)
-
-        win_path = ('.//div[@class="row ticket-bet-infos"]//' +
-                    'p[@class="amount"]/strong')
-        win_container = browser.find_element_by_xpath(win_path)
-        sf.scroll_to_element(browser, 'false', win_container)
-
-        possible_win_default = win_container.text[2:].replace(',', '.')
-
-        # Manipulate the possible win's format to avoid errors
-        if len(possible_win_default.split('.')) == 2:
-            possible_win_default = float(possible_win_default)
-        else:
-            possible_win_default = float(''.join(
-                    possible_win_default.split('.')[:-1]))
-        possible_win = round(possible_win_default * (euros/2), 2)
+        possible_win = bf.insert_euros(browser, matches_to_play,
+                                       matches_played, euros)
+        print(possible_win)
 
         # Make the login
-        sf.login(browser)
-        bot.edit_message_text(chat_id=update.message.chat_id,
-                              message_id=mess_id,
-                              text='Login...')
-
-        button_location = './/div[@class="change-bet ng-scope"]'
-
-        try:
-            sf.wait_visible(browser, 20, button_location)
-        except TimeoutException:
-            browser.quit()
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=('Problem during placing the bet. ' +
-                                   'Please check if the bet is valid or ' +
-                                   'the connection and try again.'))
-
-        sf.scroll_to_element(browser, 'true',
-                             browser.find_element_by_xpath(
-                                     button_location))
-
-        try:
-            button_path = ('.//button[@class="button-default no-margin-' +
-                           'bottom ng-scope"]')
-
-            button_list = browser.find_elements_by_xpath(button_path)
-        except NoSuchElementException:
-            print('aggiorna')
-            button_path = ('.//button[@class="button-default"]')
-            button_list = browser.find_elements_by_xpath(button_path)
-            print(len(button_list))
-            for element in button_list:
-                if element.is_displayed():
-                    print(element.text)
-###                    element.click()
-                    break
-
-        for element in button_list:
-            if element.is_displayed():
-                print(element.text)
-###                    element.click()
-                db, c = dbf.start_db()
-                c.execute('''UPDATE bets SET euros = ?, prize = ?,
-                          status = ? WHERE status = ?''',
-                          (euros, possible_win, 'Placed', 'Pending'))
-                db.commit()
-                db.close()
-
-                bot.edit_message_text(chat_id=update.message.chat_id,
-                                      message_id=mess_id, text='Done!')
-                break
-
-        # Print the summary
-        message = 'Bet placed correctly.\n\n'
-        bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
-        db, c = dbf.start_db()
-        summary = list(c.execute('''SELECT user, team1, team2, field, bet
-                             FROM bets INNER JOIN matches on
-                             matches.bets_id = bets.bets_id WHERE
-                             bets.bets_id = ?''', (bet_id,)))
-
-        db.close()
-        message += (played_bets(summary) + '\nPossible win: {}'.format(
-                possible_win))
-        bot.send_message(chat_id=update.message.chat_id, text=message)
-    else:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=('Something went wrong, try again the' +
-                               ' command /play.'))
-
-    browser.quit()
+#        sf.login(browser)
+#        bot.edit_message_text(chat_id=update.message.chat_id,
+#                              message_id=mess_id,
+#                              text='Login...')
+#
+#        button_location = './/div[@class="change-bet ng-scope"]'
+#
+#        try:
+#            sf.wait_visible(browser, 20, button_location)
+#        except TimeoutException:
+#            browser.quit()
+#            bot.send_message(chat_id=update.message.chat_id,
+#                             text=('Problem during placing the bet. ' +
+#                                   'Please check if the bet is valid or ' +
+#                                   'the connection and try again.'))
+#
+#        sf.scroll_to_element(browser, 'true',
+#                             browser.find_element_by_xpath(
+#                                     button_location))
+#
+#        try:
+#            button_path = ('.//button[@class="button-default no-margin-' +
+#                           'bottom ng-scope"]')
+#
+#            button_list = browser.find_elements_by_xpath(button_path)
+#        except NoSuchElementException:
+#            print('aggiorna')
+#            button_path = ('.//button[@class="button-default"]')
+#            button_list = browser.find_elements_by_xpath(button_path)
+#            print(len(button_list))
+#            for element in button_list:
+#                if element.is_displayed():
+#                    print(element.text)
+####                    element.click()
+#                    break
+#
+#        for element in button_list:
+#            if element.is_displayed():
+#                print(element.text)
+####                    element.click()
+#                db, c = dbf.start_db()
+#                c.execute('''UPDATE bets SET euros = ?, prize = ?,
+#                          status = ? WHERE status = ?''',
+#                          (euros, possible_win, 'Placed', 'Pending'))
+#                db.commit()
+#                db.close()
+#
+#                bot.edit_message_text(chat_id=update.message.chat_id,
+#                                      message_id=mess_id, text='Done!')
+#                break
+#
+#        # Print the summary
+#        message = 'Bet placed correctly.\n\n'
+#        bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
+#        db, c = dbf.start_db()
+#        summary = list(c.execute('''SELECT user, team1, team2, field, bet
+#                             FROM bets INNER JOIN matches on
+#                             matches.bets_id = bets.bets_id WHERE
+#                             bets.bets_id = ?''', (bet_id,)))
+#
+#        db.close()
+#        message += (played_bets(summary) + '\nPossible win: {}'.format(
+#                possible_win))
+#        bot.send_message(chat_id=update.message.chat_id, text=message)
+#    else:
+#        bot.send_message(chat_id=update.message.chat_id,
+#                         text=('Something went wrong, try again the' +
+#                               ' command /play.'))
+#
+#    browser.quit()
 
 
 def update_results(bot, update):
@@ -591,7 +461,8 @@ def update_results(bot, update):
 
     url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
            'scommesse-sportive.html')
-    browser = webdriver.Firefox()
+    browser = webdriver.Chrome('/Users/andrea/Desktop/bet_bot/' +
+                               'chromedriver')
     time.sleep(3)
     browser.get(url)
     time.sleep(3)
