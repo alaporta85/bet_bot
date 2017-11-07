@@ -5,9 +5,10 @@ from telegram.ext import CommandHandler
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.common.keys import Keys
-from Functions import db_functions as dbf
-from Functions import selenium_functions as sf
-from Functions import bot_functions as bf
+from functions import db_functions as dbf
+from functions import selenium_functions as sf
+from functions import bot_functions as bf
+from functions import logging as log
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -529,5 +530,7 @@ dispatcher.add_handler(cancel_handler)
 dispatcher.add_handler(play_bet_handler)
 dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
+logger = log.set_logging()
 updater.start_polling()
+logger.info('Bet_Bot started.')
 #updater.idle()
