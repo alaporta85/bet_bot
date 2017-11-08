@@ -60,10 +60,12 @@ def played_bets(summary):
         user = bet[0]
         team1 = bet[1].title()
         team2 = bet[2].title()
-        field = bet[3]
-        result = bet[4]
-        message += '{}: {}-{} / {} ---> {}\n'.format(user, team1, team2,
-                                                     field, result)
+        raw_bet = bet[3]
+        quote = bet[4]
+        message += '{}:     {}-{}    {}      @<b>{}</b>\n'.format(user, team1,
+                                                                  team2,
+                                                                  raw_bet,
+                                                                  quote)
 
     return message
 
@@ -72,7 +74,7 @@ def start(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text="Iannelli suca")
 
 
-def ask_help(bot, update):
+def help_quote(bot, update):
 
     '''Instructions to insert the correct input.'''
 
@@ -113,6 +115,9 @@ def quote(bot, update, args):
     elif '_' not in ''.join(args):
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Bet not valid. "_" is missing.')
+    elif ''.join(args)[0] == '_' or ''.join(args)[-1] == '_':
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='Wrong format.')
     # User sending the message
     first_name = nickname(update.message.from_user.first_name)
 
@@ -142,6 +147,8 @@ def quote(bot, update, args):
 
     bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
 
+    raw_bet = guess.split('_')[1]
+
     try:
 
         league, team1, team2, bet, bet_quote, field, url = (
@@ -152,9 +159,10 @@ def quote(bot, update, args):
 
             # Update table
             c.execute('''INSERT INTO matches (url, user, ddmmyy, league, team1,
-                                              team2, field, bet, quote, status)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                      (url, first_name, date, league, team1, team2,
+                                              team2, raw_bet, field, bet,
+                                              quote, status)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (url, first_name, date, league, team1, team2, raw_bet,
                        field, bet, bet_quote, 'Not Confirmed'))
 
             db.commit()
@@ -498,18 +506,27 @@ def summary(bot, update):
 
     bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
     db, c = dbf.start_db()
-    summary = list(c.execute('''SELECT user, team1, team2, field, bet
+    summary = list(c.execute('''SELECT user, team1, team2, raw_bet, quote
                              FROM bets INNER JOIN matches on
                              matches.bets_id = bets.bets_id WHERE
                              bets.bets_id = ?''', (bet_id,)))
 
     db.close()
     if summary:
-        message = played_bets(summary)
+        final_quote = 1
+        all_quotes = [element[4] for element in summary]
+        for quote in all_quotes:
+            final_quote *= quote
+
+        message1 = played_bets(summary)
+        message2 = '\n\nPossible win with 5 euros: <b>{:.1f}</b>'.format(
+                final_quote*5)
+        message = message1 + message2
     else:
         message = 'No bets yet. Choose the first one.'
 
-    bot.send_message(chat_id=update.message.chat_id, text=message)
+    bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+                     text=message)
 
 
 def score(bot, update):
@@ -519,8 +536,35 @@ def score(bot, update):
     os.remove('score.png')
 
 
+def aver_quote(bot, update):
+    stf.aver_quote()
+    bot.send_photo(chat_id=update.message.chat_id, photo=open('aver_quote.png',
+                                                              'rb'))
+    os.remove('aver_quote.png')
+
+
+def highest(bot, update):
+    message = stf.highest()
+    bot.send_message(chat_id=update.message.chat_id, text=message)
+
+
+def lowest(bot, update):
+    message = stf.lowest()
+    bot.send_message(chat_id=update.message.chat_id, text=message)
+
+
+def rimborso(bot, update):
+    bot.send_message(chat_id=update.message.chat_id,
+                     text='Nano, nesci i soddi!')
+
+
+def h1230(bot, update):
+    bot.send_message(chat_id=update.message.chat_id,
+                     text='Nanazzo, ghiavatela nel culo la tua regola!')
+
+
 start_handler = CommandHandler('start', start)
-help_handler = CommandHandler('help', ask_help)
+help_handler = CommandHandler('help_quote', help_quote)
 commands_handler = CommandHandler('commands', list_of_commands)
 quote_handler = CommandHandler('getquote', quote, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
@@ -529,6 +573,11 @@ play_bet_handler = CommandHandler('play', play_bet, pass_args=True)
 update_handler = CommandHandler('update', update_results)
 summary_handler = CommandHandler('summary', summary)
 score_handler = CommandHandler('score', score)
+aver_quote_handler = CommandHandler('aver_quote', aver_quote)
+highest_handler = CommandHandler('best', highest)
+lowest_handler = CommandHandler('worst', lowest)
+rimborso_handler = CommandHandler('rimborso', rimborso)
+h1230_handler = CommandHandler('h1230', h1230)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(commands_handler)
@@ -539,5 +588,10 @@ dispatcher.add_handler(play_bet_handler)
 dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
 dispatcher.add_handler(score_handler)
+dispatcher.add_handler(aver_quote_handler)
+dispatcher.add_handler(highest_handler)
+dispatcher.add_handler(lowest_handler)
+dispatcher.add_handler(rimborso_handler)
+dispatcher.add_handler(h1230_handler)
 updater.start_polling()
 #updater.idle()

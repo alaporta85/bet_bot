@@ -1,4 +1,4 @@
-There are 7 leagues available:
+There are 8 leagues available:
 
     - SERIE A
     - SERIE B
@@ -7,6 +7,7 @@ There are 7 leagues available:
     - BUNDESLIGA
     - LIGUE 1
     - EREDIVISIE
+    - CHAMPIONS LEAGUE
 
 
 If the bet is one of the following:
@@ -29,6 +30,12 @@ The message has to be sent in the form 'team_bet'.
     Example2: milan_gg + over 2.5
     Example3: milan_under 3.5 pt
 
+In case the bet is relative to CHAMPIONS LEAGUE insert an '*' in the team name.
+
+    - correct: *juve_x pt
+    - correct: ju*ve_x pt
+    - correct: juve*_x pt
+
 
 IMPORTANT:
 
@@ -46,13 +53,3 @@ IMPORTANT:
         - correct: milan_gg + over 2.5
 
     5. CAPS do NOT matter: 'milan' and 'MILAN' they both work.
-
-
-If the bet is not between those fields, message has to be sent in the form
-'league_team_field_bet'.
-
-    Example1: serie a_milan_esito 1 tempo/finale_1-x
-    Example2: primera division_real madrid_pari/dispari_pari
-    Example3: ligue 1_nizza_tricombo_1 ng under
-
-In this case all inputs need to be EXACTLY as in the webpage.
