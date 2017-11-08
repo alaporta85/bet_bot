@@ -554,6 +554,13 @@ def lowest(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
+def euros_lost(bot, update):
+    stf.euros_lost_for_one_bet()
+    bot.send_photo(chat_id=update.message.chat_id, photo=open('euros_lost.png',
+                                                              'rb'))
+    os.remove('euros_lost.png')
+
+
 def rimborso(bot, update):
     bot.send_message(chat_id=update.message.chat_id,
                      text='Nano, nesci i soddi!')
@@ -577,6 +584,7 @@ score_handler = CommandHandler('score', score)
 aver_quote_handler = CommandHandler('aver_quote', aver_quote)
 highest_handler = CommandHandler('best', highest)
 lowest_handler = CommandHandler('worst', lowest)
+euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 rimborso_handler = CommandHandler('rimborso', rimborso)
 h1230_handler = CommandHandler('h1230', h1230)
 dispatcher.add_handler(start_handler)
@@ -592,6 +600,7 @@ dispatcher.add_handler(score_handler)
 dispatcher.add_handler(aver_quote_handler)
 dispatcher.add_handler(highest_handler)
 dispatcher.add_handler(lowest_handler)
+dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(rimborso_handler)
 dispatcher.add_handler(h1230_handler)
 logger = log.set_logging()

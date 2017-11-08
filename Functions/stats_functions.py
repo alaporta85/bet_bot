@@ -1,20 +1,14 @@
 import matplotlib.pyplot as plt
 import sqlite3
 
+partecipants = ['Testazza', 'Nonno', 'Pacco', 'Zoppo', 'Nano']
+
 
 def perc_success():
 
-    total = {'Testazza': 0,
-             'Nonno': 0,
-             'Pacco': 0,
-             'Zoppo': 0,
-             'Nano': 0}
+    total = {name: 0 for name in partecipants}
 
-    wins = {'Testazza': 0,
-            'Nonno': 0,
-            'Pacco': 0,
-            'Zoppo': 0,
-            'Nano': 0}
+    wins = {name: 0 for name in partecipants}
 
     db = sqlite3.connect('bet_bot_db_stats')
     c = db.cursor()
@@ -61,23 +55,15 @@ def perc_success():
                  fontsize=14)
         count += 1
 
-    plt.savefig('score.png')
+    plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
 
 
 def aver_quote():
 
-    total = {'Testazza': 0,
-             'Nonno': 0,
-             'Pacco': 0,
-             'Zoppo': 0,
-             'Nano': 0}
+    total = {name: 0 for name in partecipants}
 
-    quotes = {'Testazza': 0,
-              'Nonno': 0,
-              'Pacco': 0,
-              'Zoppo': 0,
-              'Nano': 0}
+    quotes = {name: 0 for name in partecipants}
 
     db = sqlite3.connect('bet_bot_db_stats')
     c = db.cursor()
@@ -111,7 +97,7 @@ def aver_quote():
                  '{:.2f}'.format(height), ha='center', va='bottom',
                  fontsize=14)
 
-    plt.savefig('aver_quote.png')
+    plt.savefig('aver_quote.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
 
 
@@ -199,3 +185,75 @@ def lowest():
                                                         fin_field, fin_bet))
 
     return message
+
+
+def euros_lost_for_one_bet():
+
+    db = sqlite3.connect('bet_bot_db_stats')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
+
+    amount = {name: 0 for name in partecipants}
+
+    all_bets_list = list(c.execute('''SELECT bets_id, prize FROM bets
+                                   WHERE result = "Non Vincente" '''))
+
+    for x in range(len(all_bets_list)):
+        temp_id = all_bets_list[x][0]
+        temp_prize = all_bets_list[x][1]
+
+        single_bets = list(c.execute('''SELECT user, label FROM bets INNER JOIN
+                                     matches ON matches.bets_id = bets.bets_id
+                                     WHERE matches.bets_id = ?''', (temp_id,)))
+
+        losing_list = [element[0] for element in single_bets
+                       if element[1] == 'LOSING']
+        if len(losing_list) == 1:
+            amount[losing_list[0]] += temp_prize
+
+    data = [(name, amount[name]) for name in amount]
+    data.sort(key=lambda x: x[1], reverse=True)
+
+    euros = []
+    names = []
+    for element in data:
+        if element[1]:
+            names.append(element[0])
+            euros.append(element[1])
+
+    n_values = len(euros)
+
+    colors = ['#cc0000', 'orange', 'green', '#1ac6ff', 'b']
+    plt.axes(aspect=1)
+    plt.title('Euros lost for 1 person', fontsize=25, position=(0.5, 1.3))
+    explode = [0 for x in range(len(euros))]
+    explode[0] = 0.07
+
+    def real_value(val):
+        return round(val/100*sum(euros), 1)
+
+    patches, text, autotext = plt.pie(euros, labels=names, explode=explode,
+                                      colors=colors[:n_values],
+                                      startangle=90, radius=1.5,
+                                      autopct=real_value)
+
+    for patch in patches:
+        patch.set_linewidth(1.5)
+        patch.set_edgecolor('black')
+    for x in range(n_values):
+        if x == 0:
+            text[x].set_fontsize(30)
+        else:
+            text[x].set_fontsize(18)
+    for y in range(n_values):
+        if y == 0:
+            autotext[y].set_fontsize(30)
+        else:
+            autotext[y].set_fontsize(18)
+
+    plt.savefig('euros_lost.png', dpi=120, bbox_inches='tight')
+    plt.gcf().clear()    
+    
+    
+    
+    
