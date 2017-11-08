@@ -1,11 +1,10 @@
 import time
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
-#import db_functions as dbf
-#import selenium_functions as sf
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.keys import Keys
+from Functions import logging as log
 
 
 def go_to_personal_area(browser, LIMIT_1):

@@ -10,6 +10,7 @@ from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 from Functions import bot_functions as bf
 from Functions import stats_functions as stf
+from Functions import logging as log
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -593,5 +594,7 @@ dispatcher.add_handler(highest_handler)
 dispatcher.add_handler(lowest_handler)
 dispatcher.add_handler(rimborso_handler)
 dispatcher.add_handler(h1230_handler)
+logger = log.set_logging()
 updater.start_polling()
+logger.info('Bet_Bot started.')
 #updater.idle()
