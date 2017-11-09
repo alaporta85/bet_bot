@@ -1,8 +1,13 @@
 import matplotlib.pyplot as plt
 import sqlite3
+import matplotlib.image as image
 
 partecipants = ['Testazza', 'Nonno', 'Pacco', 'Zoppo', 'Nano']
-colors = ['#ff3300', '#ffad33', '#00cc44', '#00ffff', '#005ce6']
+colors_dict = {'Zoppo': '#7fffd4',
+               'Nano': '#ffad33',
+               'Testazza': '#2eb82e',
+               'Nonno': '#ff3300',
+               'Pacco': '#028eb9'}
 
 
 def perc_success():
@@ -39,6 +44,7 @@ def perc_success():
     final_data.sort(key=lambda x: x[2], reverse=True)
 
     names = [element[0] for element in final_data]
+    colors = [colors_dict[name] for name in names]
     perc = [element[2] for element in final_data]
     printed_perc = []
     for x in range(len(names)):
@@ -89,6 +95,7 @@ def aver_quote():
     final_data.sort(key=lambda x: x[1], reverse=True)
 
     names = [element[0] for element in final_data]
+    colors = [colors_dict[name] for name in names]
     values = [element[1] for element in final_data]
 
     bars = plt.bar(range(5), values, 0.5,  color=colors)
@@ -212,6 +219,7 @@ def euros_lost_for_one_bet():
     data.sort(key=lambda x: x[1], reverse=True)
 
     names = [element[0] for element in data if element[1]]
+    colors = [colors_dict[name] for name in names]
     euros = [element[1] for element in data if element[1]]
     n_values = len(euros)
 
@@ -242,3 +250,43 @@ def euros_lost_for_one_bet():
 
     plt.savefig('euros_lost.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
+
+
+def series():
+
+    pos = {name: 0 for name in partecipants}
+    neg = {name: 0 for name in partecipants}
+    
+    db = sqlite3.connect('bet_bot_db_stats')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
+
+    ref_list = list(c.execute('''SELECT ddmmyy, label FROM matches WHERE
+                              user = ? ''', ('Zoppo',)))
+
+    count_pos = 0
+    dates_pos = []
+    count_neg = 0
+    dates_neg = []
+    last_label = ''
+
+    for x in range(len(ref_list)):
+        date = ref_list[x][0]
+        label = ref_list[x][1]
+        if not last_label and label == 'WINNING':
+            count_pos += 1
+            dates_pos.append(date)
+        elif not last_label and label == 'LOSING':
+            count_neg += 1
+            dates_neg.append(date)
+        elif last_label == 'WINNING' and label == 'WINNING':
+            count_pos += 1
+        elif last_label == 'LOSING' and label == 'LOSING':
+            count_neg += 1
+        elif last_label == 'LOSING' and label == 'WINNING':
+            count_neg = 0
+            count_pos += 1
+        
+
+series()
+    
