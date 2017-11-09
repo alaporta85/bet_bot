@@ -544,14 +544,10 @@ def aver_quote(bot, update):
     os.remove('aver_quote.png')
 
 
-def highest(bot, update):
-    message = stf.highest()
-    bot.send_message(chat_id=update.message.chat_id, text=message)
-
-
-def lowest(bot, update):
-    message = stf.lowest()
-    bot.send_message(chat_id=update.message.chat_id, text=message)
+def records(bot, update):
+    h_message, l_message = stf.records()
+    bot.send_message(chat_id=update.message.chat_id, text=h_message)
+    bot.send_message(chat_id=update.message.chat_id, text=l_message)
 
 
 def euros_lost(bot, update):
@@ -571,6 +567,11 @@ def h1230(bot, update):
                      text='Nanazzo, ghiavatela nel culo la tua regola!')
 
 
+def ibranano(bot, update):
+    bot.send_message(chat_id=update.message.chat_id,
+                     text='Nano ma venerdì tifi Svezia o Italia? Coglione!!')
+
+
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help_quote', help_quote)
 commands_handler = CommandHandler('commands', list_of_commands)
@@ -582,9 +583,9 @@ update_handler = CommandHandler('update', update_results)
 summary_handler = CommandHandler('summary', summary)
 score_handler = CommandHandler('score', score)
 aver_quote_handler = CommandHandler('aver_quote', aver_quote)
-highest_handler = CommandHandler('best', highest)
-lowest_handler = CommandHandler('worst', lowest)
+records_handler = CommandHandler('records', records)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
+ibranano_handler = CommandHandler('ibranano', ibranano)
 rimborso_handler = CommandHandler('rimborso', rimborso)
 h1230_handler = CommandHandler('h1230', h1230)
 dispatcher.add_handler(start_handler)
@@ -598,9 +599,9 @@ dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
 dispatcher.add_handler(score_handler)
 dispatcher.add_handler(aver_quote_handler)
-dispatcher.add_handler(highest_handler)
-dispatcher.add_handler(lowest_handler)
+dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
+dispatcher.add_handler(ibranano_handler)
 dispatcher.add_handler(rimborso_handler)
 dispatcher.add_handler(h1230_handler)
 logger = log.set_logging()
