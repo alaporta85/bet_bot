@@ -7,7 +7,8 @@ colors_dict = {'Zoppo': '#7fffd4',
                'Nano': '#ffad33',
                'Testazza': '#2eb82e',
                'Nonno': '#ff3300',
-               'Pacco': '#028eb9'}
+               'Pacco': '#028eb9'
+               }
 
 
 def perc_success():
@@ -254,39 +255,111 @@ def euros_lost_for_one_bet():
 
 def series():
 
-    pos = {name: 0 for name in partecipants}
-    neg = {name: 0 for name in partecipants}
-    
+#    partecipants = ['Nano']
+    pos = {name: [] for name in partecipants}
+    neg = {name: [] for name in partecipants}
+
     db = sqlite3.connect('bet_bot_db_stats')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    ref_list = list(c.execute('''SELECT ddmmyy, label FROM matches WHERE
-                              user = ? ''', ('Zoppo',)))
+    for name in partecipants:
+        ref_list = list(c.execute('''SELECT ddmmyy, label FROM matches WHERE
+                                  user = ? ''', (name,)))
 
-    count_pos = 0
-    dates_pos = []
-    count_neg = 0
-    dates_neg = []
-    last_label = ''
+        count_pos = 0
+        dates_pos = []
+        count_neg = 0
+        dates_neg = []
+        last_label = ''
 
-    for x in range(len(ref_list)):
-        date = ref_list[x][0]
-        label = ref_list[x][1]
-        if not last_label and label == 'WINNING':
-            count_pos += 1
-            dates_pos.append(date)
-        elif not last_label and label == 'LOSING':
-            count_neg += 1
-            dates_neg.append(date)
-        elif last_label == 'WINNING' and label == 'WINNING':
-            count_pos += 1
-        elif last_label == 'LOSING' and label == 'LOSING':
-            count_neg += 1
-        elif last_label == 'LOSING' and label == 'WINNING':
-            count_neg = 0
-            count_pos += 1
-        
+        for x in range(len(ref_list)):
+            date = ref_list[x][0]
+            label = ref_list[x][1]
 
-series()
-    
+            if not last_label and label == 'WINNING':
+                count_pos += 1
+                dates_pos.append(date)
+
+            elif not last_label and label == 'LOSING':
+                count_neg += 1
+                dates_neg.append(date)
+
+            elif last_label == 'WINNING' and label == 'WINNING':
+                if x == len(ref_list) - 1:
+                    count_pos += 1
+                    if not pos[name] or count_pos == pos[name][0][0]:
+                        pass
+                    elif count_pos > pos[name][0][0]:
+                        pos[name] = []
+                    dates_pos.append('Ongoing')
+                    dates_pos.insert(0, count_pos)
+                    pos[name].append(tuple(dates_pos))
+                else:
+                    count_pos += 1
+
+            elif last_label == 'LOSING' and label == 'LOSING':
+                if x == len(ref_list) - 1:
+                    count_neg += 1
+                    if not neg[name] or count_neg == neg[name][0][0]:
+                        pass
+                    elif count_neg > neg[name][0][0]:
+                        neg[name] = []
+                    dates_neg.append('Ongoing')
+                    dates_neg.insert(0, count_neg)
+                    neg[name].append(tuple(dates_neg))
+                else:
+                    count_neg += 1
+
+            elif last_label == 'LOSING' and label == 'WINNING':
+                previous_date = ref_list[x-1][0]
+
+                if x != len(ref_list) - 1:
+                    count_pos += 1
+                    dates_pos.append(date)
+
+                if not neg[name] or count_neg == neg[name][0][0]:
+                    pass
+                elif count_neg > neg[name][0][0]:
+                    neg[name] = []
+                else:
+                    count_neg = 0
+                    continue
+                dates_neg.append(previous_date)
+                dates_neg.insert(0, count_neg)
+                neg[name].append(tuple(dates_neg))
+                count_neg = 0
+                dates_neg = []
+
+            elif last_label == 'WINNING' and label == 'LOSING':
+                previous_date = ref_list[x-1][0]
+
+                if x != len(ref_list) - 1:
+                    count_neg += 1
+                    dates_neg.append(date)
+
+                if not pos[name] or count_pos == pos[name][0][0]:
+                    pass
+                elif count_pos > pos[name][0][0]:
+                    pos[name] = []
+                else:
+                    count_pos = 0
+                    continue
+                dates_pos.append(previous_date)
+                dates_pos.insert(0, count_pos)
+                pos[name].append(tuple(dates_pos))
+                count_pos = 0
+                dates_pos = []
+
+            last_label = label
+
+    db.close()
+
+    for name in partecipants:
+        pos[name] = [element for element in pos[name] if element[0] > 1]
+        neg[name] = [element for element in neg[name] if element[0] > 1]
+
+    return pos, neg
+
+
+pos, neg = series()
