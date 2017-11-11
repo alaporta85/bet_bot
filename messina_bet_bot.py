@@ -12,7 +12,7 @@ from Functions import bot_functions as bf
 from Functions import stats_functions as stf
 from Functions import logging as log
 
-f = open('token.txt', 'r')
+f = open('token.txt.dist', 'r')
 updater = Updater(token=f.readline())
 f.close()
 
@@ -146,7 +146,7 @@ def quote(bot, update, args):
                                        status = "Confirmed"
                                        AND bets_id = ?''', (bet_id,)))
 
-    bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
+ #   bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
 
     raw_bet = guess.split('_')[1]
 
@@ -607,4 +607,4 @@ dispatcher.add_handler(h1230_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-#updater.idle()
+updater.idle()

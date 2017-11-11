@@ -13,7 +13,7 @@ from Functions import logging as log
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
-chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
+chrome_path = 'chromedriver'
 
 
 def wait_clickable(browser, seconds, element):
@@ -382,7 +382,7 @@ def go_to_all_bets(browser, input_team):
     LIMIT_MATCH_BUTTON = 0
 
     # Load the dict with leagues (keys) and countries (values)
-    f = open('/Users/andrea/Desktop/bet_bot/main_leagues_teams_lotto.pckl',
+    f = open('main_leagues_teams_lotto.pckl',
              'rb')
     all_teams = pickle.load(f)
     f.close()
