@@ -18,7 +18,6 @@ f.close()
 
 dispatcher = updater.dispatcher
 
-
 def nickname(name):
 
     nicknames = {'Andrea': 'Testazza',
@@ -471,7 +470,7 @@ def update_results(bot, update):
 
     url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
            'scommesse-sportive.html')
-    browser = webdriver.Chrome('/Users/andrea/Desktop/bet_bot/' +
+    browser = webdriver.Chrome('' +
                                'chromedriver')
     time.sleep(3)
     browser.get(url)
@@ -572,6 +571,14 @@ def ibranano(bot, update):
                      text='Nano ma venerdì tifi Svezia o Italia? Coglione!!')
 
 
+def match(bot, update):
+    try:
+        sf.show_all_match_for_day()
+    except ConnectionError as e:
+        raise ConnectionError(str(e))
+    except SyntaxError as e:
+        raise SyntaxError(str(e))
+
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help_quote', help_quote)
 commands_handler = CommandHandler('commands', list_of_commands)
@@ -588,6 +595,7 @@ euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 ibranano_handler = CommandHandler('ibranano', ibranano)
 rimborso_handler = CommandHandler('rimborso', rimborso)
 h1230_handler = CommandHandler('h1230', h1230)
+match_handler = CommandHandler('match', match)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(commands_handler)
@@ -604,6 +612,7 @@ dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(ibranano_handler)
 dispatcher.add_handler(rimborso_handler)
 dispatcher.add_handler(h1230_handler)
+dispatcher.add_handler(match_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
