@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 2017-11-13 13:18:33,627 - INFO: Logging configuration performed.
 2017-11-13 13:18:33,630 - INFO: Bet_Bot started.
 2017-11-13 13:19:13,956 - INFO: Logging configuration performed.
@@ -12,3 +13,9 @@
 2017-11-13 13:26:08,084 - INFO: Bet_Bot started.
 2017-11-13 17:21:56,634 - INFO: Logging configuration performed.
 2017-11-13 17:21:56,636 - INFO: Bet_Bot started.
+=======
+2017-11-11 11:57:11,573 - INFO: Logging configuration performed.
+2017-11-11 11:57:11,608 - INFO: Bet_Bot started.
+2017-11-11 11:58:12,103 - INFO: Logging configuration performed.
+2017-11-11 11:58:12,107 - INFO: Bet_Bot started.
+>>>>>>> master

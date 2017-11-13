@@ -9,11 +9,20 @@ from selenium.webdriver.common.by import By
 from selenium import webdriver
 from Functions import logging as log
 
+countries = {'SERIE A': 'ITALIA',
+             'SERIE B': 'ITALIA',
+             'PREMIER LEAGUE': 'INGHILTERRA',
+             'PRIMERA DIVISION': 'SPAGNA',
+             'BUNDESLIGA': 'GERMANIA',
+             'LIGUE 1': 'FRANCIA',
+             'EUROPA LEAGUE': 'EUROPA',
+             'EREDIVISIE': 'OLANDA',
+             'CHAMPIONS LEAGUE': 'EUROPA'}
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
-chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
+chrome_path = 'chromedriver'
 
 
 def wait_clickable(browser, seconds, element):
@@ -129,20 +138,9 @@ def click_oggi_domani_button(browser, scroll='no'):
         browser.quit()
         raise ConnectionError(conn_err_message)
 
-
 def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
     current_url = browser.current_url
-
-    countries = {'SERIE A': 'ITALIA',
-                 'SERIE B': 'ITALIA',
-                 'PREMIER LEAGUE': 'INGHILTERRA',
-                 'PRIMERA DIVISION': 'SPAGNA',
-                 'BUNDESLIGA': 'GERMANIA',
-                 'LIGUE 1': 'FRANCIA',
-                 'EUROPA LEAGUE': 'EUROPA',
-                 'EREDIVISIE': 'OLANDA',
-                 'CHAMPIONS LEAGUE': 'EUROPA'}
 
     countries_container = './/ul[@id="better-table-tennis"]'
     try:
@@ -382,7 +380,7 @@ def go_to_all_bets(browser, input_team):
     LIMIT_MATCH_BUTTON = 0
 
     # Load the dict with leagues (keys) and countries (values)
-    f = open('/Users/andrea/Desktop/bet_bot/main_leagues_teams_lotto.pckl',
+    f = open('main_leagues_teams_lotto.pckl',
              'rb')
     all_teams = pickle.load(f)
     f.close()
@@ -643,3 +641,46 @@ def check_single_bet(browser, anumber, team1, team2):
     except NoSuchElementException:
         browser.quit()
         raise ConnectionError(message)
+
+def go_to_league_bets(browser):
+    '''Drives the browser to the webpage containing all the bets relative
+       to the match which the input team is playing.'''
+    all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
+    wait_visible(browser, 20, all_days)
+    all_tables = browser.find_elements_by_xpath(all_days)
+
+    for table in all_tables:
+
+        all_matches = table.find_elements_by_xpath(
+            './/tbody/tr[contains(@class,"ng-scope")]')
+
+        for match in all_matches:
+            browser.implicitly_wait(5)
+            match_text = match.find_element_by_xpath(
+                './/td[contains(@colspan,"1")]/a/strong').text
+            match_all_text = match.text
+            match_data, match_teams, quote1, quoteX, quote2, other = match_all_text.split("\n",5)
+            if match_data[0:5] == "19/11":
+                print (match_data)
+                print (match_teams)
+                print (quote1)
+                print (quoteX)
+                print (quote2)
+            match_box = match.find_element_by_xpath(
+                    './/td[contains(@colspan,"1")]/a')
+
+            scroll_to_element(browser, 'false', match_box)
+
+    return
+
+def show_all_match_for_day():
+    browser = go_to_lottomatica(1)
+    for country, value in countries.items():
+        find_country_button(browser, country, 2)
+        find_league_button(browser, country)
+        browser.implicitly_wait(5)
+        go_to_league_bets(browser)
+        #click again to return to initial condition
+        find_country_button(browser, country, 2)
+        browser.implicitly_wait(5)
+    return
