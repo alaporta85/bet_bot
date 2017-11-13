@@ -557,6 +557,13 @@ def euros_lost(bot, update):
     os.remove('euros_lost.png')
 
 
+def series(bot, update):
+    stf.series()
+    bot.send_photo(chat_id=update.message.chat_id, photo=open('series.png',
+                                                              'rb'))
+    os.remove('series.png')
+
+
 def rimborso(bot, update):
     bot.send_message(chat_id=update.message.chat_id,
                      text='Nano, nesci i soddi!')
@@ -585,6 +592,7 @@ score_handler = CommandHandler('score', score)
 aver_quote_handler = CommandHandler('aver_quote', aver_quote)
 records_handler = CommandHandler('records', records)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
+series_handler = CommandHandler('series', series)
 ibranano_handler = CommandHandler('ibranano', ibranano)
 rimborso_handler = CommandHandler('rimborso', rimborso)
 h1230_handler = CommandHandler('h1230', h1230)
@@ -601,10 +609,11 @@ dispatcher.add_handler(score_handler)
 dispatcher.add_handler(aver_quote_handler)
 dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
+dispatcher.add_handler(series_handler)
 dispatcher.add_handler(ibranano_handler)
 dispatcher.add_handler(rimborso_handler)
 dispatcher.add_handler(h1230_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-#updater.idle()
+updater.idle()

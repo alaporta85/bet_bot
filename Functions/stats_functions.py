@@ -253,113 +253,241 @@ def euros_lost_for_one_bet():
     plt.gcf().clear()
 
 
+def create_series(c, name, series_pos, series_neg):
+
+    '''Fill the dicts series_pos and series_neg with the elements representing
+       the series for each player.'''
+
+    ref_list = list(c.execute('''SELECT ddmmyy, label FROM matches WHERE
+                              user = ? ''', (name,)))
+
+    count_pos = 0
+    dates_pos = []
+    count_neg = 0
+    dates_neg = []
+    last_label = ''
+
+    for x in range(len(ref_list)):
+        date = ref_list[x][0]
+        label = ref_list[x][1]
+
+        # If it is the first element we just update the count and append it
+        if not last_label and label == 'WINNING':
+            count_pos += 1
+            dates_pos.append(date)
+
+        elif not last_label and label == 'LOSING':
+            count_neg += 1
+            dates_neg.append(date)
+
+        # If the current label is the same as the previous one we distinguish
+        # two cases
+        elif last_label == 'WINNING' and label == 'WINNING':
+
+            # 1. It is the last element in the list. In this case we "mark" it
+            # as "Ongoing" and append it to series_pos
+            if x == len(ref_list) - 1:
+                count_pos += 1
+                if (not series_pos[name] or
+                   count_pos == series_pos[name][0][0]):
+                    pass
+                elif count_pos > series_pos[name][0][0]:
+                    series_pos[name] = []
+                dates_pos.append('Ongoing')
+                dates_pos.insert(0, count_pos)
+                series_pos[name].append(dates_pos)
+
+            # 2. It is not the last element in list. Simply increase the
+            # counter
+            else:
+                count_pos += 1
+
+        # Same as above
+        elif last_label == 'LOSING' and label == 'LOSING':
+            if x == len(ref_list) - 1:
+                count_neg += 1
+                if (not series_neg[name] or
+                   count_neg == series_neg[name][0][0]):
+                    pass
+                elif count_neg > series_neg[name][0][0]:
+                    series_neg[name] = []
+                dates_neg.append('Ongoing')
+                dates_neg.insert(0, count_neg)
+                series_neg[name].append(dates_neg)
+            else:
+                count_neg += 1
+
+        # If the current label is diffent from the last one
+        elif last_label == 'LOSING' and label == 'WINNING':
+
+            # Store the date of the previous element
+            previous_date = ref_list[x-1][0]
+
+            # If not last element, start the counter for the new serie and
+            # append the date
+            if x != len(ref_list) - 1:
+                count_pos += 1
+                dates_pos.append(date)
+
+            # If no element for this person is present or the value is equal
+            # to the one already present we just go ahead
+            if not series_neg[name] or count_neg == series_neg[name][0][0]:
+                pass
+            # If the record is higher we empty the list
+            elif count_neg > series_neg[name][0][0]:
+                series_neg[name] = []
+            # If it is lower we set the counter to 0 again and go to the next
+            # element in the loop
+            else:
+                count_neg = 0
+                continue
+
+            dates_neg.append(previous_date)
+            dates_neg.insert(0, count_neg)
+            series_neg[name].append(dates_neg)
+            count_neg = 0
+            dates_neg = []
+
+        # Same as above
+        elif last_label == 'WINNING' and label == 'LOSING':
+            previous_date = ref_list[x-1][0]
+
+            if x != len(ref_list) - 1:
+                count_neg += 1
+                dates_neg.append(date)
+
+            if not series_pos[name] or count_pos == series_pos[name][0][0]:
+                pass
+            elif count_pos > series_pos[name][0][0]:
+                series_pos[name] = []
+            else:
+                count_pos = 0
+                continue
+            dates_pos.append(previous_date)
+            dates_pos.insert(0, count_pos)
+            series_pos[name].append(dates_pos)
+            count_pos = 0
+            dates_pos = []
+
+        last_label = label
+
+
 def series():
 
-#    partecipants = ['Nano']
-    pos = {name: [] for name in partecipants}
-    neg = {name: [] for name in partecipants}
+    series_pos = {name: [] for name in partecipants}
+    series_neg = {name: [] for name in partecipants}
 
     db = sqlite3.connect('bet_bot_db_stats')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
     for name in partecipants:
-        ref_list = list(c.execute('''SELECT ddmmyy, label FROM matches WHERE
-                                  user = ? ''', (name,)))
-
-        count_pos = 0
-        dates_pos = []
-        count_neg = 0
-        dates_neg = []
-        last_label = ''
-
-        for x in range(len(ref_list)):
-            date = ref_list[x][0]
-            label = ref_list[x][1]
-
-            if not last_label and label == 'WINNING':
-                count_pos += 1
-                dates_pos.append(date)
-
-            elif not last_label and label == 'LOSING':
-                count_neg += 1
-                dates_neg.append(date)
-
-            elif last_label == 'WINNING' and label == 'WINNING':
-                if x == len(ref_list) - 1:
-                    count_pos += 1
-                    if not pos[name] or count_pos == pos[name][0][0]:
-                        pass
-                    elif count_pos > pos[name][0][0]:
-                        pos[name] = []
-                    dates_pos.append('Ongoing')
-                    dates_pos.insert(0, count_pos)
-                    pos[name].append(tuple(dates_pos))
-                else:
-                    count_pos += 1
-
-            elif last_label == 'LOSING' and label == 'LOSING':
-                if x == len(ref_list) - 1:
-                    count_neg += 1
-                    if not neg[name] or count_neg == neg[name][0][0]:
-                        pass
-                    elif count_neg > neg[name][0][0]:
-                        neg[name] = []
-                    dates_neg.append('Ongoing')
-                    dates_neg.insert(0, count_neg)
-                    neg[name].append(tuple(dates_neg))
-                else:
-                    count_neg += 1
-
-            elif last_label == 'LOSING' and label == 'WINNING':
-                previous_date = ref_list[x-1][0]
-
-                if x != len(ref_list) - 1:
-                    count_pos += 1
-                    dates_pos.append(date)
-
-                if not neg[name] or count_neg == neg[name][0][0]:
-                    pass
-                elif count_neg > neg[name][0][0]:
-                    neg[name] = []
-                else:
-                    count_neg = 0
-                    continue
-                dates_neg.append(previous_date)
-                dates_neg.insert(0, count_neg)
-                neg[name].append(tuple(dates_neg))
-                count_neg = 0
-                dates_neg = []
-
-            elif last_label == 'WINNING' and label == 'LOSING':
-                previous_date = ref_list[x-1][0]
-
-                if x != len(ref_list) - 1:
-                    count_neg += 1
-                    dates_neg.append(date)
-
-                if not pos[name] or count_pos == pos[name][0][0]:
-                    pass
-                elif count_pos > pos[name][0][0]:
-                    pos[name] = []
-                else:
-                    count_pos = 0
-                    continue
-                dates_pos.append(previous_date)
-                dates_pos.insert(0, count_pos)
-                pos[name].append(tuple(dates_pos))
-                count_pos = 0
-                dates_pos = []
-
-            last_label = label
+        create_series(c, name, series_pos, series_neg)
 
     db.close()
 
+    # Delete all the series only 1 match long
     for name in partecipants:
-        pos[name] = [element for element in pos[name] if element[0] > 1]
-        neg[name] = [element for element in neg[name] if element[0] > 1]
+        series_pos[name] = [element for element in series_pos[name]
+                            if element[0] > 1]
+        series_neg[name] = [element for element in series_neg[name]
+                            if element[0] > 1]
 
-    return pos, neg
+    # Here we divide the series in two groups: the longest ones which go inside
+    # the to_plot lists and the ones which are not yet the longest but still
+    # ongoing which will go inside the coming list
+    to_plot_pos = {name: (name, 0, 0, 0) for name in partecipants}
+    to_plot_neg = {name: (name, 0, 0, 0) for name in partecipants}
+    coming_pos = []
+    coming_neg = []
 
+    for name in partecipants:
+        try:
+            record = max([serie[0] for serie in series_pos[name]])
+            for serie in series_pos[name]:
+                if serie[0] == record:
+                    to_plot_pos[name] = tuple([name] + serie)
+                elif serie[0] < record and serie[2] == 'Ongoing':
+                    coming_pos.append(tuple([name] + serie))
+        except ValueError:
+            pass
 
-pos, neg = series()
+        try:
+            record = max([serie[0] for serie in series_neg[name]])
+            for serie in series_neg[name]:
+                if serie[0] == record:
+                    to_plot_neg[name] = tuple([name] + serie)
+                elif serie[0] < record and serie[2] == 'Ongoing':
+                    coming_neg.append(tuple([name] + serie))
+        except ValueError:
+            pass
+
+    # From the dicts to_plot_pos and to_plot_neg we create two lists
+    # containing the same data but sorted
+    to_plot_pos_list = [to_plot_pos[name] for name in to_plot_pos]
+    to_plot_pos_list.sort(key=lambda x: x[1], reverse=True)
+    to_plot_neg_list = [to_plot_neg[element[0]] for element
+                        in to_plot_pos_list]
+
+    names = []
+    records_pos = []
+    records_neg = []
+    for x in range(5):
+        names.append(to_plot_pos_list[x][0])
+        records_pos.append(to_plot_pos_list[x][1])
+        records_neg.append(to_plot_neg_list[x][1])
+
+    bar_width = 0.4
+    fig, ax = plt.subplots()
+    im = image.imread('Images/green_arrow.png')
+    height, width = im.shape[:2]
+    a_ratio = height/width
+
+    # Inserting arrows in the plot
+    for person in to_plot_pos_list:
+        if person[3] == 'Ongoing':
+            from_w = to_plot_pos_list.index(person) - bar_width + 0.06
+            to_w = to_plot_pos_list.index(person) - 0.06
+            from_h = person[1] + 0.02
+            to_h = person[1] + 0.2 + 0.28*a_ratio
+            ax.imshow(im, aspect=a_ratio, extent=(from_w, to_w, from_h, to_h),
+                      zorder=-1)
+
+    for person in to_plot_neg_list:
+        if person[3] == 'Ongoing':
+            from_w = to_plot_neg_list.index(person) + 0.06
+            to_w = to_plot_neg_list.index(person) + bar_width - 0.06
+            from_h = person[1] + 0.02
+            to_h = person[1] + 0.2 + 0.28*a_ratio
+            ax.imshow(im, aspect='auto', extent=(from_w, to_w, from_h, to_h),
+                      zorder=-1)
+
+    plt.bar([x - bar_width/2 for x in range(5)], records_pos,
+            bar_width, color='g', label='Positive')
+
+    plt.bar([x + bar_width/2 for x in range(5)], records_neg,
+            bar_width, color='r', label='Negative')
+
+    plt.xticks(range(5), names, fontsize=14)
+    plt.title('Series', fontsize=18)
+    plt.ylim(1)
+
+    # Inserting text on the top-right
+    highest_pos = max(records_pos)
+    highest_neg = max(records_neg)
+    message = ''
+    th = 3
+    for element in coming_pos:
+        if element[1] + th >= highest_pos:
+            text = '- {} {}(P)\n'.format(element[0], element[1])
+            message += text
+    for element in coming_neg:
+        if element[1] + th >= highest_neg:
+            text = '- {} {}(N)\n'.format(element[0], element[1])
+            message += text
+    ax.annotate(message, xy=(1, 1), xycoords='axes fraction', fontsize=16,
+                xytext=(-150, -5), textcoords='offset points', ha='left',
+                va='top')
+
+    plt.savefig('series.png', dpi=120, bbox_inches='tight')
+    plt.gcf().clear()
