@@ -586,6 +586,7 @@ def match(bot, update):
     except SyntaxError as e:
         raise SyntaxError(str(e))
 
+
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help_quote', help_quote)
 commands_handler = CommandHandler('commands', list_of_commands)

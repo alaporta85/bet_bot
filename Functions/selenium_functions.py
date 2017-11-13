@@ -22,7 +22,8 @@ countries = {'SERIE A': 'ITALIA',
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
-chrome_path = 'chromedriver'
+#chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
+chrome_path = 'chromedriver.exe'
 
 
 def wait_clickable(browser, seconds, element):
@@ -137,6 +138,7 @@ def click_oggi_domani_button(browser, scroll='no'):
     except TimeoutException:
         browser.quit()
         raise ConnectionError(conn_err_message)
+
 
 def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
