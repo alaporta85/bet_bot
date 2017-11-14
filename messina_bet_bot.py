@@ -18,6 +18,7 @@ f.close()
 
 dispatcher = updater.dispatcher
 
+
 def nickname(name):
 
     nicknames = {'Andrea': 'Testazza',
@@ -374,11 +375,11 @@ def play_bet(bot, update, args):
         print(possible_win)
 
         # Make the login
-#        sf.login(browser)
-#        bot.edit_message_text(chat_id=update.message.chat_id,
-#                              message_id=mess_id,
-#                              text='Login...')
-#
+        sf.login(browser)
+        bot.edit_message_text(chat_id=update.message.chat_id,
+                              message_id=mess_id,
+                              text='Login...')
+
 #        button_location = './/div[@class="change-bet ng-scope"]'
 #
 #        try:
@@ -563,24 +564,10 @@ def series(bot, update):
     os.remove('series.png')
 
 
-def rimborso(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
-                     text='Nano, nesci i soddi!')
-
-
-def h1230(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
-                     text='Nanazzo, ghiavatela nel culo la tua regola!')
-
-
-def ibranano(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
-                     text='Nano ma venerdì tifi Svezia o Italia? Coglione!!')
-
-
-def match(bot, update):
+def match(bot, update, args):
     try:
-        sf.show_all_match_for_day()
+        message = sf.show_all_match_for_day(args[0])
+        bot.send_message(chat_id=update.message.chat_id, text=message)
     except ConnectionError as e:
         raise ConnectionError(str(e))
     except SyntaxError as e:
@@ -601,10 +588,7 @@ aver_quote_handler = CommandHandler('aver_quote', aver_quote)
 records_handler = CommandHandler('records', records)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 series_handler = CommandHandler('series', series)
-ibranano_handler = CommandHandler('ibranano', ibranano)
-rimborso_handler = CommandHandler('rimborso', rimborso)
-h1230_handler = CommandHandler('h1230', h1230)
-match_handler = CommandHandler('match', match)
+match_handler = CommandHandler('match', match, pass_args=True)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(commands_handler)
@@ -619,9 +603,6 @@ dispatcher.add_handler(aver_quote_handler)
 dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(series_handler)
-dispatcher.add_handler(ibranano_handler)
-dispatcher.add_handler(rimborso_handler)
-dispatcher.add_handler(h1230_handler)
 dispatcher.add_handler(match_handler)
 logger = log.set_logging()
 updater.start_polling()

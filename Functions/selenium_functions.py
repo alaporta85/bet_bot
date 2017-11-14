@@ -1,4 +1,5 @@
 import time
+import datetime
 import pickle
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
@@ -7,23 +8,25 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium import webdriver
-from Functions import logging as log
+#from Functions import logging as log
+import pandas as pd
+
 
 countries = {'SERIE A': 'ITALIA',
-             'SERIE B': 'ITALIA',
+#             'SERIE B': 'ITALIA',
              'PREMIER LEAGUE': 'INGHILTERRA',
              'PRIMERA DIVISION': 'SPAGNA',
              'BUNDESLIGA': 'GERMANIA',
              'LIGUE 1': 'FRANCIA',
-             'EUROPA LEAGUE': 'EUROPA',
-             'EREDIVISIE': 'OLANDA',
-             'CHAMPIONS LEAGUE': 'EUROPA'}
+#             'EREDIVISIE': 'OLANDA',
+#             'CHAMPIONS LEAGUE': 'EUROPA'
+             }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
-#chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
-chrome_path = 'chromedriver.exe'
+chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
+#chrome_path = 'chromedriver'
 
 
 def wait_clickable(browser, seconds, element):
@@ -644,12 +647,42 @@ def check_single_bet(browser, anumber, team1, team2):
         browser.quit()
         raise ConnectionError(message)
 
-def go_to_league_bets(browser):
-    '''Drives the browser to the webpage containing all the bets relative
-       to the match which the input team is playing.'''
+
+def format_day(input_day):
+
+    '''Take the input_day in the form 'lun', 'mar', 'mer'..... and return
+       the corresponding date in the format dd/mm.'''
+
+    weekdays = {'lun': 0,
+                'mar': 1,
+                'mer': 2,
+                'gio': 3,
+                'ven': 4,
+                'sab': 5,
+                'dom': 6}
+
+    today_date = datetime.date.today()
+    today_weekday = datetime.date.today().weekday()
+
+    days_shift = weekdays[input_day] - today_weekday
+    if days_shift < 0:
+        days_shift += 7
+    new_date = today_date + datetime.timedelta(days=days_shift)
+    new_day = str(new_date).split('-')[2]
+    new_month = str(new_date).split('-')[1]
+
+    return '{}/{}'.format(new_day, new_month)
+
+
+def quotes_by_league(browser, date):
+
+    '''Insert the quotes of the singles matches into the td.'''
+
     all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
     wait_visible(browser, 20, all_days)
     all_tables = browser.find_elements_by_xpath(all_days)
+
+    new_message = ''
 
     for table in all_tables:
 
@@ -657,32 +690,48 @@ def go_to_league_bets(browser):
             './/tbody/tr[contains(@class,"ng-scope")]')
 
         for match in all_matches:
-            browser.implicitly_wait(5)
-            match_text = match.find_element_by_xpath(
-                './/td[contains(@colspan,"1")]/a/strong').text
             match_all_text = match.text
-            match_data, match_teams, quote1, quoteX, quote2, other = match_all_text.split("\n",5)
-            if match_data[0:5] == "19/11":
-                print (match_data)
-                print (match_teams)
-                print (quote1)
-                print (quoteX)
-                print (quote2)
-            match_box = match.find_element_by_xpath(
-                    './/td[contains(@colspan,"1")]/a')
+            match_date, match_teams = match_all_text.split('\n')[0:2]
+            team1 = match_teams.split(' - ')[0][:3]
+            team2 = match_teams.split(' - ')[1][:3]
+            match_teams = '{} - {}'.format(team1, team2)
+            quote1, quoteX, quote2 = match_all_text.split('\n')[2:5]
+#            quoteUnder, quoteOver = match_all_text.split('\n')[5:7]
+#            quoteGoal, quoteNogoal = match_all_text.split('\n')[7:9]
+            if match_date.split(' ')[0] == date:
+                new_line = '{}      {}                {}    {}    {}\n'.format(
+                        match_date.split(' ')[1], match_teams, quote1, quoteX,
+                        quote2)
 
-            scroll_to_element(browser, 'false', match_box)
+                new_message += new_line
 
-    return
+    return new_message
 
-def show_all_match_for_day():
-    browser = go_to_lottomatica(1)
-    for country, value in countries.items():
-        find_country_button(browser, country, 2)
-        find_league_button(browser, country)
-        browser.implicitly_wait(5)
-        go_to_league_bets(browser)
-        #click again to return to initial condition
-        find_country_button(browser, country, 2)
-        browser.implicitly_wait(5)
-    return
+
+def fill_db_with_quotes(input_day):
+
+    '''Call the function "quotes_by_league" for all the leagues present in the
+       dict "countries" to fully update the db.'''
+
+    message = ''
+
+    date = format_day(input_day)
+    browser = go_to_lottomatica(0)
+
+    for league in countries:
+        find_country_button(browser, league, 0)
+        find_league_button(browser, league)
+        time.sleep(3)
+        new_message = quotes_by_league(browser, date)
+        find_country_button(browser, league, 0)
+
+        if new_message:
+            message += '\n\n{}\n'.format(league)
+            message += new_message
+
+    browser.quit()
+
+    return message
+
+
+#fill_db_with_quotes('ven')
