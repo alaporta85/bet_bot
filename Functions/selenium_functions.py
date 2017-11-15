@@ -709,7 +709,7 @@ def quotes_by_league(browser, date):
 #            quoteUnder, quoteOver = match_all_text.split('\n')[5:7]
 #            quoteGoal, quoteNogoal = match_all_text.split('\n')[7:9]
             if match_date.split(' ')[0] == date:
-                new_line = '{}      {}                {}    {}    {}\n'.format(
+                new_line = '{}   {}    {}   {}   {}\n'.format(
                         match_date.split(' ')[1], match_teams, quote1, quoteX,
                         quote2)
 
