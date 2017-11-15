@@ -114,6 +114,8 @@ def aver_quote():
     plt.savefig('aver_quote.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
 
+#aver_quote()
+
 
 def records():
 

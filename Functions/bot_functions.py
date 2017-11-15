@@ -242,7 +242,7 @@ def update_tables_and_ref_list(db, c, first_name, date, bet_id):
     if not bet_id:
 
         # If not, we create it and update 'matches' table
-        c.execute('''INSERT INTO bets (ddmmyy, status, result) VALUES (?, ?, ?)
+        c.execute('''INSERT INTO bets (yymmdd, status, result) VALUES (?, ?, ?)
                   ''', (date, 'Pending', 'Unknown'))
 
         last_id = c.lastrowid

@@ -337,9 +337,13 @@ def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
 
             for match in all_matches:
 
+                date_time = match.find_element_by_xpath(
+                        './/td[@class="ng-binding"]').text
+                date_match = date_time.split(' ')[0]
+                time_match = date_time.split(' ')[1]
+
                 match_text = match.find_element_by_xpath(
                         './/td[contains(@colspan,"1")]/a/strong').text
-
                 team1 = match_text.split(' - ')[0]
                 team2 = match_text.split(' - ')[1]
 
@@ -372,7 +376,7 @@ def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
             browser.quit()
             raise ConnectionError(conn_err_message)
 
-    return team1, team2
+    return team1, team2, date_match, time_match
 
 
 def go_to_all_bets(browser, input_team):
@@ -415,14 +419,15 @@ def go_to_all_bets(browser, input_team):
 
         find_league_button(browser, league)
 
-        team1, team2 = click_match_button(browser, team, LIMIT_MATCH_BUTTON)
+        team1, team2, date_match, time_match = click_match_button(
+                browser, team, LIMIT_MATCH_BUTTON)
 
     else:
         browser.quit()
         raise SyntaxError('{}: Team not valid or competition '
                           .format(input_team) + 'not allowed.')
 
-    return team1, team2, league
+    return team1, team2, league, date_match, time_match
 
 
 def find_all_panels(browser):
@@ -578,14 +583,16 @@ def look_for_quote(text):
 
         field, bet = text_short(browser, input_bet)
 
-        team1, team2, league = go_to_all_bets(browser, input_team)
+        team1, team2, league, date_match, time_match = go_to_all_bets(
+                browser, input_team)
 
         quote = get_quote(browser, field, bet, LIMIT_GET_QUOTE)
 
         current_url = browser.current_url
         browser.quit()
 
-        return league, team1, team2, bet, quote, field, current_url
+        return (league, team1, team2, bet, quote, field, current_url,
+                date_match, time_match)
 
     except ConnectionError as e:
         raise ConnectionError(str(e))
@@ -732,6 +739,3 @@ def fill_db_with_quotes(input_day):
     browser.quit()
 
     return message
-
-
-#fill_db_with_quotes('ven')

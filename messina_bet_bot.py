@@ -1,6 +1,5 @@
 import os
 import time
-import datetime
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from selenium import webdriver
@@ -28,16 +27,6 @@ def nickname(name):
                  'Gabriele': 'Nano'}
 
     return nicknames[name]
-
-
-def todays_date():
-
-    date = str(datetime.date.today())
-    date = '{}/{}/{}'.format(date.split('-')[2],
-                             date.split('-')[1],
-                             date.split('-')[0])
-
-    return date
 
 
 def handle_play_conn_err(browser, team1, team2):
@@ -123,7 +112,8 @@ def quote(bot, update, args):
     first_name = nickname(update.message.from_user.first_name)
 
     # Today's date
-    date = todays_date()
+    date = dbf.todays_date()
+    year = date[0][:5]
 
     db, c = dbf.start_db()
 
@@ -152,19 +142,24 @@ def quote(bot, update, args):
 
     try:
 
-        league, team1, team2, bet, bet_quote, field, url = (
-                sf.look_for_quote(guess))
+        (league, team1, team2, bet, bet_quote,
+         field, url, date_match, time_match) = sf.look_for_quote(guess)
 
         if (not confirmed_matches
            or (team1, team2, league) not in confirmed_matches):
 
+            date_match = (year + date_match.split('/')[1] + '/' +
+                          date_match.split('/')[0])
+
             # Update table
-            c.execute('''INSERT INTO matches (url, user, ddmmyy, league, team1,
-                                              team2, raw_bet, field, bet,
-                                              quote, status)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                      (url, first_name, date, league, team1, team2, raw_bet,
-                       field, bet, bet_quote, 'Not Confirmed'))
+            c.execute('''INSERT INTO matches (url, user, yymmdd_command,
+                                              yymmdd_match, hhmm, league,
+                                              team1, team2, raw_bet, field,
+                                              bet, quote, status)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (url, first_name, date[0], date_match, time_match,
+                       league, team1, team2, raw_bet, field, bet, bet_quote,
+                       'Not Confirmed'))
 
             db.commit()
             db.close()
@@ -198,7 +193,7 @@ def confirm(bot, update):
        the "matches" table.'''
 
     first_name = nickname(update.message.from_user.first_name)
-    date = todays_date()
+    date = dbf.todays_date()[0]
 
     db, c = dbf.start_db()
 
@@ -308,6 +303,23 @@ def play_bet(bot, update, args):
     if not bet_id:
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='No bets to play.')
+
+    # Check whether there are matches already started
+    invalid_bets = dbf.check_before_play(db, c)
+    if invalid_bets:
+        message = '{}, {} - {} was scheduled on {} at {}. Too late.'
+        for x in range(len(invalid_bets)):
+            bet = invalid_bets[x]
+            if x < len(invalid_bets) - 1:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text=message.format(bet[0], bet[1], bet[2],
+                                                     bet[3], bet[4]))
+            else:
+                db.close()
+                return bot.send_message(chat_id=update.message.chat_id,
+                                        text=message.format(bet[0], bet[1],
+                                                            bet[2], bet[3],
+                                                            bet[4]))
 
     # This message will be updated during the process to keep track of all
     # the steps
@@ -458,7 +470,7 @@ def update_results(bot, update):
     LIMIT_4 = 0
 
     db, c = dbf.start_db()
-    ref_list = list(c.execute('''SELECT bets_id, ddmmyy FROM bets WHERE
+    ref_list = list(c.execute('''SELECT bets_id, yymmdd FROM bets WHERE
                               status = "Placed" AND result = "Unknown" '''))
     db.close()
 
