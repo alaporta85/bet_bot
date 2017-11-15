@@ -26,7 +26,6 @@ conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
 chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
-#chrome_path = 'chromedriver'
 
 
 def wait_clickable(browser, seconds, element):
@@ -667,6 +666,10 @@ def format_day(input_day):
                 'ven': 4,
                 'sab': 5,
                 'dom': 6}
+
+    if input_day not in weekdays:
+        raise SyntaxError('Not a valid day. Options are: lun, mar, mer, ' +
+                          'gio, ven, sab, dom.')
 
     today_date = datetime.date.today()
     today_weekday = datetime.date.today().weekday()

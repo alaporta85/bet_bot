@@ -260,7 +260,7 @@ def create_series(c, name, series_pos, series_neg):
     '''Fill the dicts series_pos and series_neg with the elements representing
        the series for each player.'''
 
-    ref_list = list(c.execute('''SELECT ddmmyy, label FROM matches WHERE
+    ref_list = list(c.execute('''SELECT yymmdd_match, label FROM matches WHERE
                               user = ? ''', (name,)))
 
     count_pos = 0
