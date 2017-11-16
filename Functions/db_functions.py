@@ -21,9 +21,10 @@ def todays_date():
 
 def start_db():
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('bet_bot_db')
+#    db = sqlite3.connect('prova')
     c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
+#    c.execute("PRAGMA foreign_keys = ON")
 
     return db, c
 
