@@ -76,7 +76,7 @@ def go_to_lottomatica(LIMIT_1):
 
     try:
         browser = webdriver.Chrome(chrome_path)
-        time.sleep(3)
+        time.sleep(5)
         browser.set_window_size(1400, 800)
         browser.get(url)
 
@@ -158,7 +158,7 @@ def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
         if LIMIT_COUNTRY_BUTTON < 3:
             print('recursive country button')
             browser.get(current_url)
-            time.sleep(3)
+            time.sleep(10)
             click_calcio_button(browser)
             find_country_button(browser, league, LIMIT_COUNTRY_BUTTON)
         else:
@@ -369,7 +369,7 @@ def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
         if LIMIT_MATCH_BUTTON < 3:
             print('recursive match button')
             browser.get(current_url)
-            time.sleep(3)
+            time.sleep(10)
             click_match_button(browser, team, LIMIT_MATCH_BUTTON)
         else:
             browser.quit()
@@ -524,7 +524,7 @@ def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no'):
         if LIMIT_GET_QUOTE < 3:
             print('recursive get quote')
             browser.get(current_url)
-            time.sleep(3)
+            time.sleep(10)
             get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no')
         else:
             browser.quit()
