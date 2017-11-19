@@ -1,6 +1,7 @@
 import time
 import datetime
 import pickle
+import os
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
@@ -24,8 +25,9 @@ countries = {'SERIE A': 'ITALIA',
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
-
-chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
+absolute_path = os.getcwd()
+chrome_path = absolute_path + '/chromedriver'
+#chrome_path = '/Users/fabriziocatalano/Desktop/chromedriver'
 
 
 def wait_clickable(browser, seconds, element):

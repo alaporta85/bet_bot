@@ -426,7 +426,7 @@ def play_bet(bot, update, args):
         for element in button_list:
             if element.is_displayed():
                 print(element.text)
-###                    element.click()
+                element.click()
                 db, c = dbf.start_db()
                 c.execute('''UPDATE bets SET euros = ?, prize = ?,
                           status = ? WHERE status = ?''',
@@ -457,7 +457,7 @@ def play_bet(bot, update, args):
                          text=('Something went wrong, try again the' +
                                ' command /play.'))
 
-    browser.quit()
+#    browser.quit()
 
 
 def update_results(bot, update):
