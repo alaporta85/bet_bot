@@ -136,9 +136,12 @@ def quote(bot, update, args):
                                        status = "Confirmed"
                                        AND bets_id = ?''', (bet_id,)))
 
-    bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
-
     raw_bet = guess.split('_')[1]
+    if raw_bet[0] == ' ':
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='Remove blank space before bet.')
+
+    bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
 
     try:
 

@@ -200,56 +200,63 @@ def get_field(browser, bet):
            - This function take the input and return the one which will be
            recognized by the webpage, in our case 'GOAL/NOGOAL + U/O 2,5'.'''
 
-    if ('+' in bet and ('UNDER' in bet or 'OVER' in bet) and
-       ('NG' in bet or 'GG' in bet)):
-        value = bet.split(' ')[3].replace('.', ',')
-        if ',' not in value:
+    try:
+        if ('+' in bet and ('UNDER' in bet or 'OVER' in bet) and
+           ('NG' in bet or 'GG' in bet)):
+            value = bet.split(' ')[3].replace('.', ',')
+            if ',' not in value:
+                value = bet.split(' ')[1].replace('.', ',')
+            if value != '2,5':
+                browser.quit()
+                raise SyntaxError(bet + ': Bet not valid.')
+            else:
+                return 'GOAL/NOGOAL + U/O 2,5'
+        
+        elif '/' in bet:
+            return 'ESITO 1 TEMPO/FINALE'
+    
+        elif ('+' in bet and ('UNDER' in bet or 'OVER' in bet) and
+              ('1X' in bet or 'X2' in bet or '12' in bet)):
+            value = bet.split(' ')[3].replace(',', '.')
+            return 'DOPPIA CHANCE + UNDER/OVER {}'.format(value)
+    
+        elif '+' in bet and ('UNDER' in bet or 'OVER' in bet):
+            value = bet.split(' ')[3].replace('.', ',')
+            if value in '1X2':
+                value = bet.split(' ')[1].replace('.', ',')
+            return 'ESITO FINALE 1X2 + U/O {}'.format(value)
+    
+        elif '+' in bet and ('NG' in bet or 'GG' in bet):
+            return 'ESITO FINALE 1X2 + GOAL/NOGOAL'
+    
+        elif bet in '1X2':
+            return 'ESITO FINALE 1X2'
+    
+        elif 'H' in bet:
+            return 'ESITO FINALE 1X2 HANDICAP'
+    
+        elif 'NG' in bet or 'GG' in bet:
+            return 'GOAL/NO GOAL'
+    
+        elif ('UNDER' in bet or 'OVER' in bet) and 'PT' in bet:
             value = bet.split(' ')[1].replace('.', ',')
-        if value != '2,5':
+            return 'UNDER/OVER {} PRIMO TEMPO'.format(value)
+    
+        elif ('UNDER' in bet or 'OVER' in bet) and 'ST' in bet:
+            value = bet.split(' ')[1].replace('.', ',')
+            return 'UNDER/OVER {} SECONDO TEMPO'.format(value)
+    
+        elif 'UNDER' in bet or 'OVER' in bet:
+            value = bet.split(' ')[1].replace('.', ',')
+            return 'UNDER / OVER {}'.format(value)
+    
+        elif 'PT' in bet:
+            return 'ESITO 1 TEMPO 1X2'
+    
+        else:
             browser.quit()
             raise SyntaxError(bet + ': Bet not valid.')
-        else:
-            return 'GOAL/NOGOAL + U/O 2,5'
-
-    elif ('+' in bet and ('UNDER' in bet or 'OVER' in bet) and
-          ('1X' in bet or 'X2' in bet or '12' in bet)):
-        value = bet.split(' ')[3].replace(',', '.')
-        return 'DOPPIA CHANCE + UNDER/OVER {}'.format(value)
-
-    elif '+' in bet and ('UNDER' in bet or 'OVER' in bet):
-        value = bet.split(' ')[3].replace('.', ',')
-        if value in '1X2':
-            value = bet.split(' ')[1].replace('.', ',')
-        return 'ESITO FINALE 1X2 + U/O {}'.format(value)
-
-    elif '+' in bet and ('NG' in bet or 'GG' in bet):
-        return 'ESITO FINALE 1X2 + GOAL/NOGOAL'
-
-    elif bet in '1X2':
-        return 'ESITO FINALE 1X2'
-
-    elif 'H' in bet:
-        return 'ESITO FINALE 1X2 HANDICAP'
-
-    elif 'NG' in bet or 'GG' in bet:
-        return 'GOAL/NO GOAL'
-
-    elif ('UNDER' in bet or 'OVER' in bet) and 'PT' in bet:
-        value = bet.split(' ')[1].replace('.', ',')
-        return 'UNDER/OVER {} PRIMO TEMPO'.format(value)
-
-    elif ('UNDER' in bet or 'OVER' in bet) and 'ST' in bet:
-        value = bet.split(' ')[1].replace('.', ',')
-        return 'UNDER/OVER {} SECONDO TEMPO'.format(value)
-
-    elif 'UNDER' in bet or 'OVER' in bet:
-        value = bet.split(' ')[1].replace('.', ',')
-        return 'UNDER / OVER {}'.format(value)
-
-    elif 'PT' in bet:
-        return 'ESITO 1 TEMPO 1X2'
-
-    else:
+    except IndexError:
         browser.quit()
         raise SyntaxError(bet + ': Bet not valid.')
 
@@ -304,6 +311,9 @@ def format_bet(field, bet):
 
     elif 'UNDER / OVER' in field:
         return bet.split(' ')[0]
+
+    elif field == 'ESITO 1 TEMPO/FINALE':
+        return bet.replace('/', '-')
 
 
 def right_team(team_input, team_lottom):
