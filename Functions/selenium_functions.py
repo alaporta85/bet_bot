@@ -9,15 +9,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 #from Functions import logging as log
+#from Functions import db_functions as dbf
+import db_functions as dbf
 import pandas as pd
 
 
 countries = {'SERIE A': 'ITALIA',
-#             'SERIE B': 'ITALIA',
-             'PREMIER LEAGUE': 'INGHILTERRA',
-             'PRIMERA DIVISION': 'SPAGNA',
-             'BUNDESLIGA': 'GERMANIA',
-             'LIGUE 1': 'FRANCIA',
+             'SERIE B': 'ITALIA',
+#             'PREMIER LEAGUE': 'INGHILTERRA',
+#             'PRIMERA DIVISION': 'SPAGNA',
+#             'BUNDESLIGA': 'GERMANIA',
+#             'LIGUE 1': 'FRANCIA',
 #             'EREDIVISIE': 'OLANDA',
 #             'CHAMPIONS LEAGUE': 'EUROPA'
              }
@@ -151,16 +153,14 @@ def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
         wait_clickable(browser, 20, countries_container)
         all_countries = browser.find_elements_by_xpath(
                 countries_container + '/li')
-        LIMIT_COUNTRY_BUTTON = 0
 
     except TimeoutException:
-        LIMIT_COUNTRY_BUTTON += 1
-        if LIMIT_COUNTRY_BUTTON < 3:
+        if LIMIT_COUNTRY_BUTTON < 2:
             print('recursive country button')
             browser.get(current_url)
             time.sleep(3)
             click_calcio_button(browser)
-            find_country_button(browser, league, LIMIT_COUNTRY_BUTTON)
+            find_country_button(browser, league, LIMIT_COUNTRY_BUTTON + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -317,12 +317,11 @@ def right_team(team_input, team_lottom):
         return False
 
 
-def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
+def click_match_button(browser, count, LIMIT_MATCH_BUTTON):
 
     '''Find the match realtive to the team and select it.'''
 
     current_url = browser.current_url
-    result = False
 
     try:
         all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
@@ -335,7 +334,7 @@ def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
                     './/tbody/tr[contains(@class,"ng-scope")]')
 
             for match in all_matches:
-
+                
                 date_time = match.find_element_by_xpath(
                         './/td[@class="ng-binding"]').text
                 date_match = date_time.split(' ')[0]
@@ -346,21 +345,16 @@ def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
                 team1 = match_text.split(' - ')[0]
                 team2 = match_text.split(' - ')[1]
 
-                if (team == team1 or team == team2
-                   or team in team1 or team in team2
-                   or team1 in team or team2 in team):
+                match_box = match.find_element_by_xpath(
+                        './/td[contains(@colspan,"1")]/a')
 
-                    match_box = match.find_element_by_xpath(
-                            './/td[contains(@colspan,"1")]/a')
+                scroll_to_element(browser, 'false', match_box)
 
-                    scroll_to_element(browser, 'false', match_box)
-
-                    simulate_hover_and_click(browser, match_box)
-                    result = True
-                    LIMIT_MATCH_BUTTON = 0
-                    break
-            if result:
-                break
+                simulate_hover_and_click(browser, match_box)
+                LIMIT_MATCH_BUTTON = 0
+                time.sleep(5)
+                browser.get(current_url)
+                time.sleep(5)
 
     except TimeoutException:
 
@@ -370,12 +364,12 @@ def click_match_button(browser, team, LIMIT_MATCH_BUTTON):
             print('recursive match button')
             browser.get(current_url)
             time.sleep(3)
-            click_match_button(browser, team, LIMIT_MATCH_BUTTON)
+            click_match_button(browser, LIMIT_MATCH_BUTTON)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
 
-    return team1, team2, date_match, time_match
+    return team1, team2, date_match, time_match, current_url
 
 
 def go_to_all_bets(browser, input_team):
@@ -684,61 +678,126 @@ def format_day(input_day):
     return '{}/{}'.format(new_day, new_month)
 
 
-def quotes_by_league(browser, date):
+def scan_league(browser, db, c, league, league_id, table_count, match_count,
+                all_fields, LIMIT_MATCH_BUTTON):
 
     '''Insert the quotes of the singles matches into the td.'''
+    
+    find_country_button(browser, league, 0)
+    find_league_button(browser, league)
+    time.sleep(3)
+    
+    current_url = browser.current_url
 
-    all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-    wait_visible(browser, 20, all_days)
-    all_tables = browser.find_elements_by_xpath(all_days)
+    try:
+        all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
+        wait_visible(browser, 20, all_days)
+        all_tables = browser.find_elements_by_xpath(all_days)
+        
+        for table in all_tables:
+            if all_tables.index(table) == table_count:
 
-    new_message = ''
+                all_matches = table.find_elements_by_xpath(
+                        './/tbody/tr[contains(@class,"ng-scope")]')
+    
+                try:
+                    match = all_matches[match_count]
+                except IndexError:
+                    table_count += 1
+                    match_count = 0
+                    continue
+                        
+                date_time = match.find_element_by_xpath(
+                        './/td[@class="ng-binding"]').text
+                match_date = date_time.split(' ')[0]
+                current_month = str(datetime.date.today()).split('-')[1]
+                year = str(datetime.date.today()).split('-')[0]
+                match_month = match_date.split('/')[1]
+                if current_month == '12' and match_month == '01':
+                    match_date = int(str(int(year) + 1) +
+                                     match_date.split('/')[1] +
+                                     match_date.split('/')[0])
+                else:
+                    match_date = int(year +
+                                     match_date.split('/')[1] +
+                                     match_date.split('/')[0])
+                    
+                match_time = int(date_time.split(' ')[1].replace(':', ''))
+    
+                match_text = match.find_element_by_xpath(
+                        './/td[contains(@colspan,"1")]/a/strong').text
+                
+                if all_matches.index(match) == match_count:
+                    team1 = match_text.split(' - ')[0]
+                    team2 = match_text.split(' - ')[1]
+    
+                    match_box = match.find_element_by_xpath(
+                            './/td[contains(@colspan,"1")]/a')
+    
+                    scroll_to_element(browser, 'false', match_box)
+    
+                    simulate_hover_and_click(browser, match_box)
+                    time.sleep(5)
+                    match_url = browser.current_url
+                    c.execute('''INSERT INTO matches (match_league,
+                                                      match_team1,
+                                                      match_team2,
+                                                      match_date,
+                                                      match_time,
+                                                      match_url)
+                    VALUES (?, ?, ?, ?, ?, ?)''', (league_id, team1, team2,
+                                                   match_date, match_time,
+                                                   match_url))
+                    
+                    find_country_button(browser, league, 0)
+                    return scan_league(browser, db, c, league, league_id, table_count,
+                                match_count + 1, all_fields,
+                                LIMIT_MATCH_BUTTON)
 
-    for table in all_tables:
+    except TimeoutException:
 
-        all_matches = table.find_elements_by_xpath(
-            './/tbody/tr[contains(@class,"ng-scope")]')
-
-        for match in all_matches:
-            match_all_text = match.text
-            match_date, match_teams = match_all_text.split('\n')[0:2]
-            team1 = match_teams.split(' - ')[0][:3]
-            team2 = match_teams.split(' - ')[1][:3]
-            match_teams = '{} - {}'.format(team1, team2)
-            quote1, quoteX, quote2 = match_all_text.split('\n')[2:5]
-#            quoteUnder, quoteOver = match_all_text.split('\n')[5:7]
-#            quoteGoal, quoteNogoal = match_all_text.split('\n')[7:9]
-            if match_date.split(' ')[0] == date:
-                new_line = '{}   {}    {}   {}   {}\n'.format(
-                        match_date.split(' ')[1], match_teams, quote1, quoteX,
-                        quote2)
-
-                new_message += new_line
-
-    return new_message
+        if LIMIT_MATCH_BUTTON < 3:
+            print('recursive match button')
+            browser.get(current_url)
+            time.sleep(3)
+            scan_league(browser, db, c, league, league_id, table_count, match_count,
+                        all_fields, LIMIT_MATCH_BUTTON + 1)
+        else:
+            browser.quit()
+            raise ConnectionError(conn_err_message)
 
 
-def fill_db_with_quotes(input_day):
+def fill_db_with_quotes():
 
     '''Call the function "quotes_by_league" for all the leagues present in the
        dict "countries" to fully update the db.'''
 
-    message = ''
-
-    date = format_day(input_day)
     browser = go_to_lottomatica(0)
+    dbf.empty_table('matches')
+    dbf.empty_table('quotes')
+    db, c = dbf.start_db()
+    
+    all_leagues = [league for league in countries]
 
-    for league in countries:
-        find_country_button(browser, league, 0)
-        find_league_button(browser, league)
-        time.sleep(3)
-        new_message = quotes_by_league(browser, date)
-        find_country_button(browser, league, 0)
+    all_fields = list(c.execute('''SELECT field_name FROM fields'''))
+    all_fields = [element[0] for element in all_fields]
 
-        if new_message:
-            message += '\n\n{}\n'.format(league)
-            message += new_message
+    for league in all_leagues:
 
+        if all_leagues.index(league) > 0:
+            last_league = all_leagues[all_leagues.index(league) - 1]
+            find_country_button(browser, last_league, 0)
+            
+        table_count = 0
+        match_count = 0
+        league_id = c.execute('''SELECT league_id FROM leagues WHERE
+                              league_name = ? ''', (league,))
+        league_id = c.fetchone()[0]
+        scan_league(browser, db, c, league, league_id, table_count,
+                    match_count, all_fields, 0)
+    db.commit()
+    db.close()
     browser.quit()
 
-    return message
+
+fill_db_with_quotes()
