@@ -16,12 +16,12 @@ import pandas as pd
 
 countries = {'SERIE A': 'ITALIA',
              'SERIE B': 'ITALIA',
-#             'PREMIER LEAGUE': 'INGHILTERRA',
-#             'PRIMERA DIVISION': 'SPAGNA',
-#             'BUNDESLIGA': 'GERMANIA',
-#             'LIGUE 1': 'FRANCIA',
-#             'EREDIVISIE': 'OLANDA',
-#             'CHAMPIONS LEAGUE': 'EUROPA'
+             'PREMIER LEAGUE': 'INGHILTERRA',
+             'PRIMERA DIVISION': 'SPAGNA',
+             'BUNDESLIGA': 'GERMANIA',
+             'LIGUE 1': 'FRANCIA',
+             'EREDIVISIE': 'OLANDA',
+             'CHAMPIONS LEAGUE': 'EUROPA'
              }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
@@ -686,6 +686,7 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
     find_country_button(browser, league, 0)
     find_league_button(browser, league)
     time.sleep(3)
+    count = 1
     
     current_url = browser.current_url
 
@@ -749,6 +750,56 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
                                                    match_date, match_time,
                                                    match_url))
                     
+                    last_id = c.lastrowid
+                    
+                    all_panels = find_all_panels(browser)
+
+                    for panel in all_panels:
+                        panel.click()
+                        field_elements = find_all_fields(browser)
+            
+                        for new_field in field_elements:
+                            field_name = new_field.find_element_by_xpath(
+                                    './/div[@class="text-left col ng-binding"]').text
+            
+                            if field_name in all_fields:
+                                all_bets = find_all_bets(browser, field_name, new_field)
+                                for new_bet in all_bets:
+                                    try:
+                                        bet_name = new_bet.find_element_by_xpath(
+                                                './/div[@class="sel-ls"]/a').text
+                                    except NoSuchElementException:
+                                        continue
+                                    
+                                    field_id = list(c.execute('''SELECT field_id from fields
+                                                         WHERE field_name = ? AND
+                                                         field_value = ? ''',
+                                                         (field_name, bet_name)))[0][0]
+                        
+                                    try:
+                                        bet_element_path = ('.//a[@ng-click="remCrt.' +
+                                                            'selectionClick(selection)"]')
+                
+                                        wait_clickable(browser, 20, bet_element_path)
+                                        bet_element = new_bet.find_element_by_xpath(
+                                                bet_element_path)
+                
+                                        bet_quote = float(bet_element.text)
+                                        
+                                        c.execute('''INSERT INTO quotes (quote_match,
+                                                                          quote_field,
+                                                                          quote_value)
+                                        VALUES (?, ?, ?)''', (last_id, field_id, bet_quote))
+                                        db.commit()
+                                        count += 1
+                                    except NoSuchElementException:
+                                        c.execute('''INSERT INTO quotes (quote_match,
+                                                                         quote_field,
+                                                                         quote_value) VALUES
+                                                            (?, ?, ?)''', (last_id, field_id,
+                                                                           'LOCKED'))
+                                        db.commit()
+                    
                     find_country_button(browser, league, 0)
                     return scan_league(browser, db, c, league, league_id, table_count,
                                 match_count + 1, all_fields,
@@ -773,8 +824,8 @@ def fill_db_with_quotes():
        dict "countries" to fully update the db.'''
 
     browser = go_to_lottomatica(0)
-    dbf.empty_table('matches')
     dbf.empty_table('quotes')
+    dbf.empty_table('matches')
     db, c = dbf.start_db()
     
     all_leagues = [league for league in countries]
@@ -795,7 +846,6 @@ def fill_db_with_quotes():
         league_id = c.fetchone()[0]
         scan_league(browser, db, c, league, league_id, table_count,
                     match_count, all_fields, 0)
-    db.commit()
     db.close()
     browser.quit()
 
