@@ -21,7 +21,7 @@ def perc_success():
     # Dict to store the WINNING number of bets played by each partecipant
     wins = {name: 0 for name in partecipants}
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('bet_bot_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
@@ -79,7 +79,7 @@ def aver_quote():
     total = {name: 0 for name in partecipants}
     quotes = {name: 0 for name in partecipants}
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('bet_bot_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
@@ -122,7 +122,7 @@ def records():
     '''Return two messages: one for the WINNING bet with the highest quote
        and one for the LOSING bet with the lowest quote.'''
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('bet_bot_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
@@ -194,7 +194,7 @@ def euros_lost_for_one_bet():
 
         return round(val/100*sum(euros), 1)
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('bet_bot_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
@@ -379,7 +379,7 @@ def series():
     series_pos = {name: [] for name in partecipants}
     series_neg = {name: [] for name in partecipants}
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('bet_bot_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 

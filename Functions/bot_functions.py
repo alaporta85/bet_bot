@@ -151,7 +151,8 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
 
         for ref_bet in ref_list:
             ref_id = ref_bet[0]
-            ref_date = ref_bet[1]
+            ref_date_yy_mm_dd = ref_bet[1]
+            ref_date_dd_mm_yy =  ref_date_yy_mm_dd[8:10] + "/" + ref_date_yy_mm_dd[5:7] + '/' + ref_date_yy_mm_dd[0:4]
 
             for bet in bets_list:
 
@@ -164,7 +165,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
                     date = bet.find_element_by_xpath(
                             './/td[@class="ng-binding"]').text[:10]
 
-                    if date == ref_date:
+                    if date == ref_date_dd_mm_yy:
 
                         bets_updated += 1
 

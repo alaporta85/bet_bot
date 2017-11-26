@@ -485,12 +485,7 @@ def update_results(bot, update):
     bot.send_message(chat_id=update.message.chat_id,
                      text='Updating database...')
 
-    url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
-           'scommesse-sportive.html')
-    browser = webdriver.Chrome(sf.chrome_path)
-    time.sleep(3)
-    browser.get(url)
-    time.sleep(3)
+    browser = sf.go_to_lottomatica(LIMIT_1)
 
     sf.login(browser)
     time.sleep(5)
