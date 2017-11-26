@@ -21,12 +21,12 @@ def perc_success():
     # Dict to store the WINNING number of bets played by each partecipant
     wins = {name: 0 for name in partecipants}
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('extended_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    all_bets_list = list(c.execute('''SELECT bets_id, user, label FROM
-                                   matches'''))
+    all_bets_list = list(c.execute('''SELECT pred_bet, pred_user, pred_label
+                                   FROM predictions'''))
     n_bets = all_bets_list[-1][0]
 
     db.close()
@@ -79,11 +79,12 @@ def aver_quote():
     total = {name: 0 for name in partecipants}
     quotes = {name: 0 for name in partecipants}
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('extended_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    all_bets_list = list(c.execute('''SELECT user, quote FROM matches'''))
+    all_bets_list = list(c.execute('''SELECT pred_user, pred_quote FROM
+                                   predictions'''))
     db.close()
 
     for bet in all_bets_list:
@@ -113,8 +114,6 @@ def aver_quote():
 
     plt.savefig('aver_quote.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
-
-#aver_quote()
 
 
 def records():

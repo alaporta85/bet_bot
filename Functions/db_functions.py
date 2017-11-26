@@ -117,22 +117,22 @@ def check_before_play(db, c):
     date, time = todays_date()
     date = int(date.replace('/', ''))
 
-    bets_id_list = list(c.execute('''SELECT bets_id FROM bets WHERE
-                                  status = "Pending" '''))
-    bets_id_list = [element[0] for element in bets_id_list]
+    bet_id_list = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                  bet_status = "Pending" '''))
+    bet_id_list = [element[0] for element in bet_id_list]
 
-    for bets_id in bets_id_list:
-        matches = list(c.execute('''SELECT matches_id, user, team1, team2,
-                                 yymmdd_match, hhmm FROM bets INNER JOIN
-                                 matches on matches.bets_id = bets.bets_id
-                                 WHERE bets.bets_id = ?''', (bets_id,)))
+    for bet_id in bet_id_list:
+        matches = list(c.execute('''SELECT pred_id, pred_user, pred_team1,
+                                 pred_team2, pred_date, pred_time FROM bets
+                                 INNER JOIN predictions on pred_bet = bet_id
+                                 WHERE bet_id = ?''', (bet_id,)))
 
     for match in matches:
-        match_date = int(match[4].replace('/', ''))
-        match_time = int(match[5].replace(':', ''))
+        match_date = match[4]
+        match_time = match[5]
         if match_date < date or (match_date == date and match_time < time):
             invalid_matches.append(match[1:])
-            c.execute('''DELETE FROM matches WHERE matches_id = ?''',
+            c.execute('''DELETE FROM predictions WHERE pred_id = ?''',
                       (match[0],))
             db.commit()
 

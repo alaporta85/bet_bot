@@ -28,13 +28,11 @@ def go_to_personal_area(browser, LIMIT_1):
 
     except (TimeoutException, ElementNotInteractableException):
 
-        LIMIT_1 += 1
-
         if LIMIT_1 < 3:
             print('recursive personal area')
             browser.get(current_url)
             time.sleep(3)
-            go_to_personal_area(browser, LIMIT_1)
+            go_to_personal_area(browser, LIMIT_1 + 1)
         else:
             raise ConnectionError('Unable to go to the section: ' +
                                   'AREA PERSONALE. Please try again.')
@@ -211,15 +209,16 @@ def check_still_to_confirm(db, c, first_name):
 
     # This a list of the users who have their bets in the status
     # 'Not Confirmed'
-    users_list = list(c.execute('''SELECT user FROM matches WHERE
-                                status = "Not Confirmed"'''))
+    users_list = list(c.execute('''SELECT pred_user FROM predictions WHERE
+                                pred_status = "Not Confirmed"'''))
     users_list = [element[0] for element in users_list]
 
     if first_name in users_list:
 
-        ref_list = list(c.execute('''SELECT team1, team2, field, bet, quote
-                                  FROM matches WHERE status = "Not Confirmed"
-                                  AND user = ?''', (first_name,)))
+        ref_list = list(c.execute('''SELECT pred_team1, pred_team2, pred_field,
+                                  pred_bet, pred_quote FROM predictions WHERE
+                                  pred_status = "Not Confirmed"
+                                  AND pred_user = ?''', (first_name,)))
         db.close()
 
         team1, team2, field, bet, bet_quote = ref_list[0]
@@ -237,46 +236,31 @@ def check_still_to_confirm(db, c, first_name):
         return False
 
 
-def update_tables_and_ref_list(db, c, first_name, date, bet_id):
+def update_tables_and_ref_list(db, c, first_name, bet_id):
 
     if not bet_id:
 
         # If not, we create it and update 'matches' table
-        c.execute('''INSERT INTO bets (yymmdd, status, result) VALUES (?, ?, ?)
-                  ''', (date, 'Pending', 'Unknown'))
+        c.execute('''INSERT INTO bets (bet_status, bet_result)
+        VALUES (?, ?)''', ('Pending', 'Unknown'))
 
-        last_id = c.lastrowid
+        bet_id = c.lastrowid
 
-        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
-                  WHERE user = ? AND status = "Not Confirmed"''',
-                  (last_id, first_name))
+    c.execute('''UPDATE predictions SET pred_bet = ?, pred_status = "Confirmed"
+              WHERE pred_user = ? AND pred_status = "Not Confirmed"''',
+              (bet_id, first_name))
 
-        db.commit()
+    # This is a list that we will take as reference. It contains a tuple
+    # with the 2 teams and the league chosen by the person who is
+    # confirming the bet. It will be used later to check whether there are
+    # others Not Confirmed bets of the same match
+    ref_list = list(c.execute('''SELECT pred_team1, pred_team2, pred_league
+                              FROM bets INNER JOIN predictions on
+                              predictions.pred_bet = bets.bet_id WHERE
+                              bets.bet_id = ? AND pred_user = ?''',
+                              (bet_id, first_name)))
 
-        # This is a list that we will take as reference. It contains a tuple
-        # with the 2 teams and the league chosen by the person who is
-        # confirming the bet. It will be used later to check whether there are
-        # others Not Confirmed bets of the same match
-        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
-                                  INNER JOIN matches on
-                                  matches.bets_id = bets.bets_id WHERE
-                                  bets.bets_id = ? AND user = ?''',
-                                  (last_id, first_name)))
-
-    else:
-
-        # If a Pending bet exists we just update the 'matches' table
-        c.execute('''UPDATE matches SET bets_id = ?, status = "Confirmed"
-                  WHERE user = ? AND status = "Not Confirmed"''',
-                  (bet_id, first_name))
-
-        db.commit()
-
-        ref_list = list(c.execute('''SELECT team1, team2, league FROM bets
-                                  INNER JOIN matches on
-                                  matches.bets_id = bets.bets_id WHERE
-                                  bets.bets_id = ? AND user = ?''',
-                                  (bet_id, first_name)))
+    db.commit()
 
     return ref_list
 
@@ -285,15 +269,15 @@ def check_if_duplicate(c, first_name, match, ref_list, not_confirmed_matches):
 
     message = ''
 
-    match_id = match[0]
+    pred_id = match[0]
     user = match[1]
     team1 = match[2]
     team2 = match[3]
     league = match[4]
 
     if (team1, team2, league) in ref_list:
-        c.execute('''DELETE FROM matches WHERE matches_id = ?''',
-                  (match_id,))
+        c.execute('''DELETE FROM predictions WHERE pred_id = ?''',
+                  (pred_id,))
         message = ('{}, your bet on the match '.format(user) +
                    '{} - {} has '.format(team1, team2) +
                    'been canceled because ' +
@@ -302,8 +286,7 @@ def check_if_duplicate(c, first_name, match, ref_list, not_confirmed_matches):
     return message
 
 
-def add_bet_to_basket(browser, match, count, LIMIT_COUNTRY, mess_id,
-                      dynamic_message,
+def add_bet_to_basket(browser, match, count, mess_id, dynamic_message,
                       matches_to_play):
 
     team1 = match[0]

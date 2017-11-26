@@ -29,18 +29,6 @@ def nickname(name):
     return nicknames[name]
 
 
-def handle_play_conn_err(browser, team1, team2):
-
-    '''Quit browser and return the error message in case of ConnectionError.
-       Used inside the play_bet function.'''
-
-    browser.quit()
-    message = ('Problems with the match {} - {}. '.format(team1, team2) +
-               'Possible reason: bad internet connection. Please try again.')
-
-    return message
-
-
 def played_bets(summary):
 
     '''Return bets played until that moment.'''
@@ -102,18 +90,22 @@ def quote(bot, update, args):
     if not args:
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Please insert the bet.')
-    elif '_' not in ''.join(args):
+
+    guess = ' '.join(args).upper()
+
+    if len(guess.split('_')) != 2:
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text=('Wrong format. Input text must ' +
+                                      'have the structure "team_bet".'))
+    elif '_' not in guess:
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Bet not valid. "_" is missing.')
-    elif ''.join(args)[0] == '_' or ''.join(args)[-1] == '_':
+    elif guess[0] == '_' or guess[-1] == '_':
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Wrong format.')
+
     # User sending the message
     first_name = nickname(update.message.from_user.first_name)
-
-    # Today's date
-    date = dbf.todays_date()
-    year = date[0][:5]
 
     db, c = dbf.start_db()
 
@@ -122,50 +114,44 @@ def quote(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id,
                                 text=warning_message)
 
-    guess = ' '.join(args).upper()
-    if len(guess.split('_')) != 2:
-        message = ('Wrong format. Input text must ' +
-                   'have the structure "team_bet".')
-        return bot.send_message(chat_id=update.message.chat_id, text=message)
-
     # Used to create the list confirmed_matches. This list will be used to
     # check whether a match has already been chosen
-    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
-    confirmed_matches = list(c.execute('''SELECT team1, team2, league
-                                       FROM matches WHERE
-                                       status = "Confirmed"
-                                       AND bets_id = ?''', (bet_id,)))
-
-    bot.send_message(chat_id=update.message.chat_id, text='Please wait...')
+    bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
+    confirmed_matches = list(c.execute('''SELECT pred_team1, pred_team2
+                                       FROM predictions WHERE
+                                       pred_status = "Confirmed"
+                                       AND pred_bet = ?''', (bet_id,)))
 
     raw_bet = guess.split('_')[1]
 
     try:
 
-        (league, team1, team2, bet, bet_quote,
-         field, url, date_match, time_match) = sf.look_for_quote(guess)
+        team1, team2, field_id, league_id, quote = sf.look_for_quote(guess)
 
         if (not confirmed_matches
-           or (team1, team2, league) not in confirmed_matches):
+           or (team1, team2) not in confirmed_matches):
 
-            date_match = (year + date_match.split('/')[1] + '/' +
-                          date_match.split('/')[0])
+            match_date, match_time = list(c.execute('''SELECT match_date,
+                                                    match_time FROM matches
+                                                    WHERE match_team1 = ? and
+                                                    match_team2 = ?''',
+                                                    (team1, team2)))[0]
 
             # Update table
-            c.execute('''INSERT INTO matches (url, user, yymmdd_command,
-                                              yymmdd_match, hhmm, league,
-                                              team1, team2, raw_bet, field,
-                                              bet, quote, status)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                      (url, first_name, date[0], date_match, time_match,
-                       league, team1, team2, raw_bet, field, bet, bet_quote,
-                       'Not Confirmed'))
+            c.execute('''INSERT INTO predictions (pred_user, pred_date,
+                                                  pred_time, pred_team1,
+                                                  pred_team2, pred_league,
+                                                  pred_field, pred_rawbet,
+                                                  pred_quote, pred_status)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                      (first_name, match_date, match_time, team1, team2,
+                       league_id, field_id, raw_bet, quote, 'Not Confirmed'))
 
             db.commit()
             db.close()
 
-            printed_bet = '{} - {} {} {} @{}'.format(team1, team2, field, bet,
-                                                     bet_quote)
+            printed_bet = '{} - {} {} @{}'.format(team1, team2, raw_bet,
+                                                  quote)
 
             bot.send_message(chat_id=update.message.chat_id,
                              text=('{}\n' + 'Use /confirm or /cancel to ' +
@@ -193,14 +179,13 @@ def confirm(bot, update):
        the "matches" table.'''
 
     first_name = nickname(update.message.from_user.first_name)
-    date = dbf.todays_date()[0]
 
     db, c = dbf.start_db()
 
     # This a list of the users who have their bets in the status
     # 'Not Confirmed'
-    users_list = list(c.execute('''SELECT user FROM matches WHERE
-                                status = "Not Confirmed"'''))
+    users_list = list(c.execute('''SELECT pred_user FROM predictions WHERE
+                                pred_status = "Not Confirmed"'''))
     users_list = [element[0] for element in users_list]
 
     if first_name not in users_list:
@@ -209,15 +194,16 @@ def confirm(bot, update):
                                 .format(first_name))
 
     # Check if there is any bet with status 'Pending' in the 'bets' table
-    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
+    bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
 
-    ref_list = bf.update_tables_and_ref_list(db, c, first_name, date, bet_id)
+    ref_list = bf.update_tables_and_ref_list(db, c, first_name, bet_id)
 
     # Now we delete all the bets of the same match which have not been
     # confirmed
-    not_confirmed_matches = list(c.execute('''SELECT matches_id, user, team1,
-                                           team2, league FROM matches WHERE
-                                           status = "Not Confirmed"'''))
+    not_confirmed_matches = list(c.execute('''SELECT pred_id, pred_user,
+                                           pred_team1, pred_team2, pred_league
+                                           FROM predictions WHERE
+                                           pred_status = "Not Confirmed" '''))
 
     for match in not_confirmed_matches:
         dupl_message = bf.check_if_duplicate(c, first_name, ref_list,
@@ -240,8 +226,8 @@ def cancel(bot, update):
     first_name = nickname(update.message.from_user.first_name)
     db, c = dbf.start_db()
 
-    users_list = list(c.execute('''SELECT user FROM matches WHERE
-                                status = "Not Confirmed"'''))
+    users_list = list(c.execute('''SELECT pred_user FROM predictions WHERE
+                                pred_status = "Not Confirmed"'''))
     users_list = [element[0] for element in users_list]
 
     if first_name not in users_list:
@@ -249,8 +235,8 @@ def cancel(bot, update):
                                 text='{}, you have no bet to cancel.'
                                 .format(first_name))
 
-    c.execute('''DELETE FROM matches WHERE user = ? AND
-              status = "Not Confirmed"''', (first_name,))
+    c.execute('''DELETE FROM predictions WHERE pred_user = ? AND
+              pred_status = "Not Confirmed"''', (first_name,))
 
     db.commit()
     db.close()
@@ -262,9 +248,6 @@ def play_bet(bot, update, args):
 
     '''Manage the login and play the bet. Args input is the amount of euros
        to bet.'''
-
-    LIMIT_COUNTRY = 0
-    LIMIT_1 = 0
 
     if not args:
         return bot.send_message(chat_id=update.message.chat_id, text=(
@@ -281,9 +264,9 @@ def play_bet(bot, update, args):
                                 text=message)
 
     db, c = dbf.start_db()
-    not_conf_list = list(c.execute('''SELECT user, team1, team2, field, bet
-                                   FROM matches WHERE
-                                   status = "Not Confirmed" '''))
+    not_conf_list = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
+                                   pred_field, pred_rawbet FROM predictions
+                                   WHERE pred_status = "Not Confirmed" '''))
     if not_conf_list:
         bot.send_message(chat_id=update.message.chat_id,
                          text='There are still Not Confirmed bets:')
@@ -299,7 +282,7 @@ def play_bet(bot, update, args):
                                       'then play again.'))
 
     # bet_id of the Pending bet
-    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
+    bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
     if not bet_id:
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='No bets to play.')
@@ -310,16 +293,21 @@ def play_bet(bot, update, args):
         message = '{}, {} - {} was scheduled on {} at {}. Too late.'
         for x in range(len(invalid_bets)):
             bet = invalid_bets[x]
+            date_to_print = (str(bet[3])[6:] + '/' + str(bet[3])[4:6] + '/' +
+                             str(bet[3])[:4])
+            time_to_print = str(bet[4])[:2] + ':' + str(bet[4])[2:]
             if x < len(invalid_bets) - 1:
                 bot.send_message(chat_id=update.message.chat_id,
                                  text=message.format(bet[0], bet[1], bet[2],
-                                                     bet[3], bet[4]))
+                                                     date_to_print,
+                                                     time_to_print))
             else:
                 db.close()
                 return bot.send_message(chat_id=update.message.chat_id,
                                         text=message.format(bet[0], bet[1],
-                                                            bet[2], bet[3],
-                                                            bet[4]))
+                                                            bet[2],
+                                                            date_to_print,
+                                                            time_to_print))
 
     # This message will be updated during the process to keep track of all
     # the steps
@@ -327,21 +315,20 @@ def play_bet(bot, update, args):
     sent = bot.send_message(chat_id=update.message.chat_id,
                             text=dynamic_message.format(0))
 
-    # Message_id will be used to update the message
+    # mess_id will be used to update the message
     mess_id = sent.message_id
 
-    matches_to_play = list(c.execute('''SELECT team1, team2, field, bet,
+    matches_to_play = list(c.execute('''SELECT pred_team1, pred_team2, pred_field, bet,
                                      url, league FROM bets INNER JOIN matches
                                      on matches.bets_id = bets.bets_id WHERE
                                      bets.bets_id = ?''', (bet_id,)))
 
     db.close()
-    browser = sf.go_to_lottomatica(LIMIT_1)
+    browser = sf.go_to_lottomatica(0)
     count = 0
     for match in matches_to_play:
         try:
             basket_message = bf.add_bet_to_basket(browser, match, count,
-                                                  LIMIT_COUNTRY,
                                                   mess_id, dynamic_message,
                                                   matches_to_play)
 
@@ -623,4 +610,4 @@ dispatcher.add_handler(match_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-updater.idle()
+#updater.idle()

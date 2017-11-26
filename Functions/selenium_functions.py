@@ -9,8 +9,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 #from Functions import logging as log
-#from Functions import db_functions as dbf
-import db_functions as dbf
+from Functions import db_functions as dbf
+#import db_functions as dbf
 import pandas as pd
 
 
@@ -88,12 +88,10 @@ def go_to_lottomatica(LIMIT_1):
 
     except TimeoutException:
 
-        LIMIT_1 += 1
-
         if LIMIT_1 < 3:
             print('recursive go_to_lottomatica')
             browser.quit()
-            go_to_lottomatica(LIMIT_1)
+            go_to_lottomatica(LIMIT_1 + 1)
         else:
             raise ConnectionError('Unable to reach Lottomatica webpage. ' +
                                   'Please try again.')
@@ -155,7 +153,7 @@ def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
                 countries_container + '/li')
 
     except TimeoutException:
-        if LIMIT_COUNTRY_BUTTON < 2:
+        if LIMIT_COUNTRY_BUTTON < 3:
             print('recursive country button')
             browser.get(current_url)
             time.sleep(3)
@@ -334,7 +332,7 @@ def click_match_button(browser, count, LIMIT_MATCH_BUTTON):
                     './/tbody/tr[contains(@class,"ng-scope")]')
 
             for match in all_matches:
-                
+
                 date_time = match.find_element_by_xpath(
                         './/td[@class="ng-binding"]').text
                 date_match = date_time.split(' ')[0]
@@ -358,13 +356,11 @@ def click_match_button(browser, count, LIMIT_MATCH_BUTTON):
 
     except TimeoutException:
 
-        LIMIT_MATCH_BUTTON += 1
-
         if LIMIT_MATCH_BUTTON < 3:
             print('recursive match button')
             browser.get(current_url)
             time.sleep(3)
-            click_match_button(browser, LIMIT_MATCH_BUTTON)
+            click_match_button(browser, LIMIT_MATCH_BUTTON + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -378,8 +374,6 @@ def go_to_all_bets(browser, input_team):
        to the match which the input team is playing.'''
 
     team = ''
-    LIMIT_COUNTRY_BUTTON = 0
-    LIMIT_MATCH_BUTTON = 0
 
     # Load the dict with leagues (keys) and countries (values)
     f = open('main_leagues_teams_lotto.pckl',
@@ -408,12 +402,12 @@ def go_to_all_bets(browser, input_team):
 
     if team:
 
-        find_country_button(browser, league, LIMIT_COUNTRY_BUTTON)
+        find_country_button(browser, league, 0)
 
         find_league_button(browser, league)
 
         team1, team2, date_match, time_match = click_match_button(
-                browser, team, LIMIT_MATCH_BUTTON)
+                browser, team, 0)
 
     else:
         browser.quit()
@@ -561,36 +555,49 @@ def login(browser):
 
 def look_for_quote(text):
 
-    LIMIT_1 = 0
-    LIMIT_GET_QUOTE = 0
-
     input_team = text.split('_')[0].upper()
     input_bet = text.split('_')[1].upper()
 
-#    if len(text.split('_')) != 2:
-#        raise SyntaxError('Wrong format. Input text must have the ' +
-#                          'structure "team_bet".')
+    db, c = dbf.start_db()
 
     try:
-        browser = go_to_lottomatica(LIMIT_1)
+        field_id = list(c.execute('''SELECT field_alias_field FROM fields_alias
+                                  WHERE field_alias_name = ? ''',
+                                  (input_bet,)))[0][0]
+    except IndexError:
+        raise SyntaxError('Bet not valid.')
 
-        field, bet = text_short(browser, input_bet)
+    try:
+        team_id = list(c.execute('''SELECT team_alias_team FROM teams_alias
+                                 WHERE team_alias_name = ? ''',
+                                 (input_team,)))[0][0]
+    except IndexError:
+        raise SyntaxError('Team not valid.')
 
-        team1, team2, league, date_match, time_match = go_to_all_bets(
-                browser, input_team)
+    team_name = list(c.execute('''SELECT team_name FROM teams
+                               WHERE team_id = ? ''',
+                               (team_id,)))[0][0]
 
-        quote = get_quote(browser, field, bet, LIMIT_GET_QUOTE)
+    league_id = list(c.execute('''SELECT team_league FROM teams
+                               WHERE team_name = ? ''',
+                               (team_name,)))[0][0]
 
-        current_url = browser.current_url
-        browser.quit()
+    team1, team2 = list(c.execute('''SELECT match_team1, match_team2 FROM
+                                  matches WHERE match_team1 = ? OR
+                                  match_team2 = ?''', (team_name,
+                                  team_name)))[0]
 
-        return (league, team1, team2, bet, quote, field, current_url,
-                date_match, time_match)
+    match_id = list(c.execute('''SELECT match_id FROM matches
+                              WHERE match_team1 = ? AND match_team2 = ?''',
+                              (team1, team2)))[0][0]
 
-    except ConnectionError as e:
-        raise ConnectionError(str(e))
-    except SyntaxError as e:
-        raise SyntaxError(str(e))
+    quote = list(c.execute('''SELECT quote_value FROM quotes
+                           WHERE quote_match = ? AND quote_field = ?''',
+                           (match_id, field_id)))[0][0]
+
+    db.close()
+
+    return team1, team2, field_id, league_id, quote
 
 
 def add_first_bet(browser, current_url, field, right_bet):
@@ -678,132 +685,154 @@ def format_day(input_day):
     return '{}/{}'.format(new_day, new_month)
 
 
+def update_matches_table(browser, c, table_count, match_count, league_id):
+
+    '''Extract all the data relative to a match and insert a new row in the
+       'matches' table.'''
+
+    all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
+    wait_visible(browser, 20, all_days)
+    all_tables = browser.find_elements_by_xpath(all_days)
+
+    for table in all_tables:
+        if all_tables.index(table) == table_count:
+
+            all_matches = table.find_elements_by_xpath(
+                    './/tbody/tr[contains(@class,"ng-scope")]')
+
+            # To check whether there is any match left in the current table.
+            # If not, an IndexError will be returned and it will switch to the
+            # following table
+            try:
+                match = all_matches[match_count]
+            except IndexError:
+                table_count += 1
+                match_count = 0
+                continue
+
+            date_time = match.find_element_by_xpath(
+                    './/td[@class="ng-binding"]').text
+            match_date = date_time.split(' ')[0]
+            current_month = str(datetime.date.today()).split('-')[1]
+            year = str(datetime.date.today()).split('-')[0]
+            match_month = match_date.split('/')[1]
+
+            # Handle the case when match is scheduled at beginning of January
+            # and command is executed at the end of December
+            if current_month == '12' and match_month == '01':
+                match_date = int(str(int(year) + 1) +
+                                 match_date.split('/')[1] +
+                                 match_date.split('/')[0])
+            else:
+                match_date = int(year +
+                                 match_date.split('/')[1] +
+                                 match_date.split('/')[0])
+
+            match_time = int(date_time.split(' ')[1].replace(':', ''))
+
+            match_text = match.find_element_by_xpath(
+                    './/td[contains(@colspan,"1")]/a/strong').text
+
+            if all_matches.index(match) == match_count:
+
+                team1 = match_text.split(' - ')[0]
+                team2 = match_text.split(' - ')[1]
+
+                match_box = match.find_element_by_xpath(
+                        './/td[contains(@colspan,"1")]/a')
+
+                scroll_to_element(browser, 'false', match_box)
+
+                simulate_hover_and_click(browser, match_box)
+                time.sleep(5)
+                match_url = browser.current_url
+                c.execute('''INSERT INTO matches (match_league, match_team1,
+                                                  match_team2, match_date,
+                                                  match_time, match_url)
+                VALUES (?, ?, ?, ?, ?, ?)''', (league_id, team1, team2,
+                                               match_date, match_time,
+                                               match_url))
+
+                last_id = c.lastrowid
+
+    return last_id
+
+
+def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
+
+    '''Extract all the quotes relative to a match and insert a new row in the
+       'quotes' table.'''
+
+    for new_field in field_elements:
+        field_name = new_field.find_element_by_xpath(
+                './/div[@class="text-left col ng-binding"]').text
+
+        if field_name in all_fields:
+            all_bets = find_all_bets(browser, field_name, new_field)
+
+            for new_bet in all_bets:
+                # Handle the case when the field space in the website has empty
+                # elements
+                try:
+                    bet_name = new_bet.find_element_by_xpath(
+                            './/div[@class="sel-ls"]/a').text
+                except NoSuchElementException:
+                    continue
+
+                field_id = list(c.execute('''SELECT field_id from fields WHERE
+                                          field_name = ? AND field_value = ?
+                                          ''', (field_name, bet_name)))[0][0]
+
+                # Handle the case when the bet is locked in the website
+                try:
+                    bet_element_path = ('.//a[@ng-click="remCrt.' +
+                                        'selectionClick(selection)"]')
+
+                    wait_clickable(browser, 20, bet_element_path)
+                    bet_element = new_bet.find_element_by_xpath(
+                            bet_element_path)
+
+                    bet_quote = float(bet_element.text)
+
+                    c.execute('''INSERT INTO quotes (quote_match, quote_field,
+                                                     quote_value)
+                    VALUES (?, ?, ?)''', (last_id, field_id, bet_quote))
+                    db.commit()
+
+                except NoSuchElementException:
+                    c.execute('''INSERT INTO quotes (quote_match, quote_field,
+                                                     quote_value)
+                    VALUES (?, ?, ?)''', (last_id, field_id, 'LOCKED'))
+                    db.commit()
+
+
 def scan_league(browser, db, c, league, league_id, table_count, match_count,
                 all_fields, LIMIT_MATCH_BUTTON):
 
-    '''Insert the quotes of the singles matches into the td.'''
-    
+    '''Update the tables 'matches' and 'quotes' of the db.'''
+
     find_country_button(browser, league, 0)
     find_league_button(browser, league)
     time.sleep(3)
-    count = 1
-    
+
     current_url = browser.current_url
 
     try:
-        all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-        wait_visible(browser, 20, all_days)
-        all_tables = browser.find_elements_by_xpath(all_days)
-        
-        for table in all_tables:
-            if all_tables.index(table) == table_count:
+        last_id = update_matches_table(browser, c, table_count, match_count,
+                                       league_id)
 
-                all_matches = table.find_elements_by_xpath(
-                        './/tbody/tr[contains(@class,"ng-scope")]')
-    
-                try:
-                    match = all_matches[match_count]
-                except IndexError:
-                    table_count += 1
-                    match_count = 0
-                    continue
-                        
-                date_time = match.find_element_by_xpath(
-                        './/td[@class="ng-binding"]').text
-                match_date = date_time.split(' ')[0]
-                current_month = str(datetime.date.today()).split('-')[1]
-                year = str(datetime.date.today()).split('-')[0]
-                match_month = match_date.split('/')[1]
-                if current_month == '12' and match_month == '01':
-                    match_date = int(str(int(year) + 1) +
-                                     match_date.split('/')[1] +
-                                     match_date.split('/')[0])
-                else:
-                    match_date = int(year +
-                                     match_date.split('/')[1] +
-                                     match_date.split('/')[0])
-                    
-                match_time = int(date_time.split(' ')[1].replace(':', ''))
-    
-                match_text = match.find_element_by_xpath(
-                        './/td[contains(@colspan,"1")]/a/strong').text
-                
-                if all_matches.index(match) == match_count:
-                    team1 = match_text.split(' - ')[0]
-                    team2 = match_text.split(' - ')[1]
-    
-                    match_box = match.find_element_by_xpath(
-                            './/td[contains(@colspan,"1")]/a')
-    
-                    scroll_to_element(browser, 'false', match_box)
-    
-                    simulate_hover_and_click(browser, match_box)
-                    time.sleep(5)
-                    match_url = browser.current_url
-                    c.execute('''INSERT INTO matches (match_league,
-                                                      match_team1,
-                                                      match_team2,
-                                                      match_date,
-                                                      match_time,
-                                                      match_url)
-                    VALUES (?, ?, ?, ?, ?, ?)''', (league_id, team1, team2,
-                                                   match_date, match_time,
-                                                   match_url))
-                    
-                    last_id = c.lastrowid
-                    
-                    all_panels = find_all_panels(browser)
+        all_panels = find_all_panels(browser)
 
-                    for panel in all_panels:
-                        panel.click()
-                        field_elements = find_all_fields(browser)
-            
-                        for new_field in field_elements:
-                            field_name = new_field.find_element_by_xpath(
-                                    './/div[@class="text-left col ng-binding"]').text
-            
-                            if field_name in all_fields:
-                                all_bets = find_all_bets(browser, field_name, new_field)
-                                for new_bet in all_bets:
-                                    try:
-                                        bet_name = new_bet.find_element_by_xpath(
-                                                './/div[@class="sel-ls"]/a').text
-                                    except NoSuchElementException:
-                                        continue
-                                    
-                                    field_id = list(c.execute('''SELECT field_id from fields
-                                                         WHERE field_name = ? AND
-                                                         field_value = ? ''',
-                                                         (field_name, bet_name)))[0][0]
-                        
-                                    try:
-                                        bet_element_path = ('.//a[@ng-click="remCrt.' +
-                                                            'selectionClick(selection)"]')
-                
-                                        wait_clickable(browser, 20, bet_element_path)
-                                        bet_element = new_bet.find_element_by_xpath(
-                                                bet_element_path)
-                
-                                        bet_quote = float(bet_element.text)
-                                        
-                                        c.execute('''INSERT INTO quotes (quote_match,
-                                                                          quote_field,
-                                                                          quote_value)
-                                        VALUES (?, ?, ?)''', (last_id, field_id, bet_quote))
-                                        db.commit()
-                                        count += 1
-                                    except NoSuchElementException:
-                                        c.execute('''INSERT INTO quotes (quote_match,
-                                                                         quote_field,
-                                                                         quote_value) VALUES
-                                                            (?, ?, ?)''', (last_id, field_id,
-                                                                           'LOCKED'))
-                                        db.commit()
-                    
-                    find_country_button(browser, league, 0)
-                    return scan_league(browser, db, c, league, league_id, table_count,
-                                match_count + 1, all_fields,
-                                LIMIT_MATCH_BUTTON)
+        for panel in all_panels:
+
+            panel.click()
+            field_elements = find_all_fields(browser)
+            update_quotes_table(browser, db, c, field_elements, all_fields,
+                                last_id)
+
+        find_country_button(browser, league, 0)
+        return scan_league(browser, db, c, league, league_id, table_count,
+                           match_count + 1, all_fields, LIMIT_MATCH_BUTTON)
 
     except TimeoutException:
 
@@ -811,8 +840,8 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
             print('recursive match button')
             browser.get(current_url)
             time.sleep(3)
-            scan_league(browser, db, c, league, league_id, table_count, match_count,
-                        all_fields, LIMIT_MATCH_BUTTON + 1)
+            scan_league(browser, db, c, league, league_id, table_count,
+                        match_count, all_fields, LIMIT_MATCH_BUTTON + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -820,14 +849,14 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
 
 def fill_db_with_quotes():
 
-    '''Call the function "quotes_by_league" for all the leagues present in the
+    '''Call the function 'scan_league()' for all the leagues present in the
        dict "countries" to fully update the db.'''
 
     browser = go_to_lottomatica(0)
     dbf.empty_table('quotes')
     dbf.empty_table('matches')
     db, c = dbf.start_db()
-    
+
     all_leagues = [league for league in countries]
 
     all_fields = list(c.execute('''SELECT field_name FROM fields'''))
@@ -838,7 +867,7 @@ def fill_db_with_quotes():
         if all_leagues.index(league) > 0:
             last_league = all_leagues[all_leagues.index(league) - 1]
             find_country_button(browser, last_league, 0)
-            
+
         table_count = 0
         match_count = 0
         league_id = c.execute('''SELECT league_id FROM leagues WHERE
@@ -848,6 +877,3 @@ def fill_db_with_quotes():
                     match_count, all_fields, 0)
     db.close()
     browser.quit()
-
-
-fill_db_with_quotes()
