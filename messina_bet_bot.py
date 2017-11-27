@@ -137,6 +137,9 @@ def quote(bot, update, args):
                                                     match_team2 = ?''',
                                                     (team1, team2)))[0]
 
+            team1 = team1.replace('*', '')
+            team2 = team2.replace('*', '')
+
             # Update table
             c.execute('''INSERT INTO predictions (pred_user, pred_date,
                                                   pred_time, pred_team1,

@@ -14,7 +14,8 @@ from Functions import db_functions as dbf
 import pandas as pd
 
 
-countries = {'SERIE A': 'ITALIA',
+countries = {
+             'SERIE A': 'ITALIA',
              'SERIE B': 'ITALIA',
              'PREMIER LEAGUE': 'INGHILTERRA',
              'PRIMERA DIVISION': 'SPAGNA',
@@ -97,21 +98,6 @@ def go_to_lottomatica(LIMIT_1):
                                   'Please try again.')
 
 
-def text_short(browser, input_bet):
-
-    # In case the input bet has the form team_bet we use the function
-    # get_field to find the right field and then format the bet. In this
-    # case the inputs do NOT need to be correct. Most of the cases are
-    # handled by the code to return the correct element
-    try:
-        field = get_field(browser, input_bet)
-    except SyntaxError as e:
-        raise SyntaxError(str(e))
-    right_bet = format_bet(field, input_bet)
-
-    return field, right_bet
-
-
 def click_calcio_button(browser):
 
     calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
@@ -122,24 +108,6 @@ def click_calcio_button(browser):
     scroll_to_element(browser, 'false', calcio_button)
 
     calcio_button.click()
-
-
-def click_oggi_domani_button(browser, scroll='no'):
-
-    oggi_domani = ('.//div[@id="navigationContainer"]//' +
-                   'a[contains(@class,"col-lg-6 col-md-6")]')
-    try:
-        wait_clickable(browser, 20, oggi_domani)
-        oggi_domani_button = browser.find_element_by_xpath(oggi_domani)
-
-        if scroll == 'yes':
-            # This double-scroll is to make the cookies advice disappear
-            scroll_to_element(browser, 'true', oggi_domani_button)
-            scroll_to_element(browser, 'false', oggi_domani_button)
-        oggi_domani_button.click()
-    except TimeoutException:
-        browser.quit()
-        raise ConnectionError(conn_err_message)
 
 
 def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
@@ -183,123 +151,6 @@ def find_league_button(browser, league):
             scroll_to_element(browser, 'false', panel)
             panel.click()
             break
-
-
-def get_field(browser, bet):
-
-    '''It takes the input from the user and return the corresponding field
-       found on the webpage. Example:
-
-           - The input is 'ng + over2.5'. This bet will NOT be recognized
-           by the webpage as belonging to any field.
-
-           - This function take the input and return the one which will be
-           recognized by the webpage, in our case 'GOAL/NOGOAL + U/O 2,5'.'''
-
-    if ('+' in bet and ('UNDER' in bet or 'OVER' in bet) and
-       ('NG' in bet or 'GG' in bet)):
-        value = bet.split(' ')[3].replace('.', ',')
-        if ',' not in value:
-            value = bet.split(' ')[1].replace('.', ',')
-        if value != '2,5':
-            browser.quit()
-            raise SyntaxError(bet + ': Bet not valid.')
-        else:
-            return 'GOAL/NOGOAL + U/O 2,5'
-
-    elif ('+' in bet and ('UNDER' in bet or 'OVER' in bet) and
-          ('1X' in bet or 'X2' in bet or '12' in bet)):
-        value = bet.split(' ')[3].replace(',', '.')
-        return 'DOPPIA CHANCE + UNDER/OVER {}'.format(value)
-
-    elif '+' in bet and ('UNDER' in bet or 'OVER' in bet):
-        value = bet.split(' ')[3].replace('.', ',')
-        if value in '1X2':
-            value = bet.split(' ')[1].replace('.', ',')
-        return 'ESITO FINALE 1X2 + U/O {}'.format(value)
-
-    elif '+' in bet and ('NG' in bet or 'GG' in bet):
-        return 'ESITO FINALE 1X2 + GOAL/NOGOAL'
-
-    elif bet in '1X2':
-        return 'ESITO FINALE 1X2'
-
-    elif 'H' in bet:
-        return 'ESITO FINALE 1X2 HANDICAP'
-
-    elif 'NG' in bet or 'GG' in bet:
-        return 'GOAL/NO GOAL'
-
-    elif ('UNDER' in bet or 'OVER' in bet) and 'PT' in bet:
-        value = bet.split(' ')[1].replace('.', ',')
-        return 'UNDER/OVER {} PRIMO TEMPO'.format(value)
-
-    elif ('UNDER' in bet or 'OVER' in bet) and 'ST' in bet:
-        value = bet.split(' ')[1].replace('.', ',')
-        return 'UNDER/OVER {} SECONDO TEMPO'.format(value)
-
-    elif 'UNDER' in bet or 'OVER' in bet:
-        value = bet.split(' ')[1].replace('.', ',')
-        return 'UNDER / OVER {}'.format(value)
-
-    elif 'PT' in bet:
-        return 'ESITO 1 TEMPO 1X2'
-
-    else:
-        browser.quit()
-        raise SyntaxError(bet + ': Bet not valid.')
-
-
-def format_bet(field, bet):
-
-    '''It takes the field and the user bet and return the corresponding
-       bet found on the webpage.'''
-
-    if 'GOAL/NOGOAL + U/O' in field:
-        if 'NG' in bet and 'UNDER' in bet:
-            return 'NOGOAL + UNDER'
-        elif 'NG' in bet and 'OVER' in bet:
-            return 'NOGOAL + OVER'
-        elif 'GG' in bet and 'UNDER' in bet:
-            return 'GOAL + UNDER'
-        elif 'GG' in bet and 'OVER' in bet:
-            return 'GOAL + OVER'
-
-    elif 'DOPPIA CHANCE + UNDER/OVER' in field:
-        return ' '.join(bet.split(' ')[:3])
-
-    elif 'ESITO FINALE 1X2 + U/O' in field:
-        new_bet = ' '.join(bet.split(' ')[:3])
-        if bet[0] not in '1X2':
-            new_bet = bet.split(' ')[3] + ' + ' + bet.split(' ')[0]
-        return new_bet
-
-    elif field == 'ESITO FINALE 1X2 + GOAL/NOGOAL':
-        if 'NG' in bet:
-            return bet.split(' ')[0] + ' + NOGOAL'
-        else:
-            return bet.split(' ')[0] + ' + GOAL'
-
-    elif field == 'ESITO 1 TEMPO 1X2':
-        return bet[0]
-
-    elif field == 'ESITO FINALE 1X2':
-        return bet
-
-    elif field == 'ESITO FINALE 1X2 HANDICAP':
-        return bet[0]
-
-    elif field == 'GOAL/NO GOAL':
-        if 'NG' in bet:
-            return 'NOGOAL'
-        else:
-            return 'GOAL'
-
-    elif 'UNDER/OVER' in field and 'PRIMO TEMPO' in field:
-        return bet.split(' ')[0]
-
-    elif 'UNDER / OVER' in field:
-        return bet.split(' ')[0]
 
 
 def right_team(team_input, team_lottom):
@@ -417,14 +268,25 @@ def go_to_all_bets(browser, input_team):
     return team1, team2, league, date_match, time_match
 
 
-def find_all_panels(browser):
+def find_all_panels(browser, LIMIT_ALL_PANELS):
 
     # This is the xpath of the box containing all the bets' panels grouped
     # by type (PIU' GIOCATE, CHANCE MIX, TRICOMBO, ...)
     all_panels_path = ('//div[@new-component=""]//div[@class="row"]/div')
+    current_url = browser.current_url
 
-    wait_visible(browser, 20, all_panels_path)
-    all_panels = browser.find_elements_by_xpath(all_panels_path)
+    try:
+        wait_visible(browser, 20, all_panels_path)
+        all_panels = browser.find_elements_by_xpath(all_panels_path)
+    except TimeoutException:
+        if LIMIT_ALL_PANELS < 3:
+            print('recursive all_panels button')
+            browser.get(current_url)
+            time.sleep(3)
+            find_all_panels(browser, LIMIT_ALL_PANELS + 1)
+        else:
+            browser.quit()
+            raise ConnectionError(conn_err_message)
 
     return all_panels
 
@@ -453,7 +315,7 @@ def find_all_bets(browser, field, new_field):
     return all_bets
 
 
-def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no'):
+def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE):
 
     '''When 'click=no' return the quote, when 'click=yes' click the bet.'''
 
@@ -487,17 +349,12 @@ def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no'):
                             bet_element = new_bet.find_element_by_xpath(
                                     bet_element_path)
 
-                            if click == 'yes':
-                                CLICK_CHECK = True
-                                scroll_to_element(browser, 'true', bet_element)
-                                scroll_to_element(browser, 'false',
-                                                  bet_element)
-                                simulate_hover_and_click(browser, bet_element)
-                                break
-
-                            else:
-                                bet_quote = float(bet_element.text)
-                                return bet_quote
+                            CLICK_CHECK = True
+                            scroll_to_element(browser, 'true', bet_element)
+                            scroll_to_element(browser, 'false',
+                                              bet_element)
+                            simulate_hover_and_click(browser, bet_element)
+                            break
 
                     if CLICK_CHECK:
                         break
@@ -507,13 +364,11 @@ def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no'):
 
     except TimeoutException:
 
-        LIMIT_GET_QUOTE += 1
-
         if LIMIT_GET_QUOTE < 3:
             print('recursive get quote')
             browser.get(current_url)
             time.sleep(3)
-            get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, click='no')
+            get_quote(browser, field, right_bet, LIMIT_GET_QUOTE + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -578,9 +433,12 @@ def look_for_quote(text):
                                WHERE team_id = ? ''',
                                (team_id,)))[0][0]
 
-    league_id = list(c.execute('''SELECT team_league FROM teams
-                               WHERE team_name = ? ''',
-                               (team_name,)))[0][0]
+    if '*' in input_team:
+        league_id = 8
+    else:
+        league_id = list(c.execute('''SELECT team_league FROM teams
+                                   WHERE team_name = ? AND team_league != 8''',
+                                   (team_name,)))[0][0]
 
     team1, team2 = list(c.execute('''SELECT match_team1, match_team2 FROM
                                   matches WHERE match_team1 = ? OR
@@ -608,10 +466,8 @@ def add_first_bet(browser, current_url, field, right_bet):
     browser.get(current_url)
     time.sleep(3)
 
-    LIMIT_GET_QUOTE = 0
-
     try:
-        get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, 'yes')
+        get_quote(browser, field, right_bet, 0)
     except ConnectionError as e:
         raise ConnectionError(str(e))
 
@@ -621,13 +477,10 @@ def add_following_bets(browser, team, field, right_bet):
     '''Add all the other quotes after the first one. It does NOT use the url
        but look for each button instead.'''
 
-    LIMIT_MATCH_BUTTON = 0
-    LIMIT_GET_QUOTE = 0
-
     try:
-        click_match_button(browser, team, LIMIT_MATCH_BUTTON)
+        click_match_button(browser, team, 0)
 
-        get_quote(browser, field, right_bet, LIMIT_GET_QUOTE, 'yes')
+        get_quote(browser, field, right_bet, 0)
 
     except ConnectionError as e:
         raise ConnectionError(str(e))
@@ -690,8 +543,20 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
     '''Extract all the data relative to a match and insert a new row in the
        'matches' table.'''
 
+    current_url = browser.current_url
     all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-    wait_visible(browser, 20, all_days)
+
+    try:
+        wait_visible(browser, 20, all_days)
+    except TimeoutException:
+        print('andrea')
+        browser.get(current_url)
+        league = list(c.execute('''SELECT league_name FROM leagues where
+                                league_id = ? ''', (league_id,)))[0][0]
+        find_league_button(browser, league)
+        return update_matches_table(browser, c, table_count, match_count,
+                                    league_id)
+
     all_tables = browser.find_elements_by_xpath(all_days)
 
     for table in all_tables:
@@ -738,6 +603,10 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                 team1 = match_text.split(' - ')[0]
                 team2 = match_text.split(' - ')[1]
 
+                if league_id == 8:
+                    team1 = '*' + team1
+                    team2 = '*' + team2
+
                 match_box = match.find_element_by_xpath(
                         './/td[contains(@colspan,"1")]/a')
 
@@ -754,8 +623,9 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                                                match_url))
 
                 last_id = c.lastrowid
+                break
 
-    return last_id
+    return last_id, match_count, table_count
 
 
 def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
@@ -807,7 +677,7 @@ def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
 
 
 def scan_league(browser, db, c, league, league_id, table_count, match_count,
-                all_fields, LIMIT_MATCH_BUTTON):
+                all_fields):
 
     '''Update the tables 'matches' and 'quotes' of the db.'''
 
@@ -815,36 +685,24 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
     find_league_button(browser, league)
     time.sleep(3)
 
-    current_url = browser.current_url
+    last_id, match_count, table_count = update_matches_table(browser, c,
+                                                             table_count,
+                                                             match_count,
+                                                             league_id)
 
-    try:
-        last_id = update_matches_table(browser, c, table_count, match_count,
-                                       league_id)
+    all_panels = find_all_panels(browser, 0)
 
-        all_panels = find_all_panels(browser)
+    for panel in all_panels:
 
-        for panel in all_panels:
+        panel.click()
+        field_elements = find_all_fields(browser)
+        update_quotes_table(browser, db, c, field_elements, all_fields,
+                            last_id)
 
-            panel.click()
-            field_elements = find_all_fields(browser)
-            update_quotes_table(browser, db, c, field_elements, all_fields,
-                                last_id)
+    find_country_button(browser, league, 0)
 
-        find_country_button(browser, league, 0)
-        return scan_league(browser, db, c, league, league_id, table_count,
-                           match_count + 1, all_fields, LIMIT_MATCH_BUTTON)
-
-    except TimeoutException:
-
-        if LIMIT_MATCH_BUTTON < 3:
-            print('recursive match button')
-            browser.get(current_url)
-            time.sleep(3)
-            scan_league(browser, db, c, league, league_id, table_count,
-                        match_count, all_fields, LIMIT_MATCH_BUTTON + 1)
-        else:
-            browser.quit()
-            raise ConnectionError(conn_err_message)
+    return scan_league(browser, db, c, league, league_id, table_count,
+                       match_count + 1, all_fields)
 
 
 def fill_db_with_quotes():
@@ -863,6 +721,7 @@ def fill_db_with_quotes():
     all_fields = [element[0] for element in all_fields]
 
     for league in all_leagues:
+        start = time.time()
 
         if all_leagues.index(league) > 0:
             last_league = all_leagues[all_leagues.index(league) - 1]
@@ -873,7 +732,23 @@ def fill_db_with_quotes():
         league_id = c.execute('''SELECT league_id FROM leagues WHERE
                               league_name = ? ''', (league,))
         league_id = c.fetchone()[0]
-        scan_league(browser, db, c, league, league_id, table_count,
-                    match_count, all_fields, 0)
+        try:
+            scan_league(browser, db, c, league, league_id, table_count,
+                        match_count, all_fields)
+        except UnboundLocalError:
+            end = time.time() - start
+            minutes = int(end//60)
+            seconds = round(end % 60)
+            print('Updating {} took {}:{} minutes.'.format(league,
+                  minutes, seconds))
+            continue
     db.close()
     browser.quit()
+
+
+#start = time.time()
+#fill_db_with_quotes()
+#end = time.time() - start
+#minutes = int(end//60)
+#seconds = round(end % 60)
+#print('Whole process took {}:{} minutes.'.format(minutes, seconds))
