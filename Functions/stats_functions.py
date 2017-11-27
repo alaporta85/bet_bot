@@ -121,63 +121,59 @@ def records():
     '''Return two messages: one for the WINNING bet with the highest quote
        and one for the LOSING bet with the lowest quote.'''
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('extended_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    all_bets_list = list(c.execute('''SELECT user, team1, team2, field, bet,
-                                   quote, label FROM matches'''))
+    all_bets_list = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
+                                   pred_rawbet, pred_quote, pred_label FROM
+                                   predictions'''))
     db.close()
 
     # Initialize parameters
     h_name = ''
     h_team1 = ''
     h_team2 = ''
-    h_field = ''
-    h_bet = ''
+    h_rawbet = ''
     h_quote = 0
 
     l_name = ''
     l_team1 = ''
     l_team2 = ''
-    l_field = ''
-    l_bet = ''
+    l_rawbet = ''
     l_quote = 5000
 
     for element in all_bets_list:
         temp_name = element[0]
         temp_team1 = element[1]
         temp_team2 = element[2]
-        temp_field = element[3]
-        temp_bet = element[4]
-        temp_quote = element[5]
-        temp_label = element[6]
+        temp_rawbet = element[3]
+        temp_quote = element[4]
+        temp_label = element[5]
 
         if temp_label == 'WINNING':
             if temp_quote > h_quote:
                 h_name = temp_name
                 h_team1 = temp_team1
                 h_team2 = temp_team2
-                h_field = temp_field
-                h_bet = temp_bet
+                h_rawbet = temp_rawbet
                 h_quote = temp_quote
         else:
             if temp_quote < l_quote:
                 l_name = temp_name
                 l_team1 = temp_team1
                 l_team2 = temp_team2
-                l_field = temp_field
-                l_bet = temp_bet
+                l_rawbet = temp_rawbet
                 l_quote = temp_quote
 
     h_message = ('Highest WINNING quote is ' +
-                 '{} from:\n\n{}\n{} - {}\n{}\n{}'.format(h_quote, h_name,
-                                                          h_team1, h_team2,
-                                                          h_field, h_bet))
+                 '{} from:\n\n{}\n{} - {}\n{}'.format(h_quote, h_name,
+                                                      h_team1, h_team2,
+                                                      h_rawbet))
     l_message = ('Lowest LOSING quote is ' +
-                 '{} from:\n\n{}\n{} - {}\n{}\n{}'.format(l_quote, l_name,
-                                                          l_team1, l_team2,
-                                                          l_field, l_bet))
+                 '{} from:\n\n{}\n{} - {}\n{}'.format(l_quote, l_name,
+                                                      l_team1, l_team2,
+                                                      l_rawbet))
 
     return h_message, l_message
 
@@ -259,8 +255,8 @@ def create_series(c, name, series_pos, series_neg):
     '''Fill the dicts series_pos and series_neg with the elements representing
        the series for each player.'''
 
-    ref_list = list(c.execute('''SELECT yymmdd_match, label FROM matches WHERE
-                              user = ? ''', (name,)))
+    ref_list = list(c.execute('''SELECT pred_date, pred_label FROM predictions
+                              WHERE pred_user = ? ''', (name,)))
 
     count_pos = 0
     dates_pos = []
@@ -378,7 +374,7 @@ def series():
     series_pos = {name: [] for name in partecipants}
     series_neg = {name: [] for name in partecipants}
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('extended_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
