@@ -189,23 +189,23 @@ def euros_lost_for_one_bet():
 
         return round(val/100*sum(euros), 1)
 
-    db = sqlite3.connect('bet_bot_db_stats')
+    db = sqlite3.connect('extended_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
     amount = {name: 0 for name in partecipants}
 
-    all_bets_list = list(c.execute('''SELECT bets_id, prize FROM bets
-                                   WHERE result = "Non Vincente" '''))
+    all_bets_list = list(c.execute('''SELECT bet_id, bet_prize FROM bets
+                                   WHERE bet_result = "LOSING" '''))
 
     for x in range(len(all_bets_list)):
         temp_id = all_bets_list[x][0]
         temp_prize = all_bets_list[x][1]
 
-        losing_list = list(c.execute('''SELECT user FROM bets INNER JOIN
-                                     matches ON matches.bets_id = bets.bets_id
-                                     WHERE matches.bets_id = ? AND
-                                     matches.label = "LOSING" ''', (temp_id,)))
+        losing_list = list(c.execute('''SELECT pred_user FROM bets INNER JOIN
+                                     predictions ON pred_bet = bet_id WHERE
+                                     pred_bet = ? AND pred_label = "LOSING"''',
+                                     (temp_id,)))
 
         losing_list = [element[0] for element in losing_list]
         if len(losing_list) == 1:
@@ -434,6 +434,10 @@ def series():
         records_pos.append(to_plot_pos_list[x][1])
         records_neg.append(to_plot_neg_list[x][1])
 
+    highest_pos = max(records_pos)
+    highest_neg = max(records_neg)
+    abs_max = max([max(records_pos), max(records_neg)])
+
     bar_width = 0.4
     fig, ax = plt.subplots()
     im = image.imread('Images/green_arrow.png')
@@ -468,10 +472,9 @@ def series():
     plt.xticks(range(5), names, fontsize=14)
     plt.title('Series', fontsize=18)
     plt.ylim(1)
+    plt.yticks(range(abs_max + 1))
 
     # Inserting text on the top-right
-    highest_pos = max(records_pos)
-    highest_neg = max(records_neg)
     message = ''
     th = 3
     for element in coming_pos:

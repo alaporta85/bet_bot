@@ -315,7 +315,7 @@ def find_all_bets(browser, field, new_field):
     return all_bets
 
 
-def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE):
+def click_bet(browser, field, right_bet, LIMIT_GET_QUOTE):
 
     '''When 'click=no' return the quote, when 'click=yes' click the bet.'''
 
@@ -323,7 +323,7 @@ def get_quote(browser, field, right_bet, LIMIT_GET_QUOTE):
     CLICK_CHECK = False
 
     try:
-        all_panels = find_all_panels(browser)
+        all_panels = find_all_panels(browser, 0)
 
         for panel in all_panels:
             panel.click()
@@ -458,7 +458,7 @@ def look_for_quote(text):
     return team1, team2, field_id, league_id, quote
 
 
-def add_first_bet(browser, current_url, field, right_bet):
+def add_bet(browser, current_url, field, right_bet):
 
     '''Add the quote to the basket by taking directly the url of the bet.
        This is used inside the play_bet function to play the first match.'''
@@ -467,21 +467,7 @@ def add_first_bet(browser, current_url, field, right_bet):
     time.sleep(3)
 
     try:
-        get_quote(browser, field, right_bet, 0)
-    except ConnectionError as e:
-        raise ConnectionError(str(e))
-
-
-def add_following_bets(browser, team, field, right_bet):
-
-    '''Add all the other quotes after the first one. It does NOT use the url
-       but look for each button instead.'''
-
-    try:
-        click_match_button(browser, team, 0)
-
-        get_quote(browser, field, right_bet, 0)
-
+        click_bet(browser, field, right_bet, 0)
     except ConnectionError as e:
         raise ConnectionError(str(e))
 

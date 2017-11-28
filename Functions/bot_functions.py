@@ -74,13 +74,11 @@ def go_to_placed_bets(browser, LIMIT_2):
 
     except (TimeoutException, ElementNotInteractableException):
 
-        LIMIT_2 += 1
-
         if LIMIT_2 < 3:
             print('recursive movimenti e giocate')
             browser.get(current_url)
             time.sleep(3)
-            go_to_placed_bets(browser, LIMIT_2)
+            go_to_placed_bets(browser, LIMIT_2 + 1)
         else:
             raise ConnectionError('Unable to go to the section: MOVIMENTI E' +
                                   ' GIOCATE. Please try again.')
@@ -118,13 +116,11 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
 
     except (TimeoutException, ElementNotInteractableException):
 
-        LIMIT_4 += 1
-
         if LIMIT_4 < 3:
             print('recursive details table')
             browser.get(current_url)
             time.sleep(3)
-            analyze_details_table(browser, ref_id, c, LIMIT_4)
+            analyze_details_table(browser, ref_id, c, LIMIT_4 + 1)
         else:
             raise ConnectionError('Unable to find past bets. ' +
                                   'Please try again.')
@@ -193,13 +189,11 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
 
     except (TimeoutException, ElementNotInteractableException):
 
-        LIMIT_3 += 1
-
         if LIMIT_3 < 3:
             print('recursive main table')
             browser.get(current_url)
             time.sleep(3)
-            analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4)
+            analyze_main_table(browser, ref_list, LIMIT_3 + 1, LIMIT_4)
         else:
             raise ConnectionError('Unable to find past bets. ' +
                                   'Please try again.')
@@ -286,6 +280,39 @@ def check_if_duplicate(c, first_name, match, ref_list, not_confirmed_matches):
     return message
 
 
+def create_matches_to_play(db, c, bet_id):
+
+    some_data = list(c.execute('''SELECT pred_team1, pred_team2, pred_league,
+                               pred_field FROM bets INNER JOIN predictions on
+                               pred_bet = bet_id WHERE bet_id = ?''',
+                               (bet_id,)))
+    matches_to_play = []
+
+    for match in some_data:
+        team1 = match[0]
+        team2 = match[1]
+        league = match[2]
+        field_id = match[3]
+
+        if league == 8:
+            team1 = '*' + team1
+            team2 = '*' + team2
+
+        field_name, field_value = list(c.execute('''SELECT field_name,
+                                                 field_value FROM fields WHERE
+                                                 field_id = ?''',
+                                                 (field_id,)))[0]
+
+        url = list(c.execute('''SELECT match_url FROM matches WHERE
+                             match_team1 = ? AND match_team2 = ? AND
+                             match_league = ?''', (team1, team2,
+                                                   league)))[0][0]
+
+        matches_to_play.append((team1, team2, field_name, field_value, url))
+
+    return matches_to_play
+
+
 def add_bet_to_basket(browser, match, count, mess_id, dynamic_message,
                       matches_to_play):
 
@@ -296,7 +323,7 @@ def add_bet_to_basket(browser, match, count, mess_id, dynamic_message,
     url = match[4]
 
     try:
-        sf.add_first_bet(browser, url, field, bet)
+        sf.add_bet(browser, url, field, bet)
         time.sleep(5)
         sf.check_single_bet(browser, count, team1, team2)
         return dynamic_message.format(count + 1)

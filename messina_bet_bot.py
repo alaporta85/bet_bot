@@ -38,11 +38,11 @@ def played_bets(summary):
         user = bet[0]
         team1 = bet[1].title()
         team2 = bet[2].title()
-        raw_bet = bet[3]
+        rawbet = bet[3]
         quote = bet[4]
         message += '{}:     {}-{}    {}      @<b>{}</b>\n'.format(user, team1,
                                                                   team2,
-                                                                  raw_bet,
+                                                                  rawbet,
                                                                   quote)
 
     return message
@@ -321,12 +321,10 @@ def play_bet(bot, update, args):
     # mess_id will be used to update the message
     mess_id = sent.message_id
 
-    matches_to_play = list(c.execute('''SELECT pred_team1, pred_team2, pred_field, bet,
-                                     url, league FROM bets INNER JOIN matches
-                                     on matches.bets_id = bets.bets_id WHERE
-                                     bets.bets_id = ?''', (bet_id,)))
+    matches_to_play = bf.create_matches_to_play(db, c, bet_id)
 
     db.close()
+
     browser = sf.go_to_lottomatica(0)
     count = 0
     for match in matches_to_play:
@@ -367,98 +365,93 @@ def play_bet(bot, update, args):
 
     # and extract the actual number of bets present in the basket
     matches_played = int(summary_element.text.split(' ')[2][1:-1])
-    browser.find_element_by_xpath(basket).click()
 
     # If this number is equal to the number of bets chosen to play
     if matches_played == len(matches_to_play):
 
         possible_win = bf.insert_euros(browser, matches_to_play,
                                        matches_played, euros)
-        print(possible_win)
+
+        browser.find_element_by_xpath(basket).click()
 
         # Make the login
         sf.login(browser)
-        bot.edit_message_text(chat_id=update.message.chat_id,
-                              message_id=mess_id,
-                              text='Login...')
-
-        button_location = './/div[@class="change-bet ng-scope"]'
-
-        try:
-            sf.wait_visible(browser, 20, button_location)
-        except TimeoutException:
-            browser.quit()
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=('Problem during placing the bet. ' +
-                                   'Please check if the bet is valid or ' +
-                                   'the connection and try again.'))
-
-        sf.scroll_to_element(browser, 'true',
-                             browser.find_element_by_xpath(
-                                     button_location))
-
-        try:
-            button_path = ('.//button[@class="button-default no-margin-' +
-                           'bottom ng-scope"]')
-
-            button_list = browser.find_elements_by_xpath(button_path)
-        except NoSuchElementException:
-            print('aggiorna')
-            button_path = ('.//button[@class="button-default"]')
-            button_list = browser.find_elements_by_xpath(button_path)
-            print(len(button_list))
-            for element in button_list:
-                if element.is_displayed():
-                    print(element.text)
-###                    element.click()
-                    break
-
-        for element in button_list:
-            if element.is_displayed():
-                print(element.text)
-###                    element.click()
-                db, c = dbf.start_db()
-                c.execute('''UPDATE bets SET euros = ?, prize = ?,
-                          status = ? WHERE status = ?''',
-                          (euros, possible_win, 'Placed', 'Pending'))
-                db.commit()
-                db.close()
-
-                bot.edit_message_text(chat_id=update.message.chat_id,
-                                      message_id=mess_id, text='Done!')
-                break
-
-        # Print the summary
-        message = 'Bet placed correctly.\n\n'
-        bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
-        db, c = dbf.start_db()
-        summary = list(c.execute('''SELECT user, team1, team2, field, bet
-                             FROM bets INNER JOIN matches on
-                             matches.bets_id = bets.bets_id WHERE
-                             bets.bets_id = ?''', (bet_id,)))
-
-        db.close()
-        message += (played_bets(summary) + '\nPossible win: {}'.format(
-                possible_win))
-        bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-                         text=message)
-    else:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=('Something went wrong, try again the' +
-                               ' command /play.'))
-
-    browser.quit()
+#        bot.edit_message_text(chat_id=update.message.chat_id,
+#                              message_id=mess_id,
+#                              text='Login...')
+#
+#        button_location = './/div[@class="change-bet ng-scope"]'
+#
+#        try:
+#            sf.wait_visible(browser, 20, button_location)
+#        except TimeoutException:
+#            browser.quit()
+#            bot.send_message(chat_id=update.message.chat_id,
+#                             text=('Problem during placing the bet. ' +
+#                                   'Please check if the bet is valid or ' +
+#                                   'the connection and try again.'))
+#
+#        sf.scroll_to_element(browser, 'true',
+#                             browser.find_element_by_xpath(
+#                                     button_location))
+#
+#        try:
+#            button_path = ('.//button[@class="button-default no-margin-' +
+#                           'bottom ng-scope"]')
+#
+#            button_list = browser.find_elements_by_xpath(button_path)
+#        except NoSuchElementException:
+#            print('aggiorna')
+#            button_path = ('.//button[@class="button-default"]')
+#            button_list = browser.find_elements_by_xpath(button_path)
+#            print(len(button_list))
+#            for element in button_list:
+#                if element.is_displayed():
+#                    print(element.text)
+####                    element.click()
+#                    break
+#
+#        for element in button_list:
+#            if element.is_displayed():
+#                print(element.text)
+####                    element.click()
+#                db, c = dbf.start_db()
+#                c.execute('''UPDATE bets SET euros = ?, prize = ?,
+#                          status = ? WHERE status = ?''',
+#                          (euros, possible_win, 'Placed', 'Pending'))
+#                db.commit()
+#                db.close()
+#
+#                bot.edit_message_text(chat_id=update.message.chat_id,
+#                                      message_id=mess_id, text='Done!')
+#                break
+#
+#        # Print the summary
+#        message = 'Bet placed correctly.\n\n'
+#        bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
+#        db, c = dbf.start_db()
+#        summary = list(c.execute('''SELECT user, team1, team2, field, bet
+#                             FROM bets INNER JOIN matches on
+#                             matches.bets_id = bets.bets_id WHERE
+#                             bets.bets_id = ?''', (bet_id,)))
+#
+#        db.close()
+#        message += (played_bets(summary) + '\nPossible win: {}'.format(
+#                possible_win))
+#        bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+#                         text=message)
+#    else:
+#        bot.send_message(chat_id=update.message.chat_id,
+#                         text=('Something went wrong, try again the' +
+#                               ' command /play.'))
+#
+#    browser.quit()
 
 
 def update_results(bot, update):
 
     '''Updates the 'result' columns in both 'bets' and 'matches' tables in the
        database.'''
-
-    LIMIT_1 = 0
-    LIMIT_2 = 0
-    LIMIT_3 = 0
-    LIMIT_4 = 0
 
     db, c = dbf.start_db()
     ref_list = list(c.execute('''SELECT bets_id, yymmdd FROM bets WHERE
@@ -483,12 +476,11 @@ def update_results(bot, update):
     time.sleep(5)
 
     try:
-        bf.go_to_personal_area(browser, LIMIT_1)
+        bf.go_to_personal_area(browser, 0)
 
-        bf.go_to_placed_bets(browser, LIMIT_2)
+        bf.go_to_placed_bets(browser, 0)
 
-        bets_updated = bf.analyze_main_table(browser, ref_list, LIMIT_3,
-                                             LIMIT_4)
+        bets_updated = bf.analyze_main_table(browser, ref_list, 0, 0)
 
     except ConnectionError as e:
         browser.quit()
@@ -507,12 +499,12 @@ def update_results(bot, update):
 
 def summary(bot, update):
 
-    bet_id = dbf.get_value('bets_id', 'bets', 'status', 'Pending')
+    bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
     db, c = dbf.start_db()
-    summary = list(c.execute('''SELECT user, team1, team2, raw_bet, quote
-                             FROM bets INNER JOIN matches on
-                             matches.bets_id = bets.bets_id WHERE
-                             bets.bets_id = ?''', (bet_id,)))
+    summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
+                             pred_rawbet, pred_quote FROM bets INNER JOIN
+                             predictions on pred_bet = bet_id WHERE bet_id = ?
+                             ''', (bet_id,)))
 
     db.close()
     if summary:
@@ -613,4 +605,4 @@ dispatcher.add_handler(match_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-#updater.idle()
+updater.idle()
