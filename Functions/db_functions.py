@@ -14,6 +14,7 @@ def todays_date():
                              date.split('-')[1],
                              date.split('-')[2])
 
+    date = int(date.replace('/', ''))
     time = int(time.replace(':', '')[:4])
 
     return date, time
@@ -108,24 +109,21 @@ def empty_table(table_name):
 
 def check_before_play(db, c):
 
-    '''Return all the matches in the 'Pending' bets which have been played
+    '''Return all the matches in the 'Pending' bet which have been played
        already or started.'''
 
     matches = []
     invalid_matches = []
 
     date, time = todays_date()
-    date = int(date.replace('/', ''))
 
-    bet_id_list = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                  bet_status = "Pending" '''))
-    bet_id_list = [element[0] for element in bet_id_list]
+    bet_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                  bet_status = "Pending" '''))[0][0]
 
-    for bet_id in bet_id_list:
-        matches = list(c.execute('''SELECT pred_id, pred_user, pred_team1,
-                                 pred_team2, pred_date, pred_time FROM bets
-                                 INNER JOIN predictions on pred_bet = bet_id
-                                 WHERE bet_id = ?''', (bet_id,)))
+    matches = list(c.execute('''SELECT pred_id, pred_user, pred_team1,
+                             pred_team2, pred_date, pred_time FROM bets INNER
+                             JOIN predictions on pred_bet = bet_id WHERE
+                             bet_id = ?''', (bet_id,)))
 
     for match in matches:
         match_date = match[4]

@@ -92,6 +92,8 @@ def quote(bot, update, args):
                                 text='Please insert the bet.')
 
     guess = ' '.join(args).upper()
+    guess = guess.replace(' ', '')
+    guess = guess.replace(',', '.')
 
     if len(guess.split('_')) != 2:
         return bot.send_message(chat_id=update.message.chat_id,
@@ -292,6 +294,7 @@ def play_bet(bot, update, args):
 
     # Check whether there are matches already started
     invalid_bets = dbf.check_before_play(db, c)
+    print(invalid_bets)
     if invalid_bets:
         message = '{}, {} - {} was scheduled on {} at {}. Too late.'
         for x in range(len(invalid_bets)):
@@ -450,12 +453,13 @@ def play_bet(bot, update, args):
 
 def update_results(bot, update):
 
-    '''Updates the 'result' columns in both 'bets' and 'matches' tables in the
+    '''Updates the columns "bet_result", "pred_result" and "pred_label" in the
        database.'''
 
     db, c = dbf.start_db()
-    ref_list = list(c.execute('''SELECT bets_id, yymmdd FROM bets WHERE
-                              status = "Placed" AND result = "Unknown" '''))
+    ref_list = list(c.execute('''SELECT bet_id, bet_date FROM bets WHERE
+                              bet_status = "Placed" AND bet_result = "Unknown"
+                              '''))
     db.close()
 
     if not ref_list:
@@ -525,6 +529,7 @@ def summary(bot, update):
 
 
 def score(bot, update):
+
     stf.perc_success()
     bot.send_photo(chat_id=update.message.chat_id, photo=open('score.png',
                                                               'rb'))
@@ -564,10 +569,9 @@ def match(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Insert the day. Ex. /match sab')
     try:
-        message = sf.fill_db_with_quotes(args[0])
-        bot.send_message(chat_id=update.message.chat_id, text=message)
-    except ConnectionError as e:
-        return bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        message = sf.matches_per_day(args[0])
+        bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+                         text=message)
     except SyntaxError as e:
         return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
@@ -605,4 +609,4 @@ dispatcher.add_handler(match_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-updater.idle()
+#updater.idle()

@@ -86,8 +86,8 @@ def go_to_placed_bets(browser, LIMIT_2):
 
 def analyze_details_table(browser, ref_id, c, LIMIT_4):
 
-    '''Used in analyze_main_table function to update the column 'result' in the
-       table 'matches' of the database.'''
+    '''Used in analyze_main_table function to update the column 'pred_result'
+       and pred_label in the table 'predictions' of the database.'''
 
     current_url = browser.current_url
 
@@ -105,14 +105,15 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
                     './/div[contains(@class,"ng-scope")]')
             label = label_element.get_attribute('ng-switch-when')
 
-            c.execute('''SELECT matches_id FROM bets INNER JOIN matches on
-                      matches.bets_id = bets.bets_id WHERE bets.bets_id = ? AND
-                      team1 = ? AND team2 = ?''', (ref_id, team1, team2))
+            c.execute('''SELECT pred_id FROM bets INNER JOIN predictions on
+                      pred_bet = bet_id WHERE bet_id = ? AND
+                      pred_team1 = ? AND pred_team2 = ?''', (ref_id, team1,
+                                                             team2))
 
             match_id = c.fetchone()[0]
 
-            c.execute('''UPDATE matches SET label = ? WHERE matches_id = ?''',
-                      (label, match_id))
+            c.execute('''UPDATE predictions SET pred_label = ? WHERE
+                      pred_id = ?''', (label, match_id))
 
     except (TimeoutException, ElementNotInteractableException):
 
@@ -126,10 +127,10 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
                                   'Please try again.')
 
 
-def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
+def analyze_main_table(browser, ref_list, LIMIT_3):
 
-    '''Used in update_results() function to update the column 'result' in the
-       table 'bets' of the database. It also calls the function
+    '''Used in update_results() function to update the column 'bet_result' in
+       the table 'bets' of the database. It also calls the function
        analyze_details_table for each row of the table.'''
 
     current_url = browser.current_url
@@ -165,8 +166,14 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
                         new_status = bet.find_element_by_xpath(
                                 './/translate-label[@key-default=' +
                                 '"statement.state"]').text
-                        c.execute('''UPDATE bets SET result = ? WHERE
-                                  bets_id = ?''', (new_status, ref_id))
+
+                        if new_status == 'Vincente':
+                            new_status = 'WINNING'
+                        elif new_status == 'Non Vincente':
+                            new_status = 'LOSING'
+
+                        c.execute('''UPDATE bets SET bet_result = ? WHERE
+                                  bet_id = ?''', (new_status, ref_id))
                         db.commit()
 
                         main_window = browser.current_window_handle
@@ -176,7 +183,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
                         new_window = browser.window_handles[-1]
                         browser.switch_to_window(new_window)
 
-                        analyze_details_table(browser, ref_id, c, LIMIT_4)
+                        analyze_details_table(browser, ref_id, c, 0)
 
                         browser.close()
 
@@ -193,7 +200,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3, LIMIT_4):
             print('recursive main table')
             browser.get(current_url)
             time.sleep(3)
-            analyze_main_table(browser, ref_list, LIMIT_3 + 1, LIMIT_4)
+            analyze_main_table(browser, ref_list, LIMIT_3 + 1)
         else:
             raise ConnectionError('Unable to find past bets. ' +
                                   'Please try again.')
@@ -209,16 +216,15 @@ def check_still_to_confirm(db, c, first_name):
 
     if first_name in users_list:
 
-        ref_list = list(c.execute('''SELECT pred_team1, pred_team2, pred_field,
-                                  pred_bet, pred_quote FROM predictions WHERE
-                                  pred_status = "Not Confirmed"
-                                  AND pred_user = ?''', (first_name,)))
+        ref_list = list(c.execute('''SELECT pred_team1, pred_team2,
+                                  pred_rawbet, pred_quote FROM predictions
+                                  WHERE pred_status = "Not Confirmed" AND
+                                  pred_user = ?''', (first_name,)))
         db.close()
 
-        team1, team2, field, bet, bet_quote = ref_list[0]
+        team1, team2, bet, bet_quote = ref_list[0]
 
-        printed_bet = '{} - {} {} {} @{}'.format(team1, team2, field, bet,
-                                                 bet_quote)
+        printed_bet = '{} - {} {} @{}'.format(team1, team2, bet, bet_quote)
 
         message = ('{}, you still have one bet to confirm.\n'.format(
                    first_name) + ('{}\n' + 'Use /confirm or /cancel to ' +
@@ -334,10 +340,6 @@ def add_bet_to_basket(browser, match, count, mess_id, dynamic_message,
 
 def insert_euros(browser, matches_to_play, matches_played, euros):
 
-#    ticket = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
-#              '//p[@class="arrow-label linkable"]')
-#    browser.find_element_by_xpath(ticket).click()
-
     input_euros = ('.//div[contains(@class,"text-right ' +
                    'amount-sign")]/input')
     euros_box = browser.find_element_by_xpath(input_euros)
@@ -362,9 +364,3 @@ def insert_euros(browser, matches_to_play, matches_played, euros):
     possible_win = round(possible_win_default * (euros/2), 2)
 
     return possible_win
-
-
-#browser = sf.go_to_lottomatica(0)
-#team1, team2, league = sf.go_to_all_bets(browser, 'MILAN')
-#sf.get_quote(browser, 'ESITO FINALE 1X2', '2', 0, click='yes')
-#insert_euros(browser, 0, 0, 3)

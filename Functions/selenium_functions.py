@@ -72,7 +72,21 @@ def simulate_hover_and_click(browser, element):
         raise ConnectionError(conn_err_message)
 
 
+def click_calcio_button(browser):
+
+    calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
+    wait_clickable(browser, 20, calcio)
+    calcio_button = browser.find_element_by_xpath(calcio)
+
+    scroll_to_element(browser, 'true', calcio_button)
+    scroll_to_element(browser, 'false', calcio_button)
+
+    calcio_button.click()
+
+
 def go_to_lottomatica(LIMIT_1):
+
+    '''Connect to Lottomatica webpage and click "CALCIO" button.'''
 
     url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
            'scommesse-sportive.html')
@@ -98,19 +112,10 @@ def go_to_lottomatica(LIMIT_1):
                                   'Please try again.')
 
 
-def click_calcio_button(browser):
+def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
-    calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
-    wait_clickable(browser, 20, calcio)
-    calcio_button = browser.find_element_by_xpath(calcio)
-
-    scroll_to_element(browser, 'true', calcio_button)
-    scroll_to_element(browser, 'false', calcio_button)
-
-    calcio_button.click()
-
-
-def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
+    '''Find the button relative to the country we are interested in and click
+       it.'''
 
     current_url = browser.current_url
 
@@ -126,7 +131,7 @@ def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
             browser.get(current_url)
             time.sleep(3)
             click_calcio_button(browser)
-            find_country_button(browser, league, LIMIT_COUNTRY_BUTTON + 1)
+            click_country_button(browser, league, LIMIT_COUNTRY_BUTTON + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -140,7 +145,10 @@ def find_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
             break
 
 
-def find_league_button(browser, league):
+def click_league_button(browser, league):
+
+    '''Find the button relative to the league we are interested in and click
+       it.'''
 
     nat_leagues_container = './/ul[@id="better-table-tennis-ww"]'
     all_nat_leagues = browser.find_elements_by_xpath(
@@ -153,125 +161,11 @@ def find_league_button(browser, league):
             break
 
 
-def right_team(team_input, team_lottom):
-
-    '''Compare the input and the team name in the webpage. If input is
-       recognized, Return team name as in the webpage.'''
-
-    if team_input == team_lottom:
-        return True
-    elif team_input in team_lottom:
-        return True
-    else:
-        return False
-
-
-def click_match_button(browser, count, LIMIT_MATCH_BUTTON):
-
-    '''Find the match realtive to the team and select it.'''
-
-    current_url = browser.current_url
-
-    try:
-        all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
-        wait_visible(browser, 20, all_days)
-        all_tables = browser.find_elements_by_xpath(all_days)
-
-        for table in all_tables:
-
-            all_matches = table.find_elements_by_xpath(
-                    './/tbody/tr[contains(@class,"ng-scope")]')
-
-            for match in all_matches:
-
-                date_time = match.find_element_by_xpath(
-                        './/td[@class="ng-binding"]').text
-                date_match = date_time.split(' ')[0]
-                time_match = date_time.split(' ')[1]
-
-                match_text = match.find_element_by_xpath(
-                        './/td[contains(@colspan,"1")]/a/strong').text
-                team1 = match_text.split(' - ')[0]
-                team2 = match_text.split(' - ')[1]
-
-                match_box = match.find_element_by_xpath(
-                        './/td[contains(@colspan,"1")]/a')
-
-                scroll_to_element(browser, 'false', match_box)
-
-                simulate_hover_and_click(browser, match_box)
-                LIMIT_MATCH_BUTTON = 0
-                time.sleep(5)
-                browser.get(current_url)
-                time.sleep(5)
-
-    except TimeoutException:
-
-        if LIMIT_MATCH_BUTTON < 3:
-            print('recursive match button')
-            browser.get(current_url)
-            time.sleep(3)
-            click_match_button(browser, LIMIT_MATCH_BUTTON + 1)
-        else:
-            browser.quit()
-            raise ConnectionError(conn_err_message)
-
-    return team1, team2, date_match, time_match, current_url
-
-
-def go_to_all_bets(browser, input_team):
-
-    '''Drives the browser to the webpage containing all the bets relative
-       to the match which the input team is playing.'''
-
-    team = ''
-
-    # Load the dict with leagues (keys) and countries (values)
-    f = open('main_leagues_teams_lotto.pckl',
-             'rb')
-    all_teams = pickle.load(f)
-    f.close()
-
-    if '*' in input_team:
-        league = 'CHAMPIONS LEAGUE'
-        input_team = input_team.replace('*', '')
-        for new_team in all_teams[league]:
-            if right_team(input_team, new_team):
-                team = new_team
-                break
-
-    else:
-        for new_league in all_teams:
-            if new_league != 'CHAMPIONS LEAGUE':
-                for new_team in all_teams[new_league]:
-                    if right_team(input_team, new_team):
-                        team = new_team
-                        league = new_league
-                        break
-                if team:
-                    break
-
-    if team:
-
-        find_country_button(browser, league, 0)
-
-        find_league_button(browser, league)
-
-        team1, team2, date_match, time_match = click_match_button(
-                browser, team, 0)
-
-    else:
-        browser.quit()
-        raise SyntaxError('{}: Team not valid or competition '
-                          .format(input_team) + 'not allowed.')
-
-    return team1, team2, league, date_match, time_match
-
-
 def find_all_panels(browser, LIMIT_ALL_PANELS):
 
-    # This is the xpath of the box containing all the bets' panels grouped
-    # by type (PIU' GIOCATE, CHANCE MIX, TRICOMBO, ...)
+    '''Return the HTML container of the panels (PIU' GIOCATE, CHANCE MIX,
+       TRICOMBO, ...).'''
+
     all_panels_path = ('//div[@new-component=""]//div[@class="row"]/div')
     current_url = browser.current_url
 
@@ -283,7 +177,7 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):
             print('recursive all_panels button')
             browser.get(current_url)
             time.sleep(3)
-            find_all_panels(browser, LIMIT_ALL_PANELS + 1)
+            return find_all_panels(browser, LIMIT_ALL_PANELS + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -293,8 +187,9 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):
 
 def find_all_fields(browser):
 
-    # These are the fields of the panel (ESITO FINALE 1X2, DOPPIA
-    # CHANCE, GOAL/NOGOAL, ...)
+    '''Return the HTML container of the fields (ESITO FINALE 1X2, DOPPIA
+       CHANCE, GOAL/NOGOAL, ...).'''
+
     all_fields_path = '//div[@class="panel-collapse collapse in"]/div'
 
     all_fields = browser.find_elements_by_xpath(all_fields_path)
@@ -303,6 +198,10 @@ def find_all_fields(browser):
 
 
 def find_all_bets(browser, field, new_field):
+
+    '''Return the HTML container of the bets of a specific field. For example,
+       if field is GOAL/NOGOAL the element will contain two bets: GOAL and
+       NOGOAL.'''
 
     if field == 'ESITO FINALE 1X2 HANDICAP':
         all_bets_path = ('.//div[@class="block-selections-single-event ' +
@@ -315,9 +214,10 @@ def find_all_bets(browser, field, new_field):
     return all_bets
 
 
-def click_bet(browser, field, right_bet, LIMIT_GET_QUOTE):
+def click_bet(browser, field, bet, LIMIT_GET_QUOTE):
 
-    '''When 'click=no' return the quote, when 'click=yes' click the bet.'''
+    '''Find the button relative to the bet we are interested in and click
+       it.'''
 
     current_url = browser.current_url
     CLICK_CHECK = False
@@ -340,7 +240,7 @@ def click_bet(browser, field, right_bet, LIMIT_GET_QUOTE):
                         bet_name = new_bet.find_element_by_xpath(
                                 './/div[@class="sel-ls"]/a').text
 
-                        if bet_name == right_bet:
+                        if bet_name == bet:
 
                             bet_element_path = ('.//a[@ng-click="remCrt.' +
                                                 'selectionClick(selection)"]')
@@ -368,7 +268,7 @@ def click_bet(browser, field, right_bet, LIMIT_GET_QUOTE):
             print('recursive get quote')
             browser.get(current_url)
             time.sleep(3)
-            get_quote(browser, field, right_bet, LIMIT_GET_QUOTE + 1)
+            click_bet(browser, field, bet, LIMIT_GET_QUOTE + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -410,8 +310,12 @@ def login(browser):
 
 def look_for_quote(text):
 
-    input_team = text.split('_')[0].upper()
-    input_bet = text.split('_')[1].upper()
+    '''Take the input from the user and look into the db for the requested
+       quote. Return five variables which will be used later to update the
+       "predictions" table in the db.'''
+
+    input_team = text.split('_')[0]
+    input_bet = text.split('_')[1]
 
     db, c = dbf.start_db()
 
@@ -429,9 +333,9 @@ def look_for_quote(text):
     except IndexError:
         raise SyntaxError('Team not valid.')
 
-    team_name = list(c.execute('''SELECT team_name FROM teams
-                               WHERE team_id = ? ''',
-                               (team_id,)))[0][0]
+    team_name = list(c.execute('''SELECT team_name FROM teams INNER JOIN
+                               teams_alias on team_alias_team = team_id WHERE
+                               team_id = ? ''', (team_id,)))[0][0]
 
     if '*' in input_team:
         league_id = 8
@@ -458,16 +362,16 @@ def look_for_quote(text):
     return team1, team2, field_id, league_id, quote
 
 
-def add_bet(browser, current_url, field, right_bet):
+def add_bet(browser, current_url, field, bet):
 
     '''Add the quote to the basket by taking directly the url of the bet.
-       This is used inside the play_bet function to play the first match.'''
+       It is used inside the play_bet function.'''
 
     browser.get(current_url)
     time.sleep(3)
 
     try:
-        click_bet(browser, field, right_bet, 0)
+        click_bet(browser, field, bet, 0)
     except ConnectionError as e:
         raise ConnectionError(str(e))
 
@@ -517,11 +421,10 @@ def format_day(input_day):
     days_shift = weekdays[input_day] - today_weekday
     if days_shift < 0:
         days_shift += 7
-    new_date = today_date + datetime.timedelta(days=days_shift)
-    new_day = str(new_date).split('-')[2]
-    new_month = str(new_date).split('-')[1]
+    new_date = str(today_date + datetime.timedelta(days=days_shift))
+    new_date = int(new_date.replace('-', ''))
 
-    return '{}/{}'.format(new_day, new_month)
+    return new_date
 
 
 def update_matches_table(browser, c, table_count, match_count, league_id):
@@ -535,11 +438,11 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
     try:
         wait_visible(browser, 20, all_days)
     except TimeoutException:
-        print('andrea')
+        print('recursive update_matches')
         browser.get(current_url)
         league = list(c.execute('''SELECT league_name FROM leagues where
                                 league_id = ? ''', (league_id,)))[0][0]
-        find_league_button(browser, league)
+        click_league_button(browser, league)
         return update_matches_table(browser, c, table_count, match_count,
                                     league_id)
 
@@ -593,13 +496,16 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                     team1 = '*' + team1
                     team2 = '*' + team2
 
-                match_box = match.find_element_by_xpath(
-                        './/td[contains(@colspan,"1")]/a')
+                match_box_path = './/td[contains(@colspan,"1")]/a'
+                wait_clickable(browser, 20, match_box_path)
+                match_box = match.find_element_by_xpath(match_box_path)
 
                 scroll_to_element(browser, 'false', match_box)
 
                 simulate_hover_and_click(browser, match_box)
-                time.sleep(5)
+                match_header_path = (
+                        './/div[@class="col-sm-12 col-md-12 col-lg-12"]')
+                wait_visible(browser, 20, match_header_path)
                 match_url = browser.current_url
                 c.execute('''INSERT INTO matches (match_league, match_team1,
                                                   match_team2, match_date,
@@ -667,9 +573,9 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
 
     '''Update the tables 'matches' and 'quotes' of the db.'''
 
-    find_country_button(browser, league, 0)
-    find_league_button(browser, league)
-    time.sleep(3)
+    click_country_button(browser, league, 0)
+    click_league_button(browser, league)
+    time.sleep(2)
 
     last_id, match_count, table_count = update_matches_table(browser, c,
                                                              table_count,
@@ -685,7 +591,7 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
         update_quotes_table(browser, db, c, field_elements, all_fields,
                             last_id)
 
-    find_country_button(browser, league, 0)
+    click_country_button(browser, league, 0)
 
     return scan_league(browser, db, c, league, league_id, table_count,
                        match_count + 1, all_fields)
@@ -711,7 +617,7 @@ def fill_db_with_quotes():
 
         if all_leagues.index(league) > 0:
             last_league = all_leagues[all_leagues.index(league) - 1]
-            find_country_button(browser, last_league, 0)
+            click_country_button(browser, last_league, 0)
 
         table_count = 0
         match_count = 0
@@ -730,6 +636,70 @@ def fill_db_with_quotes():
             continue
     db.close()
     browser.quit()
+
+
+def matches_per_day(day):
+
+    '''Return a message containing all the matches scheduled for the day "day".
+       Input "day" needs to have the correct form in order to be handled by
+       the function format_day.'''
+
+    message = ''
+    date, time = dbf.todays_date()
+    requested_day = format_day(day)
+
+    db, c = dbf.start_db()
+    for league in countries:
+
+        league_id = list(c.execute('''SELECT league_id FROM leagues WHERE
+                                   league_name = ?''', (league,)))[0][0]
+
+        matches_to_print = list(c.execute('''SELECT match_id, match_team1,
+                                          match_team2, match_time FROM matches
+                                          WHERE match_date = ? AND
+                                          match_league = ?''', (requested_day,
+                                                                league_id)))
+        if matches_to_print:
+            message += '\n\n<b>{}</b>'.format(league)
+            for match in matches_to_print:
+                match_id = match[0]
+                team1 = match[1].replace('*', '')
+                team2 = match[2].replace('*', '')
+                match_time = str(match[3]).zfill(4)
+                match_time = match_time[:2] + ':' + match_time[2:]
+
+                short_team1 = list(c.execute('''SELECT team_short_value FROM
+                                             teams_short WHERE
+                                             team_short_name = ?''',
+                                             (team1,)))[0][0]
+                short_team2 = list(c.execute('''SELECT team_short_value FROM
+                                             teams_short WHERE
+                                             team_short_name = ?''',
+                                             (team2,)))[0][0]
+
+                quote1 = list(c.execute('''SELECT quote_value FROM quotes WHERE
+                                        quote_match = ? AND quote_field = 1''',
+                                        (match_id,)))[0][0]
+                quoteX = list(c.execute('''SELECT quote_value FROM quotes WHERE
+                                        quote_match = ? AND quote_field = 2''',
+                                        (match_id,)))[0][0]
+                quote2 = list(c.execute('''SELECT quote_value FROM quotes WHERE
+                                        quote_match = ? AND quote_field = 3''',
+                                        (match_id,)))[0][0]
+
+                message += '\n{}   {} - {}   {} / {} / {}'.format(match_time,
+                                                                  short_team1,
+                                                                  short_team2,
+                                                                  quote1,
+                                                                  quoteX,
+                                                                  quote2)
+
+    db.close()
+
+    if message:
+        return message
+    else:
+        return 'No matches on the selected day.'
 
 
 #start = time.time()
