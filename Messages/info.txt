@@ -1,0 +1,5 @@
+/help_quote: instructions to chose the bet
+
+/help_stats: instructions to see statistical results
+
+/alias: all valid alias for all teams

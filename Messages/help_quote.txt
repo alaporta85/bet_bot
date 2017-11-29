@@ -9,7 +9,6 @@ There are 8 leagues available:
     - EREDIVISIE
     - CHAMPIONS LEAGUE
 
-
 If the bet is one of the following:
 
     - ESITO FINALE 1X2
@@ -23,33 +22,50 @@ If the bet is one of the following:
     - ESITO FINALE 1X2 + U/O
     - DOPPIA CHANCE + UNDER/OVER
     - GOAL/NOGOAL + U/O 2,5
+    - ESITO 1 TEMPO/FINALE
 
-The message has to be sent in the form 'team_bet'.
+The message has to be sent in the form: /getquote team_bet.
 
-    Example1: milan_x pt
-    Example2: milan_gg + over 2.5
-    Example3: milan_under 3.5 pt
+    Example1: /getquote milan_x pt
+    Example2: /getquote milan_gg + over 2.5
+    Example3: /getquote milan_under 3.5 pt
 
-In case the bet is relative to CHAMPIONS LEAGUE insert an '*' in the team name.
+Command MUST be separated from the bet.
+
+    - correct: /getquote chievo_1h
+    - wrong: /getquotechievo_1h
+
+Blank spaces in the bet do NOT matter. Separators ',' and '.' are equivalent.
+
+In case the bet is relative to CHAMPIONS LEAGUE insert an '*' before the team name.
 
     - correct: *juve_x pt
-    - correct: ju*ve_x pt
-    - correct: juve*_x pt
-
 
 IMPORTANT:
 
     1. 'team' can be either team1 or team2, it does NOT matter.
     2. 'team' and 'bet' ALWAYS need to be separated by '_'.
-    3. different parts of the bet need a blank space as separator:
+    3. CAPS do NOT matter: 'milan' and 'MILAN' they both work.
 
-        - wrong: milan_over2.5
-        - correct: milan_over 2.5
+Each team has one or more alias. For example, for DEPORTIVO LA CORUNA you can
+use one of the following:
 
-    4. 'combo' bets need the sign ' + ' as separator (notice blank spaces):
+    - DEPORTIVO LA CORUNA
+    - DEPORTIVO
+    - DEPOR
 
-        - wrong: milan_gg over 2.5
-        - wrong: milan_gg+over 2.5
-        - correct: milan_gg + over 2.5
+To check the complete list of all teams use the command /alias .
+More commands:
 
-    5. CAPS do NOT matter: 'milan' and 'MILAN' they both work.
+/confirm: confirm the bet
+
+/cancel: delete a bet which is 'Not Confirmed'
+
+/delete: delete a bet which is 'Confirmed'
+
+/play: placy the bet. It requires the amount of euros as input.
+Ex: /play 3
+
+/update: update the database after the results are updated in Lottomatica
+
+/summary: list of bets already chosen by other users

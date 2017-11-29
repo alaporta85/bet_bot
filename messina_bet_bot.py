@@ -52,6 +52,16 @@ def start(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text="Iannelli suca")
 
 
+def format_text(content):
+
+    message = ('').join(content)
+    message = message.replace('\n\n', 'xx')
+    message = message.replace('\n', ' ')
+    message = message.replace('xx', '\n\n')
+
+    return message
+
+
 def help_quote(bot, update):
 
     '''Instructions to insert the correct input.'''
@@ -67,9 +77,20 @@ def help_quote(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
-def list_of_commands(bot, update):
+def help_stats(bot, update):
 
-    f = open('Messages/list_of_commands.txt', 'r')
+    f = open('Messages/help_stats.txt', 'r')
+    content = f.readlines()
+    f.close()
+
+    message = format_text(content)
+
+    bot.send_message(chat_id=update.message.chat_id, text=message)
+
+
+def info(bot, update):
+
+    f = open('Messages/info.txt', 'r')
     content = f.readlines()
     f.close()
 
@@ -82,10 +103,8 @@ def list_of_commands(bot, update):
 
 def quote(bot, update, args):
 
-    '''Try to find all the parameters from look_for_quote function. If found,
-       they will be inserted in the database's table called "matches" and the
-       user will be ask either to confirm or cancel the bet. It also manages
-       the cases when some error occurred.'''
+    '''Update the table "predictions" in the db with the data relative to the
+       chosen match. pred_status will be set to "Not Confirmed".'''
 
     if not args:
         return bot.send_message(chat_id=update.message.chat_id,
@@ -176,12 +195,12 @@ def quote(bot, update, args):
 
 def confirm(bot, update):
 
-    '''Update the status of the bet in the "matches" table from "Not Confirmed
-       to "Confirmed". If it is the first bet of the day it creates a new
-       entry in the "bets" table and update the bet_id in the "matches" table.
-       Else, it just uses the bet_id. It also checks whether there are others
-       Not Confirmed bets of the same match. If yes, they will be deleted from
-       the "matches" table.'''
+    '''Update the status of the bet in the "predictions" table from
+       "Not Confirmed" to "Confirmed". If it is the first bet of the day it
+       creates a new entry in the "bets" table and update the bet_id in the
+       "predictions" table. Else, it just uses the bet_id. It also checks
+       whether there are others "Not Confirmed" bets of the same match. If yes,
+       they will be deleted from the "predictions" table.'''
 
     first_name = nickname(update.message.from_user.first_name)
 
@@ -226,7 +245,7 @@ def confirm(bot, update):
 
 def cancel(bot, update):
 
-    '''Delete the "Not Confirmed" bet from "matches" table.'''
+    '''Delete the "Not Confirmed" bet from "predictions" table.'''
 
     first_name = nickname(update.message.from_user.first_name)
     db, c = dbf.start_db()
@@ -247,6 +266,48 @@ def cancel(bot, update):
     db.close()
     bot.send_message(chat_id=update.message.chat_id,
                      text='{}, your bet has been canceled.'.format(first_name))
+
+
+def delete(bot, update):
+
+    '''Delete the "Confirmed" bet from "predictions" table.'''
+
+    first_name = nickname(update.message.from_user.first_name)
+    db, c = dbf.start_db()
+
+    bet_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                            bet_status = "Pending"'''))
+    if not bet_id:
+        db.close()
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='There are no "Pending" bets.')
+
+    bet_id = bet_id[0][0]
+    bet_to_delete = list(c.execute('''SELECT pred_id FROM predictions WHERE
+                                   pred_bet = ? AND pred_user = ? AND
+                                   pred_status = "Confirmed"''',
+                                   (bet_id, first_name)))
+    if not bet_to_delete:
+        db.close()
+        message = '{}, you have no bet to delete.'.format(first_name)
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text=message)
+
+    bet_to_delete = bet_to_delete[0][0]
+    c.execute('''DELETE FROM predictions WHERE pred_id = ?''',
+              (bet_to_delete,))
+    db.commit()
+
+    pending_bets_left = list(c.execute('''SELECT pred_id FROM predictions WHERE
+                                       pred_status = "Confirmed" AND
+                                       pred_bet = ?''', (bet_id,)))
+    if not pending_bets_left:
+        c.execute('''DELETE FROM bets WHERE bet_id = ?''', (bet_id,))
+        db.commit()
+
+    db.close()
+    bot.send_message(chat_id=update.message.chat_id,
+                     text='{}, your bet has been deleted.'.format(first_name))
 
 
 def play_bet(bot, update, args):
@@ -578,10 +639,12 @@ def match(bot, update, args):
 
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help_quote', help_quote)
-commands_handler = CommandHandler('commands', list_of_commands)
+stats_handler = CommandHandler('help_stats', help_stats)
+info_handler = CommandHandler('info', info)
 quote_handler = CommandHandler('getquote', quote, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
 cancel_handler = CommandHandler('cancel', cancel)
+delete_handler = CommandHandler('delete', delete)
 play_bet_handler = CommandHandler('play', play_bet, pass_args=True)
 update_handler = CommandHandler('update', update_results)
 summary_handler = CommandHandler('summary', summary)
@@ -593,10 +656,12 @@ series_handler = CommandHandler('series', series)
 match_handler = CommandHandler('match', match, pass_args=True)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
-dispatcher.add_handler(commands_handler)
+dispatcher.add_handler(stats_handler)
+dispatcher.add_handler(info_handler)
 dispatcher.add_handler(quote_handler)
 dispatcher.add_handler(confirm_handler)
 dispatcher.add_handler(cancel_handler)
+dispatcher.add_handler(delete_handler)
 dispatcher.add_handler(play_bet_handler)
 dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
