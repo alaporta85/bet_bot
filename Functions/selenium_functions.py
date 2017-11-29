@@ -1,6 +1,6 @@
+import os
 import time
 import datetime
-import pickle
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
@@ -11,7 +11,6 @@ from selenium import webdriver
 #from Functions import logging as log
 from Functions import db_functions as dbf
 #import db_functions as dbf
-import pandas as pd
 
 
 countries = {
@@ -28,7 +27,8 @@ countries = {
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
-chrome_path = '/Users/andrea/Desktop/bet_bot/chromedriver'
+absolute_path = os.getcwd()
+chrome_path = absolute_path + '/chromedriver'
 
 
 def wait_clickable(browser, seconds, element):
@@ -636,70 +636,6 @@ def fill_db_with_quotes():
             continue
     db.close()
     browser.quit()
-
-
-def matches_per_day(day):
-
-    '''Return a message containing all the matches scheduled for the day "day".
-       Input "day" needs to have the correct form in order to be handled by
-       the function format_day.'''
-
-    message = ''
-    date, time = dbf.todays_date()
-    requested_day = format_day(day)
-
-    db, c = dbf.start_db()
-    for league in countries:
-
-        league_id = list(c.execute('''SELECT league_id FROM leagues WHERE
-                                   league_name = ?''', (league,)))[0][0]
-
-        matches_to_print = list(c.execute('''SELECT match_id, match_team1,
-                                          match_team2, match_time FROM matches
-                                          WHERE match_date = ? AND
-                                          match_league = ?''', (requested_day,
-                                                                league_id)))
-        if matches_to_print:
-            message += '\n\n<b>{}</b>'.format(league)
-            for match in matches_to_print:
-                match_id = match[0]
-                team1 = match[1].replace('*', '')
-                team2 = match[2].replace('*', '')
-                match_time = str(match[3]).zfill(4)
-                match_time = match_time[:2] + ':' + match_time[2:]
-
-                short_team1 = list(c.execute('''SELECT team_short_value FROM
-                                             teams_short WHERE
-                                             team_short_name = ?''',
-                                             (team1,)))[0][0]
-                short_team2 = list(c.execute('''SELECT team_short_value FROM
-                                             teams_short WHERE
-                                             team_short_name = ?''',
-                                             (team2,)))[0][0]
-
-                quote1 = list(c.execute('''SELECT quote_value FROM quotes WHERE
-                                        quote_match = ? AND quote_field = 1''',
-                                        (match_id,)))[0][0]
-                quoteX = list(c.execute('''SELECT quote_value FROM quotes WHERE
-                                        quote_match = ? AND quote_field = 2''',
-                                        (match_id,)))[0][0]
-                quote2 = list(c.execute('''SELECT quote_value FROM quotes WHERE
-                                        quote_match = ? AND quote_field = 3''',
-                                        (match_id,)))[0][0]
-
-                message += '\n{}   {} - {}   {} / {} / {}'.format(match_time,
-                                                                  short_team1,
-                                                                  short_team2,
-                                                                  quote1,
-                                                                  quoteX,
-                                                                  quote2)
-
-    db.close()
-
-    if message:
-        return message
-    else:
-        return 'No matches on the selected day.'
 
 
 #start = time.time()

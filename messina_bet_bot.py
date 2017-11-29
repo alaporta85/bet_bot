@@ -569,7 +569,7 @@ def match(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Insert the day. Ex. /match sab')
     try:
-        message = sf.matches_per_day(args[0])
+        message = bf.matches_per_day(args[0])
         bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
                          text=message)
     except SyntaxError as e:

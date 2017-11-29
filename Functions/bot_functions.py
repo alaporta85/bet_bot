@@ -364,3 +364,68 @@ def insert_euros(browser, matches_to_play, matches_played, euros):
     possible_win = round(possible_win_default * (euros/2), 2)
 
     return possible_win
+
+
+def matches_per_day(day):
+
+    '''Return a message containing all the matches scheduled for the day "day".
+       Input "day" needs to have the correct form in order to be handled by
+       the function format_day.'''
+
+    message = ''
+    date, time = dbf.todays_date()
+    requested_day = sf.format_day(day)
+
+    db, c = dbf.start_db()
+    for league in sf.countries:
+
+        league_id = list(c.execute('''SELECT league_id FROM leagues WHERE
+                                   league_name = ?''', (league,)))[0][0]
+
+        matches_to_print = list(c.execute('''SELECT match_id, match_team1,
+                                          match_team2, match_time FROM matches
+                                          WHERE match_date = ? AND
+                                          match_league = ?''', (requested_day,
+                                                                league_id)))
+        if matches_to_print:
+            message += '\n\n<b>{}</b>'.format(league)
+            for match in matches_to_print:
+                match_id = match[0]
+                team1 = match[1].replace('*', '')
+                team2 = match[2].replace('*', '')
+                match_time = str(match[3]).zfill(4)
+                match_time = match_time[:2] + ':' + match_time[2:]
+
+                short_team1 = list(c.execute('''SELECT team_short_value FROM
+                                             teams_short WHERE
+                                             team_short_name = ?''',
+                                             (team1,)))[0][0]
+                short_team2 = list(c.execute('''SELECT team_short_value FROM
+                                             teams_short WHERE
+                                             team_short_name = ?''',
+                                             (team2,)))[0][0]
+
+                quote1 = list(c.execute('''SELECT quote_value FROM quotes WHERE
+                                        quote_match = ? AND quote_field = 1''',
+                                        (match_id,)))[0][0]
+                quoteX = list(c.execute('''SELECT quote_value FROM quotes WHERE
+                                        quote_match = ? AND quote_field = 2''',
+                                        (match_id,)))[0][0]
+                quote2 = list(c.execute('''SELECT quote_value FROM quotes WHERE
+                                        quote_match = ? AND quote_field = 3''',
+                                        (match_id,)))[0][0]
+
+                message += '\n{}   <i>{} - {}</i>   {} / {} / {}'.format(
+                                                                match_time,
+                                                                short_team1,
+                                                                short_team2,
+                                                                quote1,
+                                                                quoteX,
+                                                                quote2)
+
+    db.close()
+
+    if message:
+        return message
+    else:
+        return 'No matches on the selected day.'
