@@ -24,16 +24,16 @@ If the bet is one of the following:
     - GOAL/NOGOAL + U/O 2,5
     - ESITO 1 TEMPO/FINALE
 
-The message has to be sent in the form: /getquote team_bet.
+The message has to be sent in the form: /get team_bet.
 
-    Example1: /getquote milan_x pt
-    Example2: /getquote milan_gg + over 2.5
-    Example3: /getquote milan_under 3.5 pt
+    Example1: /get milan_x pt
+    Example2: /get milan_gg + over 2.5
+    Example3: /get milan_under 3.5 pt
 
 Command MUST be separated from the bet.
 
-    - correct: /getquote chievo_1h
-    - wrong: /getquotechievo_1h
+    - correct: /get chievo_1h
+    - wrong: /getchievo_1h
 
 Blank spaces in the bet do NOT matter. Separators ',' and '.' are equivalent.
 
@@ -47,8 +47,7 @@ IMPORTANT:
     2. 'team' and 'bet' ALWAYS need to be separated by '_'.
     3. CAPS do NOT matter: 'milan' and 'MILAN' they both work.
 
-Each team has one or more alias. For example, for DEPORTIVO LA CORUNA you can
-use one of the following:
+Each team has one or more alias. For example, for DEPORTIVO LA CORUNA you can use one of the following:
 
     - DEPORTIVO LA CORUNA
     - DEPORTIVO
@@ -63,7 +62,7 @@ More commands:
 
 /delete: delete a bet which is 'Confirmed'
 
-/play: placy the bet. It requires the amount of euros as input.
+/play: place the bet. It requires the amount of euros as input.
 Ex: /play 3
 
 /update: update the database after the results are updated in Lottomatica

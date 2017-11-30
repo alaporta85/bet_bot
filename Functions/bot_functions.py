@@ -256,16 +256,15 @@ def update_tables_and_ref_list(db, c, first_name, bet_id):
     # others Not Confirmed bets of the same match
     ref_list = list(c.execute('''SELECT pred_team1, pred_team2, pred_league
                               FROM bets INNER JOIN predictions on
-                              predictions.pred_bet = bets.bet_id WHERE
-                              bets.bet_id = ? AND pred_user = ?''',
-                              (bet_id, first_name)))
+                              pred_bet = bet_id WHERE bet_id = ? AND
+                              pred_user = ?''', (bet_id, first_name)))
 
     db.commit()
 
     return ref_list
 
 
-def check_if_duplicate(c, first_name, match, ref_list, not_confirmed_matches):
+def check_if_duplicate(c, first_name, match, ref_list):
 
     message = ''
 
@@ -276,8 +275,10 @@ def check_if_duplicate(c, first_name, match, ref_list, not_confirmed_matches):
     league = match[4]
 
     if (team1, team2, league) in ref_list:
+        print('uno')
         c.execute('''DELETE FROM predictions WHERE pred_id = ?''',
                   (pred_id,))
+        print('due')
         message = ('{}, your bet on the match '.format(user) +
                    '{} - {} has '.format(team1, team2) +
                    'been canceled because ' +

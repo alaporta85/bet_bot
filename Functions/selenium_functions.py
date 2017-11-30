@@ -28,6 +28,7 @@ conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
 absolute_path = os.getcwd()
+#chrome_path = absolute_path[:-9] + '/chromedriver'
 chrome_path = absolute_path + '/chromedriver'
 
 
@@ -323,6 +324,8 @@ def look_for_quote(text):
         field_id = list(c.execute('''SELECT field_alias_field FROM fields_alias
                                   WHERE field_alias_name = ? ''',
                                   (input_bet,)))[0][0]
+        nice_bet = list(c.execute('''SELECT field_nice_value FROM fields
+                                  WHERE field_id = ? ''', (field_id,)))[0][0]
     except IndexError:
         raise SyntaxError('Bet not valid.')
 
@@ -359,7 +362,7 @@ def look_for_quote(text):
 
     db.close()
 
-    return team1, team2, field_id, league_id, quote
+    return team1, team2, field_id, league_id, nice_bet, quote
 
 
 def add_bet(browser, current_url, field, bet):
@@ -636,6 +639,84 @@ def fill_db_with_quotes():
             continue
     db.close()
     browser.quit()
+
+
+def alias():
+    db, c = dbf.start_db()
+    all_teams = list(c.execute('''SELECT team_name FROM teams'''))
+    all_teams = [element[0] for element in all_teams if '*' not in element[0]]
+
+    message = ''
+    for team in all_teams:
+        team_id = list(c.execute('''SELECT team_id FROM teams WHERE
+                                 team_name = ?''', (team,)))[0][0]
+
+        alias_list = list(c.execute('''SELECT team_alias_name FROM teams_alias
+                                    WHERE team_alias_team = ?''',
+                                    (team_id,)))
+        alias_list = ['<' + element[0] + '>' for element in alias_list]
+        alias_string = (' ').join(alias_list)
+
+        message += team + ': ' + '{}'.format(alias_string) + '\n'
+
+    db.close()
+
+    return message
+
+
+def all_bets_per_team(db, c, team_name, league_id):
+
+    '''Return two text messages: one showing all the standard bets and the
+       other one the combo. Both of them are relative to the match of the
+       league whose id is "league_id" and team "team_name" is playing.'''
+
+    match_id, team1, team2 = list(c.execute('''SELECT match_id, match_team1,
+                                            match_team2 FROM matches WHERE
+                                            match_league = ? AND
+                                            (match_team1 = ? OR
+                                            match_team2 = ?)''', (league_id,
+                                            team_name, team_name,)))[0]
+    team1 = team1.replace('*', '')
+    team2 = team2.replace('*', '')
+
+    message_standard = '<b>{} - {}: STANDARD</b>\n'.format(team1, team2)
+    message_combo = '<b>{} - {}: COMBO</b>\n'.format(team1, team2)
+    fields = list(c.execute('''SELECT field_id, field_value
+                            FROM fields'''))
+
+    fields_added = []
+    for field in fields:
+        field_id = field[0]
+        field_value = field[1]
+        field_name = list(c.execute('''SELECT field_name FROM fields WHERE
+                                   field_id = ?''', (field_id,)))[0][0]
+        if field_name not in fields_added:
+            fields_added.append(field_name)
+            if '+' not in field_name:
+                COMBO = False
+                message_standard += '\n\n<i>{}</i>'.format(field_name)
+            else:
+                COMBO = True
+                message_combo += '\n\n<i>{}</i>'.format(field_name)
+        try:
+            quote = list(c.execute('''SELECT quote_value FROM quotes WHERE
+                                   quote_match = ? AND quote_field = ?''',
+                                   (match_id, field_id)))[0][0]
+        except IndexError:
+            if not COMBO:
+                message_standard += '\n<b>{}</b>: NOT FOUND'.format(
+                                                                   field_value)
+            else:
+                message_combo += '\n<b>{}</b>: NOT FOUND'.format(field_value)
+            continue
+
+        if not COMBO:
+            message_standard += '\n<b>{}</b>:    @{}'.format(field_value,
+                                                             quote)
+        else:
+            message_combo += '\n<b>{}</b>:    @{}'.format(field_value, quote)
+
+    return message_standard, message_combo
 
 
 #start = time.time()

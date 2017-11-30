@@ -64,7 +64,7 @@ def format_text(content):
 
 def help_quote(bot, update):
 
-    '''Instructions to insert the correct input.'''
+    '''Instructions to insert the correct bet.'''
 
     f = open('Messages/help_quote.txt', 'r')
     content = f.readlines()
@@ -79,12 +79,22 @@ def help_quote(bot, update):
 
 def help_stats(bot, update):
 
+    '''Instructions to use statistic commands.'''
+
     f = open('Messages/help_stats.txt', 'r')
     content = f.readlines()
     f.close()
 
     message = format_text(content)
 
+    bot.send_message(chat_id=update.message.chat_id, text=message)
+
+
+def alias(bot, update):
+
+    '''Show all alias for each team.'''
+
+    message = sf.alias()
     bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
@@ -111,22 +121,44 @@ def quote(bot, update, args):
                                 text='Please insert the bet.')
 
     guess = ' '.join(args).upper()
-    guess = guess.replace(' ', '')
-    guess = guess.replace(',', '.')
 
-    if len(guess.split('_')) != 2:
-        return bot.send_message(chat_id=update.message.chat_id,
-                                text=('Wrong format. Input text must ' +
-                                      'have the structure "team_bet".'))
-    elif '_' not in guess:
-        return bot.send_message(chat_id=update.message.chat_id,
-                                text='Bet not valid. "_" is missing.')
+    if '_' not in guess:
+
+        db, c = dbf.start_db()
+        team_id = list(c.execute('''SELECT team_alias_team FROM teams_alias
+                                 WHERE team_alias_name = ?''', (guess,)))
+        if team_id:
+            team_id = team_id[0][0]
+            team_name, league_id = list(c.execute('''SELECT team_name,
+                                                  team_league FROM teams WHERE
+                                                  team_id = ?''',
+                                                  (team_id,)))[0]
+
+            message_standard, message_combo = sf.all_bets_per_team(db, c,
+                                                                   team_name,
+                                                                   league_id)
+            db.close()
+
+            bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+                             text=message_standard)
+            return bot.send_message(parse_mode='HTML',
+                                    chat_id=update.message.chat_id,
+                                    text=message_combo)
+        else:
+            return bot.send_message(chat_id=update.message.chat_id,
+                                    text='Request not valid.')
+
     elif guess[0] == '_' or guess[-1] == '_':
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Wrong format.')
 
     # User sending the message
     first_name = nickname(update.message.from_user.first_name)
+
+    team, bet = guess.split('_')
+    bet = bet.replace(' ', '')
+    bet = bet.replace(',', '.')
+    guess = ('_').join([team, bet])
 
     db, c = dbf.start_db()
 
@@ -143,11 +175,10 @@ def quote(bot, update, args):
                                        pred_status = "Confirmed"
                                        AND pred_bet = ?''', (bet_id,)))
 
-    raw_bet = guess.split('_')[1]
-
     try:
 
-        team1, team2, field_id, league_id, quote = sf.look_for_quote(guess)
+        team1, team2, field_id, league_id, nice_bet, quote = sf.look_for_quote(
+                                                                        guess)
 
         if (not confirmed_matches
            or (team1, team2) not in confirmed_matches):
@@ -169,12 +200,12 @@ def quote(bot, update, args):
                                                   pred_quote, pred_status)
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                       (first_name, match_date, match_time, team1, team2,
-                       league_id, field_id, raw_bet, quote, 'Not Confirmed'))
+                       league_id, field_id, nice_bet, quote, 'Not Confirmed'))
 
             db.commit()
             db.close()
 
-            printed_bet = '{} - {} {} @{}'.format(team1, team2, raw_bet,
+            printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet,
                                                   quote)
 
             bot.send_message(chat_id=update.message.chat_id,
@@ -221,6 +252,7 @@ def confirm(bot, update):
     bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
 
     ref_list = bf.update_tables_and_ref_list(db, c, first_name, bet_id)
+    print(ref_list)
 
     # Now we delete all the bets of the same match which have not been
     # confirmed
@@ -228,10 +260,10 @@ def confirm(bot, update):
                                            pred_team1, pred_team2, pred_league
                                            FROM predictions WHERE
                                            pred_status = "Not Confirmed" '''))
+    print(not_confirmed_matches)
 
     for match in not_confirmed_matches:
-        dupl_message = bf.check_if_duplicate(c, first_name, ref_list,
-                                             not_confirmed_matches)
+        dupl_message = bf.check_if_duplicate(c, first_name, match, ref_list)
         if dupl_message:
             bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
 
@@ -640,8 +672,9 @@ def match(bot, update, args):
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help_quote', help_quote)
 stats_handler = CommandHandler('help_stats', help_stats)
+alias_handler = CommandHandler('alias', alias)
 info_handler = CommandHandler('info', info)
-quote_handler = CommandHandler('getquote', quote, pass_args=True)
+quote_handler = CommandHandler('get', quote, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
 cancel_handler = CommandHandler('cancel', cancel)
 delete_handler = CommandHandler('delete', delete)
@@ -657,6 +690,7 @@ match_handler = CommandHandler('match', match, pass_args=True)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(stats_handler)
+dispatcher.add_handler(alias_handler)
 dispatcher.add_handler(info_handler)
 dispatcher.add_handler(quote_handler)
 dispatcher.add_handler(confirm_handler)
