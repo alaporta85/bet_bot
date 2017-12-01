@@ -472,76 +472,76 @@ def play_bet(bot, update, args):
 
         # Make the login
         sf.login(browser)
-#        bot.edit_message_text(chat_id=update.message.chat_id,
-#                              message_id=mess_id,
-#                              text='Login...')
-#
-#        button_location = './/div[@class="change-bet ng-scope"]'
-#
-#        try:
-#            sf.wait_visible(browser, 20, button_location)
-#        except TimeoutException:
-#            browser.quit()
-#            bot.send_message(chat_id=update.message.chat_id,
-#                             text=('Problem during placing the bet. ' +
-#                                   'Please check if the bet is valid or ' +
-#                                   'the connection and try again.'))
-#
-#        sf.scroll_to_element(browser, 'true',
-#                             browser.find_element_by_xpath(
-#                                     button_location))
-#
-#        try:
-#            button_path = ('.//button[@class="button-default no-margin-' +
-#                           'bottom ng-scope"]')
-#
-#            button_list = browser.find_elements_by_xpath(button_path)
-#        except NoSuchElementException:
-#            print('aggiorna')
-#            button_path = ('.//button[@class="button-default"]')
-#            button_list = browser.find_elements_by_xpath(button_path)
-#            print(len(button_list))
-#            for element in button_list:
-#                if element.is_displayed():
-#                    print(element.text)
-####                    element.click()
-#                    break
-#
-#        for element in button_list:
-#            if element.is_displayed():
-#                print(element.text)
-####                    element.click()
-#                db, c = dbf.start_db()
-#                c.execute('''UPDATE bets SET euros = ?, prize = ?,
-#                          status = ? WHERE status = ?''',
-#                          (euros, possible_win, 'Placed', 'Pending'))
-#                db.commit()
-#                db.close()
-#
-#                bot.edit_message_text(chat_id=update.message.chat_id,
-#                                      message_id=mess_id, text='Done!')
-#                break
-#
-#        # Print the summary
-#        message = 'Bet placed correctly.\n\n'
-#        bet_id = dbf.get_value('bets_id', 'bets', 'result', 'Unknown')
-#        db, c = dbf.start_db()
-#        summary = list(c.execute('''SELECT user, team1, team2, field, bet
-#                             FROM bets INNER JOIN matches on
-#                             matches.bets_id = bets.bets_id WHERE
-#                             bets.bets_id = ?''', (bet_id,)))
-#
-#        db.close()
-#        message += (played_bets(summary) + '\nPossible win: {}'.format(
-#                possible_win))
-#        bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-#                         text=message)
-#    else:
-#        bot.send_message(chat_id=update.message.chat_id,
-#                         text=('Something went wrong, try again the' +
-#                               ' command /play.'))
-#
-#    browser.quit()
+        bot.edit_message_text(chat_id=update.message.chat_id,
+                              message_id=mess_id,
+                              text='Login...')
+
+        button_location = './/div[@class="change-bet ng-scope"]'
+
+        try:
+            sf.wait_visible(browser, 20, button_location)
+        except TimeoutException:
+            browser.quit()
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=('Problem during placing the bet. ' +
+                                   'Please check if the bet is valid or ' +
+                                   'the connection and try again.'))
+
+        sf.scroll_to_element(browser, 'true',
+                             browser.find_element_by_xpath(
+                                     button_location))
+
+        try:
+            button_path = ('.//button[@class="button-default no-margin-' +
+                           'bottom ng-scope"]')
+
+            button_list = browser.find_elements_by_xpath(button_path)
+        except NoSuchElementException:
+            print('aggiorna')
+            button_path = ('.//button[@class="button-default"]')
+            button_list = browser.find_elements_by_xpath(button_path)
+            print(len(button_list))
+            for element in button_list:
+                if element.is_displayed():
+                    print(element.text)
+###                    element.click()
+                    break
+
+        for element in button_list:
+            if element.is_displayed():
+                print(element.text)
+###                    element.click()
+                db, c = dbf.start_db()
+                c.execute('''UPDATE bets SET bet_euros = ?, bet_prize = ?,
+                          bet_status = ? WHERE status = "Pending" ''',
+                          (euros, possible_win, 'Placed'))
+                db.commit()
+                db.close()
+
+                bot.edit_message_text(chat_id=update.message.chat_id,
+                                      message_id=mess_id, text='Done!')
+                break
+
+        # Print the summary
+        message = 'Bet placed correctly.\n\n'
+        bet_id = dbf.get_value('bet_id', 'bets', 'bet_result', 'Unknown')
+        db, c = dbf.start_db()
+        summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
+                                 field, pred_rawbet FROM bets INNER JOIN
+                                 predictions on pred_bet = bet_id WHERE
+                                 bet_id = ?''', (bet_id,)))
+
+        db.close()
+        message += (played_bets(summary) + '\nPossible win: {}'.format(
+                possible_win))
+        bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+                         text=message)
+    else:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=('Something went wrong, try again the' +
+                               ' command /play.'))
+
+    browser.quit()
 
 
 def update_results(bot, update):
