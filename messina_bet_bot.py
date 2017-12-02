@@ -252,7 +252,6 @@ def confirm(bot, update):
     bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
 
     ref_list = bf.update_tables_and_ref_list(db, c, first_name, bet_id)
-    print(ref_list)
 
     # Now we delete all the bets of the same match which have not been
     # confirmed
@@ -260,7 +259,6 @@ def confirm(bot, update):
                                            pred_team1, pred_team2, pred_league
                                            FROM predictions WHERE
                                            pred_status = "Not Confirmed" '''))
-    print(not_confirmed_matches)
 
     for match in not_confirmed_matches:
         dupl_message = bf.check_if_duplicate(c, first_name, match, ref_list)

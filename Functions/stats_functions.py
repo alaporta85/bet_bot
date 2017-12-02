@@ -25,8 +25,12 @@ def perc_success():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
+    unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                bet_result = "Unknown" '''))[0][0]
+
     all_bets_list = list(c.execute('''SELECT pred_bet, pred_user, pred_label
-                                   FROM predictions'''))
+                                   FROM predictions WHERE pred_bet != ?''',
+                                   (unknown_id,)))
     n_bets = all_bets_list[-1][0]
 
     db.close()
@@ -125,9 +129,13 @@ def records():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
+    unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                bet_result = "Unknown" '''))[0][0]
+
     all_bets_list = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
                                    pred_rawbet, pred_quote, pred_label FROM
-                                   predictions'''))
+                                   predictions WHERE pred_bet != ?''',
+                                   (unknown_id,)))
     db.close()
 
     # Initialize parameters
@@ -255,8 +263,12 @@ def create_series(c, name, series_pos, series_neg):
     '''Fill the dicts series_pos and series_neg with the elements representing
        the series for each player.'''
 
+    unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                bet_result = "Unknown" '''))[0][0]
+
     ref_list = list(c.execute('''SELECT pred_date, pred_label FROM predictions
-                              WHERE pred_user = ? ''', (name,)))
+                              WHERE pred_user = ? AND pred_bet != ?''',
+                              (name, unknown_id)))
 
     count_pos = 0
     dates_pos = []
