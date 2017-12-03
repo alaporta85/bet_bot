@@ -511,7 +511,7 @@ def play_bet(bot, update, args):
 ###                    element.click()
                 db, c = dbf.start_db()
                 c.execute('''UPDATE bets SET bet_euros = ?, bet_prize = ?,
-                          bet_status = ? WHERE status = "Pending" ''',
+                          bet_status = ? WHERE bet_status = "Pending" ''',
                           (euros, possible_win, 'Placed'))
                 db.commit()
                 db.close()
