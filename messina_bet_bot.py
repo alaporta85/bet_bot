@@ -564,6 +564,7 @@ def update_results(bot, update):
            'scommesse-sportive.html')
     browser = webdriver.Chrome(sf.chrome_path)
     time.sleep(3)
+    browser.set_window_size(1400, 800)
     browser.get(url)
     time.sleep(3)
 
@@ -575,7 +576,7 @@ def update_results(bot, update):
 
         bf.go_to_placed_bets(browser, 0)
 
-        bets_updated = bf.analyze_main_table(browser, ref_list, 0, 0)
+        bets_updated = bf.analyze_main_table(browser, ref_list, 0)
 
     except ConnectionError as e:
         browser.quit()

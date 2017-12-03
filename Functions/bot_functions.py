@@ -147,6 +147,9 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
         for ref_bet in ref_list:
             ref_id = ref_bet[0]
             ref_date = ref_bet[1]
+            ref_date = ref_date.split('/')
+            ref_date = list(reversed(ref_date))
+            ref_date = ('/').join(ref_date)
 
             for bet in bets_list:
 
@@ -275,10 +278,8 @@ def check_if_duplicate(c, first_name, match, ref_list):
     league = match[4]
 
     if (team1, team2, league) in ref_list:
-        print('uno')
         c.execute('''DELETE FROM predictions WHERE pred_id = ?''',
                   (pred_id,))
-        print('due')
         message = ('{}, your bet on the match '.format(user) +
                    '{} - {} has '.format(team1, team2) +
                    'been canceled because ' +
