@@ -2,14 +2,13 @@ import os
 import time
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
-from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.common.keys import Keys
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 from Functions import bot_functions as bf
 from Functions import stats_functions as stf
 from Functions import logging as log
+from signal import signal, SIGINT, SIGTERM, SIGABRT
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -525,7 +524,7 @@ def play_bet(bot, update, args):
         bet_id = dbf.get_value('bet_id', 'bets', 'bet_result', 'Unknown')
         db, c = dbf.start_db()
         summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
-                                 field, pred_rawbet FROM bets INNER JOIN
+                                 pred_field, pred_rawbet FROM bets INNER JOIN
                                  predictions on pred_bet = bet_id WHERE
                                  bet_id = ?''', (bet_id,)))
 
@@ -560,16 +559,11 @@ def update_results(bot, update):
     bot.send_message(chat_id=update.message.chat_id,
                      text='Updating database...')
 
-    url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
-           'scommesse-sportive.html')
-    browser = webdriver.Chrome(sf.chrome_path)
-    time.sleep(3)
-    browser.set_window_size(1400, 800)
-    browser.get(url)
+    browser = sf.go_to_lottomatica(0)
     time.sleep(3)
 
     sf.login(browser)
-    time.sleep(5)
+    time.sleep(3)
 
     try:
         bf.go_to_personal_area(browser, 0)
@@ -668,6 +662,10 @@ def match(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 
+def aaa(bot, update):
+    updater.stop()
+
+
 start_handler = CommandHandler('start', start)
 help_handler = CommandHandler('help_quote', help_quote)
 stats_handler = CommandHandler('help_stats', help_stats)
@@ -686,6 +684,7 @@ records_handler = CommandHandler('records', records)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 series_handler = CommandHandler('series', series)
 match_handler = CommandHandler('match', match, pass_args=True)
+aaa_handler = CommandHandler('aaa', aaa)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(stats_handler)
@@ -704,7 +703,8 @@ dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(series_handler)
 dispatcher.add_handler(match_handler)
+dispatcher.add_handler(aaa_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-#updater.idle()
+updater.idle()

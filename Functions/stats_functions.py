@@ -25,12 +25,16 @@ def perc_success():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                bet_result = "Unknown" '''))[0][0]
+    try:
+        unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                    bet_result = "Unknown" '''))[0][0]
+    except IndexError:
+        unknown_id = 0
 
     all_bets_list = list(c.execute('''SELECT pred_bet, pred_user, pred_label
                                    FROM predictions WHERE pred_bet != ?''',
                                    (unknown_id,)))
+
     n_bets = all_bets_list[-1][0]
 
     db.close()
@@ -88,7 +92,8 @@ def aver_quote():
     c.execute("PRAGMA foreign_keys = ON")
 
     all_bets_list = list(c.execute('''SELECT pred_user, pred_quote FROM
-                                   predictions'''))
+                                   predictions WHERE pred_label = "WINNING"
+                                   '''))
     db.close()
 
     for bet in all_bets_list:
@@ -108,7 +113,7 @@ def aver_quote():
     plt.xticks(range(5), names, fontsize=14)
     plt.yticks(range(1, 5, 1), fontsize=14)
     plt.ylim(1, 4)
-    plt.title('Average quote', fontsize=18)
+    plt.title('Average WINNING quote', fontsize=18)
 
     for bar in bars:
         height = bar.get_height()
@@ -129,8 +134,11 @@ def records():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                bet_result = "Unknown" '''))[0][0]
+    try:
+        unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                    bet_result = "Unknown" '''))[0][0]
+    except IndexError:
+        unknown_id = 0
 
     all_bets_list = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
                                    pred_rawbet, pred_quote, pred_label FROM
@@ -263,8 +271,11 @@ def create_series(c, name, series_pos, series_neg):
     '''Fill the dicts series_pos and series_neg with the elements representing
        the series for each player.'''
 
-    unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                bet_result = "Unknown" '''))[0][0]
+    try:
+        unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                    bet_result = "Unknown" '''))[0][0]
+    except IndexError:
+        unknown_id = 0
 
     ref_list = list(c.execute('''SELECT pred_date, pred_label FROM predictions
                               WHERE pred_user = ? AND pred_bet != ?''',
