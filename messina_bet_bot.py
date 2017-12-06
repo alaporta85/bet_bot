@@ -8,7 +8,6 @@ from Functions import selenium_functions as sf
 from Functions import bot_functions as bf
 from Functions import stats_functions as stf
 from Functions import logging as log
-from signal import signal, SIGINT, SIGTERM, SIGABRT
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -662,8 +661,14 @@ def match(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 
-def aaa(bot, update):
-    updater.stop()
+def new_quotes(bot, update):
+
+    start = time.time()
+    sf.fill_db_with_quotes()
+    end = time.time() - start
+    minutes = int(end//60)
+    seconds = round(end % 60)
+    print('Whole process took {}:{} minutes.'.format(minutes, seconds))
 
 
 start_handler = CommandHandler('start', start)
@@ -684,7 +689,7 @@ records_handler = CommandHandler('records', records)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 series_handler = CommandHandler('series', series)
 match_handler = CommandHandler('match', match, pass_args=True)
-aaa_handler = CommandHandler('aaa', aaa)
+new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(stats_handler)
@@ -703,8 +708,8 @@ dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(series_handler)
 dispatcher.add_handler(match_handler)
-dispatcher.add_handler(aaa_handler)
+dispatcher.add_handler(new_quotes_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-updater.idle()
+#updater.idle()
