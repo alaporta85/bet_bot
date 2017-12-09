@@ -706,7 +706,7 @@ update_quotes = updater.job_queue
 update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
-update_tables.run_daily(update_results, datetime.time(5, 00, 00), days=(5, 6))
+update_tables.run_daily(update_results, datetime.time(5, 00, 00), days=(0, 6))
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
