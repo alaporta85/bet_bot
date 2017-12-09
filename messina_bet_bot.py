@@ -510,9 +510,10 @@ def play_bet(bot, update, args):
                 print(element.text)
                 element.click()
                 db, c = dbf.start_db()
-                c.execute('''UPDATE bets SET bet_euros = ?, bet_prize = ?,
-                          bet_status = ? WHERE bet_status = "Pending" ''',
-                          (euros, possible_win, 'Placed'))
+                c.execute('''UPDATE bets SET bet_date = ?, bet_euros = ?,
+                          bet_prize = ?, bet_status = ? WHERE
+                          bet_status = "Pending" ''',
+                          (dbf.todays_date[0], euros, possible_win, 'Placed'))
                 db.commit()
                 db.close()
 
@@ -624,6 +625,7 @@ def score(bot, update):
 
 
 def aver_quote(bot, update):
+
     stf.aver_quote()
     bot.send_photo(chat_id=update.message.chat_id, photo=open('aver_quote.png',
                                                               'rb'))
@@ -631,12 +633,14 @@ def aver_quote(bot, update):
 
 
 def records(bot, update):
+
     h_message, l_message = stf.records()
     bot.send_message(chat_id=update.message.chat_id, text=h_message)
     bot.send_message(chat_id=update.message.chat_id, text=l_message)
 
 
 def euros_lost(bot, update):
+
     stf.euros_lost_for_one_bet()
     bot.send_photo(chat_id=update.message.chat_id, photo=open('euros_lost.png',
                                                               'rb'))
@@ -644,6 +648,7 @@ def euros_lost(bot, update):
 
 
 def series(bot, update):
+
     stf.series()
     bot.send_photo(chat_id=update.message.chat_id, photo=open('series.png',
                                                               'rb'))
@@ -651,6 +656,8 @@ def series(bot, update):
 
 
 def match(bot, update, args):
+
+    '''Return the matches of the requested day.'''
 
     if not args:
         return bot.send_message(chat_id=update.message.chat_id,
@@ -664,6 +671,8 @@ def match(bot, update, args):
 
 
 def new_quotes(bot, update):
+
+    '''Fill the db with the new quotes.'''
 
     start = time.time()
     sf.fill_db_with_quotes()
@@ -694,9 +703,9 @@ match_handler = CommandHandler('match', match, pass_args=True)
 
 # Nightly quotes updating
 periodic_job = updater.job_queue
-nightly_job = periodic_job.run_repeating(new_quotes, 86400, first=datetime.time(1,00,00))
+nightly_job = periodic_job.run_repeating(new_quotes, 86400,
+                                         first=datetime.time(1, 00, 00))
 
-# new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(stats_handler)
@@ -715,7 +724,7 @@ dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(series_handler)
 dispatcher.add_handler(match_handler)
-# dispatcher.add_handler(new_quotes_handler)
+
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')

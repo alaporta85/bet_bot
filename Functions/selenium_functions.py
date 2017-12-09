@@ -717,11 +717,3 @@ def all_bets_per_team(db, c, team_name, league_id):
             message_combo += '\n<b>{}</b>:    @{}'.format(field_value, quote)
 
     return message_standard, message_combo
-
-
-#start = time.time()
-#fill_db_with_quotes()
-#end = time.time() - start
-#minutes = int(end//60)
-#seconds = round(end % 60)
-#print('Whole process took {}:{} minutes.'.format(minutes, seconds))
