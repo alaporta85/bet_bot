@@ -501,13 +501,14 @@ def play_bet(bot, update, args):
             for element in button_list:
                 if element.is_displayed():
                     print(element.text)
-###                    element.click()
+                    element.click()
+                    time.sleep(3)
                     break
 
         for element in button_list:
             if element.is_displayed():
                 print(element.text)
-###                element.click()
+                element.click()
                 db, c = dbf.start_db()
                 c.execute('''UPDATE bets SET bet_euros = ?, bet_prize = ?,
                           bet_status = ? WHERE bet_status = "Pending" ''',
@@ -524,7 +525,7 @@ def play_bet(bot, update, args):
         bet_id = dbf.get_value('bet_id', 'bets', 'bet_result', 'Unknown')
         db, c = dbf.start_db()
         summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
-                                 pred_field, pred_rawbet FROM bets INNER JOIN
+                                 pred_rawbet, pred_quote FROM bets INNER JOIN
                                  predictions on pred_bet = bet_id WHERE
                                  bet_id = ?''', (bet_id,)))
 
@@ -538,7 +539,7 @@ def play_bet(bot, update, args):
                          text=('Something went wrong, try again the' +
                                ' command /play.'))
 
-    browser.quit()
+    # browser.quit()
 
 
 def update_results(bot, update):
