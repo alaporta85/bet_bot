@@ -1,5 +1,6 @@
 import os
 import time
+import datetime
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
@@ -506,7 +507,7 @@ def play_bet(bot, update, args):
         for element in button_list:
             if element.is_displayed():
                 print(element.text)
-###                    element.click()
+###                element.click()
                 db, c = dbf.start_db()
                 c.execute('''UPDATE bets SET bet_euros = ?, bet_prize = ?,
                           bet_status = ? WHERE bet_status = "Pending" ''',
@@ -689,7 +690,12 @@ records_handler = CommandHandler('records', records)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 series_handler = CommandHandler('series', series)
 match_handler = CommandHandler('match', match, pass_args=True)
-new_quotes_handler = CommandHandler('new_quotes', new_quotes)
+
+# Nightly quotes updating
+periodic_job = updater.job_queue
+nightly_job = periodic_job.run_repeating(new_quotes, 86400, first=datetime.time(1,00,00))
+
+# new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
 dispatcher.add_handler(stats_handler)
@@ -708,7 +714,7 @@ dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(series_handler)
 dispatcher.add_handler(match_handler)
-dispatcher.add_handler(new_quotes_handler)
+# dispatcher.add_handler(new_quotes_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
