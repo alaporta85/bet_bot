@@ -363,6 +363,7 @@ def play_bet(bot, update, args):
                                    pred_field, pred_rawbet FROM predictions
                                    WHERE pred_status = "Not Confirmed" '''))
     if not_conf_list:
+        logger.info('PLAY - Not confirmed bets')
         bot.send_message(chat_id=update.message.chat_id,
                          text='There are still Not Confirmed bets:')
         for match in not_conf_list:
@@ -379,6 +380,7 @@ def play_bet(bot, update, args):
     # bet_id of the Pending bet
     bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
     if not bet_id:
+        logger.info('PLAY - No bets to play')
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='No bets to play.')
 
@@ -393,6 +395,8 @@ def play_bet(bot, update, args):
                              str(bet[3])[:4])
             time_to_print = str(bet[4])[:2] + ':' + str(bet[4])[2:]
             if x < len(invalid_bets) - 1:
+                logger.info('PLAY - Too late for the following bets:'
+                            + bet[0] +' , '+ bet[1] + ' , '+  bet[2]+'')
                 bot.send_message(chat_id=update.message.chat_id,
                                  text=message.format(bet[0], bet[1], bet[2],
                                                      date_to_print,
@@ -425,6 +429,7 @@ def play_bet(bot, update, args):
             basket_message = bf.add_bet_to_basket(browser, match, count,
                                                   mess_id, dynamic_message,
                                                   matches_to_play)
+            logger.info('PLAY - Match "'+ match + '" has been added to the basket.')
 
             bot.edit_message_text(chat_id=update.message.chat_id,
                                   message_id=mess_id, text=basket_message)
@@ -464,6 +469,9 @@ def play_bet(bot, update, args):
 
         possible_win = bf.insert_euros(browser, matches_to_play,
                                        matches_played, euros)
+
+        logger.info('PLAY - ' + matches_played +
+                    'matches are about to be played')
 
         browser.find_element_by_xpath(basket).click()
 
@@ -509,12 +517,15 @@ def play_bet(bot, update, args):
             if element.is_displayed():
                 print(element.text)
                 element.click()
+                logger.info('PLAY - Bet has been played. Possible win: '
+                            + possible_win + '!!!')
                 db, c = dbf.start_db()
                 c.execute('''UPDATE bets SET bet_date = ?, bet_euros = ?,
                           bet_prize = ?, bet_status = ? WHERE
                           bet_status = "Pending" ''',
                           (dbf.todays_date[0], euros, possible_win, 'Placed'))
                 db.commit()
+                logger.info('PLAY - "bets" db table updated!')
                 db.close()
 
                 bot.edit_message_text(chat_id=update.message.chat_id,
@@ -552,14 +563,16 @@ def update_results(bot, update):
     ref_list = list(c.execute('''SELECT bet_id, bet_date FROM bets WHERE
                               bet_status = "Placed" AND bet_result = "Unknown"
                               '''))
+    logger.info('UPDATE - Selecting Placed bets...')
     db.close()
 
     if not ref_list:
+        logger.info('UPDATE - No bets must be updated')
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='No bets to update.')
 
-    bot.send_message(chat_id=update.message.chat_id,
-                     text='Updating database...')
+    # bot.send_message(chat_id=update.message.chat_id,
+    # text='Updating database...')
 
     browser = sf.go_to_lottomatica(0)
     time.sleep(3)
@@ -581,12 +594,14 @@ def update_results(bot, update):
     browser.quit()
 
     if bets_updated:
-        bot.send_message(chat_id=update.message.chat_id, text=(
-                'Database updated correctly.'))
+        logger.info('UPDATE - Database updated correctly.')
+        # bot.send_message(chat_id=update.message.chat_id, text=(
+        #         'Database updated correctly.'))
     else:
-        bot.send_message(chat_id=update.message.chat_id, text=(
-                "No completed bets were found. Wait for your bet's status " +
-                "to be updated by Lottomatica and then try again."))
+        logger.info('No completed bets were found.')
+        # bot.send_message(chat_id=update.message.chat_id, text=(
+        #        "No completed bets were found. Wait for your bet's status " +
+        #        "to be updated by Lottomatica and then try again."))
 
 
 def summary(bot, update):
@@ -675,11 +690,14 @@ def new_quotes(bot, update):
     '''Fill the db with the new quotes.'''
 
     start = time.time()
+    logger.info('NEW_QUOTES - Nightly job: Updating quote...')
     sf.fill_db_with_quotes()
     end = time.time() - start
     minutes = int(end//60)
     seconds = round(end % 60)
-    print('Whole process took {}:{} minutes.'.format(minutes, seconds))
+    logger.info('NEW_QUOTES - Whole process took '
+                + minutes + ':' + seconds + '.')
+    # print('Whole process took {}:{} minutes.'.format(minutes, seconds))
 
 
 start_handler = CommandHandler('start', start)
@@ -706,7 +724,7 @@ update_quotes = updater.job_queue
 update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
-update_tables.run_daily(update_results, datetime.time(5, 00, 00), days=(0, 6))
+update_tables.run_daily(update_results, datetime.time(5, 00, 00), days=(6,0))
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)

@@ -6,6 +6,7 @@ from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.keys import Keys
 from Functions import logging as log
 
+logger = log.get_flogger()
 
 def go_to_personal_area(browser, LIMIT_1):
 
@@ -153,6 +154,8 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
             ref_date = day + '/' + month + '/' + year
 
             for bet in bets_list:
+
+                logger.info('Updating bet with id:'+ bet)
 
                 color = bet.find_element_by_xpath(
                         './/td[contains(@class,"state state")]')\
