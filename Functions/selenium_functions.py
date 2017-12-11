@@ -291,7 +291,7 @@ def login(browser):
     user_list = browser.find_elements_by_xpath(user_path)
     pass_list = browser.find_elements_by_xpath(pass_path)
     button_list = browser.find_elements_by_xpath(button_path)
-    logger.info('PLAY - Login in progress... ')
+    logger.info('Login in progress... ')
 
     for element in user_list:
         if element.is_displayed():

@@ -563,7 +563,7 @@ def update_results(bot, update):
     ref_list = list(c.execute('''SELECT bet_id, bet_date FROM bets WHERE
                               bet_status = "Placed" AND bet_result = "Unknown"
                               '''))
-    logger.info('UPDATE - T')
+    logger.info('UPDATE - Selecting Placed bets...')
     db.close()
 
     if not ref_list:
