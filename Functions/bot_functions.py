@@ -106,6 +106,7 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
             label_element = new_bet.find_element_by_xpath(
                     './/div[contains(@class,"ng-scope")]')
             label = label_element.get_attribute('ng-switch-when')
+            result = new_bet.find_element_by_xpath('.//td[11]').text
 
             c.execute('''SELECT pred_id FROM bets INNER JOIN predictions on
                       pred_bet = bet_id WHERE bet_id = ? AND
@@ -114,8 +115,8 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
 
             match_id = c.fetchone()[0]
 
-            c.execute('''UPDATE predictions SET pred_label = ? WHERE
-                      pred_id = ?''', (label, match_id))
+            c.execute('''UPDATE predictions SET pred_result = ?, pred_label = ? WHERE
+                      pred_id = ?''', (result, label, match_id))
 
     except (TimeoutException, ElementNotInteractableException):
 
@@ -149,14 +150,14 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
         for ref_bet in ref_list:
             ref_id = ref_bet[0]
             ref_date = ref_bet[1]
-            year = str(ref_date[:4])
-            month = str(ref_date[4:6])
-            day = str(ref_date[6:])
+            year = str(ref_date)[:4]
+            month = str(ref_date)[4:6]
+            day = str(ref_date)[6:]
             ref_date = day + '/' + month + '/' + year
 
             for bet in bets_list:
 
-                logger.info('Updating bet with id:' + bet)
+                logger.info('Updating bet with id: {}'.format(ref_id))
 
                 color = bet.find_element_by_xpath(
                         './/td[contains(@class,"state state")]')\
