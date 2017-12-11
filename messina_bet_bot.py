@@ -37,10 +37,12 @@ def played_bets(summary):
         user = bet[0]
         team1 = bet[1].title()
         team2 = bet[2].title()
-        rawbet = bet[3]
-        quote = bet[4]
-        message += '{}:     {}-{}    {}      @<b>{}</b>\n'.format(user, team1,
+        time = str(bet[3])[:2] + ':' + str(bet[3])[2:]
+        rawbet = bet[4]
+        quote = bet[5]
+        message += '{}:     {}-{}({})    {}      @<b>{}</b>\n'.format(user, team1,
                                                                   team2,
+                                                                  time,
                                                                   rawbet,
                                                                   quote)
 
@@ -470,8 +472,8 @@ def play_bet(bot, update, args):
         possible_win = bf.insert_euros(browser, matches_to_play,
                                        matches_played, euros)
 
-        logger.info('PLAY - ' + matches_played +
-                    'matches are about to be played')
+        logger.info('PLAY - {} matches are about to be played'.format(
+                                                            matches_played))
 
         browser.find_element_by_xpath(basket).click()
 
@@ -509,21 +511,21 @@ def play_bet(bot, update, args):
             for element in button_list:
                 if element.is_displayed():
                     print(element.text)
-                    element.click()
+                    #element.click()
                     time.sleep(3)
                     break
 
         for element in button_list:
             if element.is_displayed():
                 print(element.text)
-                element.click()
+                #element.click()
                 logger.info('PLAY - Bet has been played. Possible win: ' +
                             '{}'.format(possible_win))
                 db, c = dbf.start_db()
                 c.execute('''UPDATE bets SET bet_date = ?, bet_euros = ?,
                           bet_prize = ?, bet_status = ? WHERE
                           bet_status = "Pending" ''',
-                          (dbf.todays_date[0], euros, possible_win, 'Placed'))
+                          (dbf.todays_date()[0], euros, possible_win, 'Placed'))
                 db.commit()
                 logger.info('PLAY - "bets" db table updated!')
                 db.close()
@@ -537,7 +539,7 @@ def play_bet(bot, update, args):
         bet_id = dbf.get_value('bet_id', 'bets', 'bet_result', 'Unknown')
         db, c = dbf.start_db()
         summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
-                                 pred_rawbet, pred_quote FROM bets INNER JOIN
+                                 pred_time, pred_rawbet, pred_quote FROM bets INNER JOIN
                                  predictions on pred_bet = bet_id WHERE
                                  bet_id = ?''', (bet_id,)))
 
@@ -601,7 +603,7 @@ def summary(bot, update):
     bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
     db, c = dbf.start_db()
     summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
-                             pred_rawbet, pred_quote FROM bets INNER JOIN
+                             pred_time, pred_rawbet, pred_quote FROM bets INNER JOIN
                              predictions on pred_bet = bet_id WHERE bet_id = ?
                              ''', (bet_id,)))
 
