@@ -386,7 +386,6 @@ def play_bet(bot, update, args):
 
     # Check whether there are matches already started
     invalid_bets = dbf.check_before_play(db, c)
-    print(invalid_bets)
     if invalid_bets:
         message = '{}, {} - {} was scheduled on {} at {}. Too late.'
         for x in range(len(invalid_bets)):
@@ -395,8 +394,8 @@ def play_bet(bot, update, args):
                              str(bet[3])[:4])
             time_to_print = str(bet[4])[:2] + ':' + str(bet[4])[2:]
             if x < len(invalid_bets) - 1:
-                logger.info('PLAY - Too late for the following bets:'
-                            + bet[0] +' , '+ bet[1] + ' , '+  bet[2]+'')
+                logger.info('PLAY - Too late for the following bets: '
+                            '{} , {}, {}.'.format(bet[0], bet[1], bet[2]))
                 bot.send_message(chat_id=update.message.chat_id,
                                  text=message.format(bet[0], bet[1], bet[2],
                                                      date_to_print,
@@ -429,7 +428,8 @@ def play_bet(bot, update, args):
             basket_message = bf.add_bet_to_basket(browser, match, count,
                                                   mess_id, dynamic_message,
                                                   matches_to_play)
-            logger.info('PLAY - Match "'+ match + '" has been added to the basket.')
+            logger.info('PLAY - Match {} has been added to the ' +
+                        'basket.'.format(match))
 
             bot.edit_message_text(chat_id=update.message.chat_id,
                                   message_id=mess_id, text=basket_message)
@@ -517,8 +517,8 @@ def play_bet(bot, update, args):
             if element.is_displayed():
                 print(element.text)
                 element.click()
-                logger.info('PLAY - Bet has been played. Possible win: '
-                            + possible_win + '!!!')
+                logger.info('PLAY - Bet has been played. Possible win: ' +
+                            '{}'.format(possible_win))
                 db, c = dbf.start_db()
                 c.execute('''UPDATE bets SET bet_date = ?, bet_euros = ?,
                           bet_prize = ?, bet_status = ? WHERE
@@ -695,9 +695,8 @@ def new_quotes(bot, update):
     end = time.time() - start
     minutes = int(end//60)
     seconds = round(end % 60)
-    logger.info('NEW_QUOTES - Whole process took '
-                + minutes + ':' + seconds + '.')
-    # print('Whole process took {}:{} minutes.'.format(minutes, seconds))
+    logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
+                                                                seconds))
 
 
 start_handler = CommandHandler('start', start)
@@ -724,7 +723,7 @@ update_quotes = updater.job_queue
 update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
-update_tables.run_daily(update_results, datetime.time(5, 00, 00), days=(6,0))
+update_tables.run_daily(update_results, datetime.time(5, 00, 00), days=(6, 0))
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
