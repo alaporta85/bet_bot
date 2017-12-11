@@ -10,7 +10,6 @@ from selenium.webdriver.common.by import By
 from selenium import webdriver
 from Functions import logging as log
 from Functions import db_functions as dbf
-#import db_functions as dbf
 
 
 countries = {
@@ -28,9 +27,9 @@ conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
 absolute_path = os.getcwd()
-#chrome_path = absolute_path[:-9] + '/chromedriver'
 chrome_path = absolute_path + '/chromedriver'
 logger = log.get_flogger()
+
 
 def wait_clickable(browser, seconds, element):
 
@@ -635,10 +634,8 @@ def fill_db_with_quotes():
             end = time.time() - start
             minutes = int(end//60)
             seconds = round(end % 60)
-            logger.info('Updating '+ league +' took '
-                        + minutes +':'+ seconds+'!')
-            # print('Updating {} took {}:{} minutes.'.format(league,
-            #       minutes, seconds))
+            logger.info('Updating {} took {}:{}'.format(league, minutes,
+                                                        seconds))
             continue
     db.close()
     browser.quit()

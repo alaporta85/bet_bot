@@ -115,8 +115,8 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
 
             match_id = c.fetchone()[0]
 
-            c.execute('''UPDATE predictions SET pred_result = ?, pred_label = ? WHERE
-                      pred_id = ?''', (result, label, match_id))
+            c.execute('''UPDATE predictions SET pred_result = ?, pred_label = ?
+                      WHERE pred_id = ?''', (result, label, match_id))
 
     except (TimeoutException, ElementNotInteractableException):
 

@@ -548,8 +548,8 @@ def play_bet(bot, update, args):
                          text=message)
     else:
         bot.send_message(chat_id=update.message.chat_id,
-                         text=('Something went wrong, try again the' +
-                               ' command /play.'))
+                         text=('Something went wrong, try again the ' +
+                               'command /play.'))
 
     # browser.quit()
 
@@ -570,9 +570,6 @@ def update_results(bot, update):
         logger.info('UPDATE - No bets must be updated')
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='No bets to update.')
-
-    # bot.send_message(chat_id=update.message.chat_id,
-    # text='Updating database...')
 
     browser = sf.go_to_lottomatica(0)
     time.sleep(3)
@@ -595,13 +592,8 @@ def update_results(bot, update):
 
     if bets_updated:
         logger.info('UPDATE - Database updated correctly.')
-        # bot.send_message(chat_id=update.message.chat_id, text=(
-        #         'Database updated correctly.'))
     else:
         logger.info('No completed bets were found.')
-        # bot.send_message(chat_id=update.message.chat_id, text=(
-        #        "No completed bets were found. Wait for your bet's status " +
-        #        "to be updated by Lottomatica and then try again."))
 
 
 def summary(bot, update):
