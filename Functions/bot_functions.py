@@ -147,9 +147,10 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
         for ref_bet in ref_list:
             ref_id = ref_bet[0]
             ref_date = ref_bet[1]
-            ref_date = ref_date.split('/')
-            ref_date = list(reversed(ref_date))
-            ref_date = ('/').join(ref_date)
+            year = str(ref_date[:4])
+            month = str(ref_date[4:6])
+            day = str(ref_date[6:])
+            ref_date = day + '/' + month + '/' + year
 
             for bet in bets_list:
 
