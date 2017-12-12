@@ -88,8 +88,10 @@ def go_to_placed_bets(browser, LIMIT_2):
 
 def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 
-    '''Used in analyze_main_table function to update the column 'pred_result'
-       and pred_label in the table 'predictions' of the database.'''
+    '''Used in analyze_main_table function. It first checks if all the matches
+       inside the bet are concluded. If yes, update the column bet_result in
+       the table 'bet' and the columns 'pred_result' and pred_label in the
+       table 'predictions' of the database.'''
 
     current_url = browser.current_url
 
@@ -148,9 +150,9 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 
 def analyze_main_table(browser, ref_list, LIMIT_3):
 
-    '''Used in update_results() function to update the column 'bet_result' in
-       the table 'bets' of the database. It also calls the function
-       analyze_details_table for each row of the table.'''
+    '''Used in update_results() function to drive the browser to the personal
+       area in the 'MOVIMENTI E GIOCATE' section and call the function
+       analyze_details_table for each bet not updated yet.'''
 
     current_url = browser.current_url
     bets_updated = 0
@@ -258,6 +260,14 @@ def check_still_to_confirm(db, c, first_name):
 
 def update_tables_and_ref_list(db, c, first_name, bet_id):
 
+    '''Called inside the command /confirm.
+       Insert a new row in the 'bets' table if needed and update the columns
+       pred_bet and pred_status of the table 'predictions'. Return a list
+       containing the tuple (team1, team2, league_id) of the match which is
+       beign confirmed. It will be used inside the function check_if_duplicate
+       to delete all the Not Confirmed bets relative to same match, if present,
+       from the 'predictions' table.'''
+
     if not bet_id:
 
         # If not, we create it and update 'matches' table
@@ -270,10 +280,6 @@ def update_tables_and_ref_list(db, c, first_name, bet_id):
               WHERE pred_user = ? AND pred_status = "Not Confirmed"''',
               (bet_id, first_name))
 
-    # This is a list that we will take as reference. It contains a tuple
-    # with the 2 teams and the league chosen by the person who is
-    # confirming the bet. It will be used later to check whether there are
-    # others Not Confirmed bets of the same match
     ref_list = list(c.execute('''SELECT pred_team1, pred_team2, pred_league
                               FROM bets INNER JOIN predictions on
                               pred_bet = bet_id WHERE bet_id = ? AND
@@ -306,6 +312,10 @@ def check_if_duplicate(c, first_name, match, ref_list):
 
 
 def create_matches_to_play(db, c, bet_id):
+
+    '''Called inside the command /play_bet.
+       Return a list of tuples representing the matches to be added in the
+       basket.'''
 
     some_data = list(c.execute('''SELECT pred_team1, pred_team2, pred_league,
                                pred_field FROM bets INNER JOIN predictions on

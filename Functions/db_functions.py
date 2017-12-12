@@ -1,9 +1,14 @@
 import sqlite3
 import datetime
-#from Functions import logging as log
 
 
 def todays_date():
+
+    '''Return a tuple containing the date of the day and the time as integers.
+       If command is sent on May 16th, 1985 at 15:48 the output will be:
+
+           (19850516, 1548)
+    '''
 
     date_time = str(datetime.datetime.now())
 
@@ -27,38 +32,6 @@ def start_db():
     c.execute("PRAGMA foreign_keys = ON")
 
     return db, c
-
-
-def print_tables():
-
-    '''Print tables in the database.'''
-
-    db, c = start_db()
-
-    tables = c.execute("SELECT name FROM sqlite_master WHERE type='table'")
-
-    names = [table[0] for table in tables]
-
-    db.close()
-
-    for name in names:
-        print(name)
-
-
-def print_columns(table_name):
-
-    '''Print columns'names in the database.'''
-
-    db, c = start_db()
-
-    c.execute('SELECT * FROM {}'.format(table_name))
-
-    names = [description[0] for description in c.description]
-
-    db.close()
-
-    for name in names:
-        print(name)
 
 
 def get_table_content(table_name):

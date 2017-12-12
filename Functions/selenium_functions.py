@@ -404,7 +404,11 @@ def check_single_bet(browser, anumber, team1, team2):
 def format_day(input_day):
 
     '''Take the input_day in the form 'lun', 'mar', 'mer'..... and return
-       the corresponding date in the format dd/mm.'''
+       the corresponding date as an integer. If on May 16th 1985 (Thursday)
+       command format_day('sab') is sent, output will be:
+
+           19850518
+    '''
 
     weekdays = {'lun': 0,
                 'mar': 1,
@@ -470,6 +474,7 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
             date_time = match.find_element_by_xpath(
                     './/td[@class="ng-binding"]').text
             match_date = date_time.split(' ')[0]
+            match_time = int(date_time.split(' ')[1].replace(':', ''))
             current_month = str(datetime.date.today()).split('-')[1]
             year = str(datetime.date.today()).split('-')[0]
             match_month = match_date.split('/')[1]
@@ -484,8 +489,6 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                 match_date = int(year +
                                  match_date.split('/')[1] +
                                  match_date.split('/')[0])
-
-            match_time = int(date_time.split(' ')[1].replace(':', ''))
 
             match_text = match.find_element_by_xpath(
                     './/td[contains(@colspan,"1")]/a/strong').text
