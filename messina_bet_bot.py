@@ -40,12 +40,12 @@ def played_bets(summary):
         time = str(bet[3])[:2] + ':' + str(bet[3])[2:]
         rawbet = bet[4]
         quote = bet[5]
-        message += '{}:     {}-{}({})    {}      @<b>{}</b>\n'.format(user,
-                                                                      team1,
-                                                                      team2,
-                                                                      time,
-                                                                      rawbet,
-                                                                      quote)
+        message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(user,
+                                                                       team1,
+                                                                       team2,
+                                                                       time,
+                                                                       rawbet,
+                                                                       quote)
 
     return message
 
@@ -719,7 +719,8 @@ update_quotes = updater.job_queue
 update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
-update_tables.run_daily(update_results, datetime.time(5, 00, 00), days=(6, 0))
+update_tables.run_repeating(update_results, 86400,
+                            first=datetime.time(5, 00, 00))
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)

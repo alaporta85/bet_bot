@@ -86,7 +86,7 @@ def go_to_placed_bets(browser, LIMIT_2):
                                   ' GIOCATE. Please try again.')
 
 
-def analyze_details_table(browser, ref_id, c, LIMIT_4):
+def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 
     '''Used in analyze_main_table function to update the column 'pred_result'
        and pred_label in the table 'predictions' of the database.'''
@@ -98,8 +98,19 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
         sf.wait_visible(browser, 20, new_table_path)
         new_bets_list = browser.find_elements_by_xpath(
                 new_table_path + '//tr[@class="ng-scope"]')
-        for new_bet in new_bets_list:
 
+        matches_completed = 0
+        for new_bet in new_bets_list:
+            label_element = new_bet.find_element_by_xpath(
+                './/div[contains(@class,"ng-scope")]')
+            label = label_element.get_attribute('ng-switch-when')
+            if label == 'WINNING' or label == 'LOSING':
+                matches_completed += 1
+
+        if matches_completed != len(new_bets_list):
+            return 0
+
+        for new_bet in new_bets_list:
             match = new_bet.find_element_by_xpath('.//td[6]').text
             team1 = match.split(' - ')[0]
             team2 = match.split(' - ')[1]
@@ -115,8 +126,13 @@ def analyze_details_table(browser, ref_id, c, LIMIT_4):
 
             match_id = c.fetchone()[0]
 
+            c.execute('''UPDATE bets SET bet_result = ? WHERE
+                      bet_id = ?''', (new_status, ref_id))
+
             c.execute('''UPDATE predictions SET pred_result = ?, pred_label = ?
                       WHERE pred_id = ?''', (result, label, match_id))
+
+            return 1
 
     except (TimeoutException, ElementNotInteractableException):
 
@@ -170,8 +186,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
                     if date == ref_date:
 
-                        bets_updated += 1
-
                         new_status = bet.find_element_by_xpath(
                                 './/translate-label[@key-default=' +
                                 '"statement.state"]').text
@@ -181,10 +195,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
                         elif new_status == 'Non Vincente':
                             new_status = 'LOSING'
 
-                        c.execute('''UPDATE bets SET bet_result = ? WHERE
-                                  bet_id = ?''', (new_status, ref_id))
-                        db.commit()
-
                         main_window = browser.current_window_handle
                         bet.find_element_by_xpath('.//a').click()
                         time.sleep(3)
@@ -192,7 +202,8 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
                         new_window = browser.window_handles[-1]
                         browser.switch_to_window(new_window)
 
-                        analyze_details_table(browser, ref_id, c, 0)
+                        bets_updated += analyze_details_table(browser, ref_id,
+                                                              c, new_status, 0)
 
                         browser.close()
 
