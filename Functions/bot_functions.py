@@ -385,6 +385,17 @@ def matches_per_day(day):
     requested_day = sf.format_day(day)
 
     db, c = dbf.start_db()
+    try:
+        bet_id = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                bet_status = "Pending" '''))[0][0]
+    except IndexError:
+        bet_id = 0
+
+    confirmed_matches = list(c.execute('''SELECT pred_league, pred_team1,
+                                       pred_team2, pred_time FROM bets INNER
+                                       JOIN predictions on pred_bet = bet_id
+                                       WHERE bet_id = ?''', (bet_id,)))
+
     for league in sf.countries:
 
         league_id = list(c.execute('''SELECT league_id FROM leagues WHERE
@@ -395,6 +406,21 @@ def matches_per_day(day):
                                           WHERE match_date = ? AND
                                           match_league = ?''', (requested_day,
                                                                 league_id)))
+        for match in confirmed_matches:
+            try:
+                match_id = list(c.execute('''SELECT match_id FROM matches WHERE
+                                          match_league = ? AND match_team1 = ?
+                                          AND match_team2 = ?''',
+                                          (league_id, match[1],
+                                           match[2])))[0][0]
+            except IndexError:
+                continue
+
+            new_tuple = (match_id, match[1], match[2], match[3])
+
+            if new_tuple in matches_to_print:
+                matches_to_print.remove(new_tuple)
+
         if matches_to_print:
             message += '\n\n<b>{}</b>'.format(league)
             for match in matches_to_print:
