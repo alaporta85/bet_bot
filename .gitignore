@@ -5,3 +5,6 @@ bet_bot_db_prove
 logs/
 .DS_Store
 venv/
+Functions/.DS_Store
+Functions/__pycache__/bot_functions.cpython-36.pyc
+logs/bet_bot.log
