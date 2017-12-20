@@ -335,8 +335,10 @@ def delete(bot, update):
     db.commit()
 
     pending_bets_left = list(c.execute('''SELECT pred_id FROM predictions WHERE
-                                       pred_status = "Confirmed" AND
-                                       pred_bet = ?''', (bet_id,)))
+    								   (pred_status = "Confirmed" AND
+    								   pred_bet = ?) OR
+    								   pred_status = "Not Confirmed" ''',
+									                              (bet_id,)))
     if not pending_bets_left:
         c.execute('''DELETE FROM bets WHERE bet_id = ?''', (bet_id,))
         db.commit()
