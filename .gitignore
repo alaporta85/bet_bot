@@ -12,6 +12,8 @@ logs/bet_bot.log
 .idea/misc.xml
 .idea/workspace.xml
 Functions/__pycache__/stats_functions.cpython-36.pyc
+Functions/__pycache__/db_functions.cpython-36.pyc
+Functions/__pycache__/selenium_functions.cpython-36.pyc
 .idea/codeStyles/
 .idea/inspectionProfiles/
 extended_db-journal
