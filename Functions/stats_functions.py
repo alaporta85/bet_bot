@@ -13,7 +13,7 @@ colors_dict = {'Zoppo': '#7fffd4',
 
 def perc_success():
 
-    '''Return a bar plot showing the % of right bet for each partecipant.'''
+    """Return a bar plot showing the % of right bet for each partecipant."""
 
     # Dict to store the TOTAL number of bets played by each partecipant
     total = {name: 0 for name in partecipants}
@@ -82,7 +82,7 @@ def perc_success():
 
 def aver_quote():
 
-    '''Return a bar plot showing the average quote for each partecipant.'''
+    """Return a bar plot showing the average quote for each partecipant."""
 
     total = {name: 0 for name in partecipants}
     quotes = {name: 0 for name in partecipants}
@@ -127,8 +127,10 @@ def aver_quote():
 
 def records():
 
-    '''Return two messages: one for the WINNING bet with the highest quote
-       and one for the LOSING bet with the lowest quote.'''
+    """
+    Return two messages: one for the WINNING bet with the highest quote
+    and one for the LOSING bet with the lowest quote.
+    """
 
     db = sqlite3.connect('extended_db')
     c = db.cursor()
@@ -196,12 +198,14 @@ def records():
 
 def euros_lost_for_one_bet():
 
-    '''Return a pie chart showing the amount of euros lost because of only one
-       LOSING bet.'''
+    """
+    Return a pie chart showing the amount of euros lost because of only one
+    LOSING bet.
+    """
 
     def real_value(val):
 
-        '''Return the real value instead of the %.'''
+        """Return the real value instead of the %."""
 
         return round(val/100*sum(euros), 1)
 
@@ -268,8 +272,10 @@ def euros_lost_for_one_bet():
 
 def create_series(c, name, series_pos, series_neg):
 
-    '''Fill the dicts series_pos and series_neg with the elements representing
-       the series for each player.'''
+    """
+    Fill the dicts series_pos and series_neg with the elements representing
+    the series for each player.
+    """
 
     try:
         unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE

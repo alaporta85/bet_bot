@@ -33,8 +33,10 @@ logger = log.get_flogger()
 
 def wait_clickable(browser, seconds, element):
 
-    '''Forces the script to wait for the element to be clickable before doing
-       any other action.'''
+    """
+    Forces the script to wait for the element to be clickable before doing
+    any other action.
+    """
 
     WebDriverWait(
             browser, seconds).until(EC.element_to_be_clickable(
@@ -43,8 +45,10 @@ def wait_clickable(browser, seconds, element):
 
 def wait_visible(browser, seconds, element):
 
-    '''Forces the script to wait for the element to be visible before doing
-       any other action.'''
+    """
+    Forces the script to wait for the element to be visible before doing
+    any other action.
+    """
 
     WebDriverWait(
             browser, seconds).until(EC.visibility_of_element_located(
@@ -53,9 +57,11 @@ def wait_visible(browser, seconds, element):
 
 def scroll_to_element(browser, true_false, element):
 
-    '''If the argument of 'scrollIntoView' is 'true' the command scrolls
-       the webpage positioning the element at the top of the window, if it
-       is 'false' the element will be positioned at the bottom.'''
+    """
+    If the argument of 'scrollIntoView' is 'true' the command scrolls
+    the webpage positioning the element at the top of the window, if it
+    is 'false' the element will be positioned at the bottom.
+    """
 
     browser.execute_script('return arguments[0].scrollIntoView({});'
                            .format(true_false), element)
@@ -63,7 +69,7 @@ def scroll_to_element(browser, true_false, element):
 
 def simulate_hover_and_click(browser, element):
 
-    '''Handles the cases when hover is needed before clicking.'''
+    """Handles the cases when hover is needed before clicking."""
 
     try:
         webdriver.ActionChains(
@@ -86,7 +92,7 @@ def click_calcio_button(browser):
 
 def go_to_lottomatica(LIMIT_1):
 
-    '''Connect to Lottomatica webpage and click "CALCIO" button.'''
+    """Connect to Lottomatica webpage and click "CALCIO" button."""
 
     url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
            'scommesse-sportive.html')
@@ -114,8 +120,9 @@ def go_to_lottomatica(LIMIT_1):
 
 def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
-    '''Find the button relative to the country we are interested in and click
-       it.'''
+    """
+    Find the button relative to the country we are interested in and click it.
+    """
 
     current_url = browser.current_url
 
@@ -147,8 +154,9 @@ def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
 def click_league_button(browser, league):
 
-    '''Find the button relative to the league we are interested in and click
-       it.'''
+    """
+    Find the button relative to the league we are interested in and click it.
+    """
 
     nat_leagues_container = './/ul[@id="better-table-tennis-ww"]'
     all_nat_leagues = browser.find_elements_by_xpath(
@@ -163,10 +171,12 @@ def click_league_button(browser, league):
 
 def find_all_panels(browser, LIMIT_ALL_PANELS):
 
-    '''Return the HTML container of the panels (PIU' GIOCATE, CHANCE MIX,
-       TRICOMBO, ...).'''
+    """
+    Return the HTML container of the panels (PIU' GIOCATE, CHANCE MIX,
+    TRICOMBO, ...).
+    """
 
-    all_panels_path = ('//div[@new-component=""]//div[@class="row"]/div')
+    all_panels_path = '//div[@new-component=""]//div[@class="row"]/div'
     current_url = browser.current_url
 
     try:
@@ -187,8 +197,10 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):
 
 def find_all_fields(browser):
 
-    '''Return the HTML container of the fields (ESITO FINALE 1X2, DOPPIA
-       CHANCE, GOAL/NOGOAL, ...).'''
+    """
+    Return the HTML container of the fields (ESITO FINALE 1X2, DOPPIA
+    CHANCE, GOAL/NOGOAL, ...).
+    """
 
     all_fields_path = '//div[@class="panel-collapse collapse in"]/div'
 
@@ -197,17 +209,19 @@ def find_all_fields(browser):
     return all_fields
 
 
-def find_all_bets(browser, field, new_field):
+def find_all_bets(field, new_field):
 
-    '''Return the HTML container of the bets of a specific field. For example,
-       if field is GOAL/NOGOAL the element will contain two bets: GOAL and
-       NOGOAL.'''
+    """
+    Return the HTML container of the bets of a specific field. For example,
+    if field is GOAL/NOGOAL the element will contain two bets: GOAL and
+    NOGOAL.
+    """
 
     if field == 'ESITO FINALE 1X2 HANDICAP':
         all_bets_path = ('.//div[@class="block-selections-single-event ' +
                          'handicap-markets-single"]/div')
     else:
-        all_bets_path = ('.//div[@class="block-selections-single-event"]/div')
+        all_bets_path = './/div[@class="block-selections-single-event"]/div'
 
     all_bets = new_field.find_elements_by_xpath(all_bets_path)
 
@@ -216,8 +230,10 @@ def find_all_bets(browser, field, new_field):
 
 def click_bet(browser, field, bet, LIMIT_GET_QUOTE):
 
-    '''Find the button relative to the bet we are interested in and click
-       it.'''
+    """
+    Find the button relative to the bet we are interested in and click
+    it.
+    """
 
     current_url = browser.current_url
     CLICK_CHECK = False
@@ -234,7 +250,7 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):
                         './/div[@class="text-left col ng-binding"]').text
 
                 if field_name == field:
-                    all_bets = find_all_bets(browser, field, new_field)
+                    all_bets = find_all_bets(field, new_field)
 
                     for new_bet in all_bets:
                         bet_name = new_bet.find_element_by_xpath(
@@ -311,9 +327,11 @@ def login(browser):
 
 def look_for_quote(text):
 
-    '''Take the input from the user and look into the db for the requested
-       quote. Return five variables which will be used later to update the
-       "predictions" table in the db.'''
+    """
+    Take the input from the user and look into the db for the requested
+    quote. Return five variables which will be used later to update the
+    "predictions" table in the db.
+    """
 
     input_team = text.split('_')[0]
     input_bet = text.split('_')[1]
@@ -367,8 +385,10 @@ def look_for_quote(text):
 
 def add_bet(browser, current_url, field, bet):
 
-    '''Add the quote to the basket by taking directly the url of the bet.
-       It is used inside the play_bet function.'''
+    """
+    Add the quote to the basket by taking directly the url of the bet.
+    It is used inside the play_bet function.
+    """
 
     browser.get(current_url)
     time.sleep(3)
@@ -381,7 +401,7 @@ def add_bet(browser, current_url, field, bet):
 
 def check_single_bet(browser, anumber, team1, team2):
 
-    '''Check whether the bet is inserted correctly.'''
+    """Check whether the bet is inserted correctly."""
 
     message = ('Problems with the match {} - {}. '.format(team1, team2) +
                'Possible reason: bad internet connection. Please try again.')
@@ -403,12 +423,13 @@ def check_single_bet(browser, anumber, team1, team2):
 
 def format_day(input_day):
 
-    '''Take the input_day in the form 'lun', 'mar', 'mer'..... and return
-       the corresponding date as an integer. If on May 16th 1985 (Thursday)
-       command format_day('sab') is sent, output will be:
+    """
+    Take the input_day in the form 'lun', 'mar', 'mer'..... and return
+    the corresponding date as an integer. If on May 16th 1985 (Thursday)
+    command format_day('sab') is sent, output will be:
 
-           19850518
-    '''
+        19850518
+    """
 
     weekdays = {'lun': 0,
                 'mar': 1,
@@ -436,11 +457,13 @@ def format_day(input_day):
 
 def update_matches_table(browser, c, table_count, match_count, league_id):
 
-    '''Extract all the data relative to a match and insert a new row in the
-       'matches' table.'''
+    """
+    Extract all the data relative to a match and insert a new row in the
+    'matches' table.
+    """
 
     current_url = browser.current_url
-    all_days = ('.//div[contains(@class,"margin-bottom ng-scope")]')
+    all_days = './/div[contains(@class,"margin-bottom ng-scope")]'
 
     try:
         wait_visible(browser, 20, all_days)
@@ -528,15 +551,17 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
 
 def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
 
-    '''Extract all the quotes relative to a match and insert a new row in the
-       'quotes' table.'''
+    """
+    Extract all the quotes relative to a match and insert a new row in the
+    'quotes' table.
+    """
 
     for new_field in field_elements:
         field_name = new_field.find_element_by_xpath(
                 './/div[@class="text-left col ng-binding"]').text
 
         if field_name in all_fields:
-            all_bets = find_all_bets(browser, field_name, new_field)
+            all_bets = find_all_bets(field_name, new_field)
 
             for new_bet in all_bets:
                 # Handle the case when the field space in the website has empty
@@ -577,7 +602,7 @@ def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
 def scan_league(browser, db, c, league, league_id, table_count, match_count,
                 all_fields):
 
-    '''Update the tables 'matches' and 'quotes' of the db.'''
+    """Update the tables 'matches' and 'quotes' of the db."""
 
     click_country_button(browser, league, 0)
     click_league_button(browser, league)
@@ -605,8 +630,10 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
 
 def fill_db_with_quotes():
 
-    '''Call the function 'scan_league()' for all the leagues present in the
-       dict "countries" to fully update the db.'''
+    """
+    Call the function 'scan_league()' for all the leagues present in the
+    dict "countries" to fully update the db.
+    """
 
     browser = go_to_lottomatica(0)
     dbf.empty_table('quotes')
@@ -658,7 +685,7 @@ def alias():
                                     WHERE team_alias_team = ?''',
                                     (team_id,)))
         alias_list = ['<' + element[0] + '>' for element in alias_list]
-        alias_string = (' ').join(alias_list)
+        alias_string = ' '.join(alias_list)
 
         message += team + ': ' + '{}'.format(alias_string) + '\n'
 
@@ -667,11 +694,13 @@ def alias():
     return message
 
 
-def all_bets_per_team(db, c, team_name, league_id):
+def all_bets_per_team(c, team_name, league_id):
 
-    '''Return two text messages: one showing all the standard bets and the
-       other one the combo. Both of them are relative to the match of the
-       league whose id is "league_id" and team "team_name" is playing.'''
+    """
+    Return two text messages: one showing all the standard bets and the
+    other one the combo. Both of them are relative to the match of the
+    league whose id is "league_id" and team "team_name" is playing.
+    """
 
     match_id, team1, team2 = list(c.execute('''SELECT match_id, match_team1,
                                             match_team2 FROM matches WHERE

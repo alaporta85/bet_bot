@@ -11,8 +11,10 @@ logger = log.get_flogger()
 
 def go_to_personal_area(browser, LIMIT_1):
 
-    '''Used in update_results() function to navigate until the personal area
-       after the login.'''
+    """
+    Used in update_results() function to navigate until the personal area
+    after the login.
+    """
 
     current_url = browser.current_url
 
@@ -42,8 +44,10 @@ def go_to_personal_area(browser, LIMIT_1):
 
 def go_to_placed_bets(browser, LIMIT_2):
 
-    '''Used in update_results() function to navigate until the page containing
-       all the past bets.'''
+    """
+    Used in update_results() function to navigate until the page containing
+    all the past bets.
+    """
 
     FILTER = 'Ultimi 5 Mesi'
     current_url = browser.current_url
@@ -88,14 +92,26 @@ def go_to_placed_bets(browser, LIMIT_2):
 
 def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 
-    '''Used in analyze_main_table function. It first checks if all the matches
-       inside the bet are concluded. If yes, update the column bet_result in
-       the table 'bet' and the columns 'pred_result' and pred_label in the
-       table 'predictions' of the database.'''
+    """
+    Used in analyze_main_table function. It first checks if all the matches
+    inside the bet are concluded. If yes, update the column bet_result in
+    the table 'bet' and the columns 'pred_result' and pred_label in the
+    table 'predictions' of the database.
+    """
 
     current_url = browser.current_url
 
     try:
+
+        prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
+                       'pull-right pull-down"]')
+        prize_element = browser.find_elements_by_xpath(prize_table +
+                                                       '//tr/td')[7]
+        prize_value = float(prize_element.text[1:-1].replace(',', '.'))
+
+        c.execute('''UPDATE bets SET bet_prize = ? WHERE bet_id = ?''',
+                  (prize_value, ref_id))
+
         new_table_path = './/table[@class="bet-detail"]'
         sf.wait_visible(browser, 20, new_table_path)
         new_bets_list = browser.find_elements_by_xpath(
@@ -119,6 +135,7 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
             label_element = new_bet.find_element_by_xpath(
                     './/div[contains(@class,"ng-scope")]')
             label = label_element.get_attribute('ng-switch-when')
+            quote = float(new_bet.find_element_by_xpath('.//td[10]').text)
             result = new_bet.find_element_by_xpath('.//td[11]').text
 
             c.execute('''SELECT pred_id FROM bets INNER JOIN predictions on
@@ -131,8 +148,9 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
             c.execute('''UPDATE bets SET bet_result = ? WHERE
                       bet_id = ?''', (new_status, ref_id))
 
-            c.execute('''UPDATE predictions SET pred_result = ?, pred_label = ?
-                      WHERE pred_id = ?''', (result, label, match_id))
+            c.execute('''UPDATE predictions SET pred_quote = ?,
+                      pred_result = ?, pred_label = ? WHERE pred_id = ?''',
+                      (quote, result, label, match_id))
 
         return 1
 
@@ -150,15 +168,17 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 
 def analyze_main_table(browser, ref_list, LIMIT_3):
 
-    '''Used in update_results() function to drive the browser to the personal
-       area in the 'MOVIMENTI E GIOCATE' section and call the function
-       analyze_details_table for each bet not updated yet.'''
+    """
+    Used in update_results() function to drive the browser to the personal
+    area in the 'MOVIMENTI E GIOCATE' section and call the function
+    analyze_details_table for each bet not updated yet.
+    """
 
     current_url = browser.current_url
     bets_updated = 0
 
     try:
-        table_path = ('.//table[@id="tabellaRisultatiTransazioni"]')
+        table_path = './/table[@id="tabellaRisultatiTransazioni"]'
         sf.wait_visible(browser, 20, table_path)
         bets_list = browser.find_elements_by_xpath(table_path +
                                                    '//tr[@class="ng-scope"]')
@@ -175,8 +195,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
             for bet in bets_list:
 
-                logger.info('Updating bet with id: {}'.format(ref_id))
-
                 color = bet.find_element_by_xpath(
                         './/td[contains(@class,"state state")]')\
                     .get_attribute('class')
@@ -188,6 +206,8 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
                     if date == ref_date:
 
+                        logger.info('Updating bet with id: {}'.format(ref_id))
+
                         new_status = bet.find_element_by_xpath(
                                 './/translate-label[@key-default=' +
                                 '"statement.state"]').text
@@ -198,7 +218,9 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
                             new_status = 'LOSING'
 
                         main_window = browser.current_window_handle
-                        bet.find_element_by_xpath('.//a').click()
+                        details = bet.find_element_by_xpath('.//a')
+                        sf.scroll_to_element(browser, 'false', details)
+                        details.click()
                         time.sleep(3)
 
                         new_window = browser.window_handles[-1]
@@ -260,13 +282,15 @@ def check_still_to_confirm(db, c, first_name):
 
 def update_tables_and_ref_list(db, c, first_name, bet_id):
 
-    '''Called inside the command /confirm.
-       Insert a new row in the 'bets' table if needed and update the columns
-       pred_bet and pred_status of the table 'predictions'. Return a list
-       containing the tuple (team1, team2, league_id) of the match which is
-       beign confirmed. It will be used inside the function check_if_duplicate
-       to delete all the Not Confirmed bets relative to same match, if present,
-       from the 'predictions' table.'''
+    """
+    Called inside the command /confirm.
+    Insert a new row in the 'bets' table if needed and update the columns
+    pred_bet and pred_status of the table 'predictions'. Return a list
+    containing the tuple (team1, team2, league_id) of the match which is
+    beign confirmed. It will be used inside the function check_if_duplicate
+    to delete all the Not Confirmed bets relative to same match, if present,
+    from the 'predictions' table.
+    """
 
     if not bet_id:
 
@@ -311,11 +335,13 @@ def check_if_duplicate(c, first_name, match, ref_list):
     return message
 
 
-def create_matches_to_play(db, c, bet_id):
+def create_matches_to_play(c, bet_id):
 
-    '''Called inside the command /play_bet.
-       Return a list of tuples representing the matches to be added in the
-       basket.'''
+    """
+    Called inside the command /play_bet.
+    Return a list of tuples representing the matches to be added in the
+    basket.
+    """
 
     some_data = list(c.execute('''SELECT pred_team1, pred_team2, pred_league,
                                pred_field FROM bets INNER JOIN predictions on
@@ -348,8 +374,7 @@ def create_matches_to_play(db, c, bet_id):
     return matches_to_play
 
 
-def add_bet_to_basket(browser, match, count, mess_id, dynamic_message,
-                      matches_to_play):
+def add_bet_to_basket(browser, match, count, dynamic_message):
 
     team1 = match[0]
     team2 = match[1]
@@ -367,7 +392,7 @@ def add_bet_to_basket(browser, match, count, mess_id, dynamic_message,
         raise ConnectionError(str(e))
 
 
-def insert_euros(browser, matches_to_play, matches_played, euros):
+def insert_euros(browser, euros):
 
     input_euros = ('.//div[contains(@class,"text-right ' +
                    'amount-sign")]/input')
@@ -397,12 +422,13 @@ def insert_euros(browser, matches_to_play, matches_played, euros):
 
 def matches_per_day(day):
 
-    '''Return a message containing all the matches scheduled for the day "day".
-       Input "day" needs to have the correct form in order to be handled by
-       the function format_day.'''
+    """
+    Return a message containing all the matches scheduled for the day "day".
+    Input "day" needs to have the correct form in order to be handled by
+    the function format_day.
+    """
 
     message = ''
-    date, time = dbf.todays_date()
     requested_day = sf.format_day(day)
 
     db, c = dbf.start_db()

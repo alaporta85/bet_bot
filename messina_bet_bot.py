@@ -30,7 +30,7 @@ def nickname(name):
 
 def played_bets(summary):
 
-    '''Return bets played until that moment.'''
+    """Return bets played until that moment."""
 
     message = ''
     for bet in summary:
@@ -56,7 +56,7 @@ def start(bot, update):
 
 def format_text(content):
 
-    message = ('').join(content)
+    message = ''.join(content)
     message = message.replace('\n\n', 'xx')
     message = message.replace('\n', ' ')
     message = message.replace('xx', '\n\n')
@@ -66,7 +66,7 @@ def format_text(content):
 
 def help_quote(bot, update):
 
-    '''Instructions to insert the correct bet.'''
+    """Instructions to insert the correct bet."""
 
     f = open('Messages/help_quote.txt', 'r')
     content = f.readlines()
@@ -81,7 +81,7 @@ def help_quote(bot, update):
 
 def help_stats(bot, update):
 
-    '''Instructions to use statistic commands.'''
+    """Instructions to use statistic commands."""
 
     f = open('Messages/help_stats.txt', 'r')
     content = f.readlines()
@@ -94,7 +94,7 @@ def help_stats(bot, update):
 
 def alias(bot, update):
 
-    '''Show all alias for each team.'''
+    """Show all alias for each team."""
 
     message = sf.alias()
     bot.send_message(chat_id=update.message.chat_id, text=message)
@@ -115,8 +115,10 @@ def info(bot, update):
 
 def quote(bot, update, args):
 
-    '''Update the table "predictions" in the db with the data relative to the
-       chosen match. pred_status will be set to "Not Confirmed".'''
+    """
+    Update the table "predictions" in the db with the data relative to the
+    chosen match. pred_status will be set to "Not Confirmed".
+    """
 
     if not args:
         return bot.send_message(chat_id=update.message.chat_id,
@@ -136,7 +138,7 @@ def quote(bot, update, args):
                                                   team_id = ?''',
                                                   (team_id,)))[0]
 
-            message_standard, message_combo = sf.all_bets_per_team(db, c,
+            message_standard, message_combo = sf.all_bets_per_team(c,
                                                                    team_name,
                                                                    league_id)
             db.close()
@@ -160,7 +162,7 @@ def quote(bot, update, args):
     team, bet = guess.split('_')
     bet = bet.replace(' ', '')
     bet = bet.replace(',', '.')
-    guess = ('_').join([team, bet])
+    guess = '_'.join([team, bet])
 
     db, c = dbf.start_db()
 
@@ -228,12 +230,14 @@ def quote(bot, update, args):
 
 def confirm(bot, update):
 
-    '''Update the status of the bet in the "predictions" table from
-       "Not Confirmed" to "Confirmed". If it is the first bet of the day it
-       creates a new entry in the "bets" table and update the bet_id in the
-       "predictions" table. Else, it just uses the bet_id. It also checks
-       whether there are others "Not Confirmed" bets of the same match. If yes,
-       they will be deleted from the "predictions" table.'''
+    """
+    Update the status of the bet in the "predictions" table from
+    "Not Confirmed" to "Confirmed". If it is the first bet of the day it
+    creates a new entry in the "bets" table and update the bet_id in the
+    "predictions" table. Else, it just uses the bet_id. It also checks
+    whether there are others "Not Confirmed" bets of the same match. If yes,
+    they will be deleted from the "predictions" table.
+    """
 
     first_name = nickname(update.message.from_user.first_name)
 
@@ -277,7 +281,7 @@ def confirm(bot, update):
 
 def cancel(bot, update):
 
-    '''Delete the "Not Confirmed" bet from "predictions" table.'''
+    """Delete the "Not Confirmed" bet from "predictions" table."""
 
     first_name = nickname(update.message.from_user.first_name)
     db, c = dbf.start_db()
@@ -302,7 +306,7 @@ def cancel(bot, update):
 
 def delete(bot, update):
 
-    '''Delete the "Confirmed" bet from "predictions" table.'''
+    """Delete the "Confirmed" bet from "predictions" table."""
 
     first_name = nickname(update.message.from_user.first_name)
     db, c = dbf.start_db()
@@ -344,8 +348,10 @@ def delete(bot, update):
 
 def play_bet(bot, update, args):
 
-    '''Manage the login and play the bet. Args input is the amount of euros
-       to bet.'''
+    """
+    Manage the login and play the bet. Args input is the amount of euros
+    to bet.
+    """
 
     if not args:
         return bot.send_message(chat_id=update.message.chat_id, text=(
@@ -420,7 +426,7 @@ def play_bet(bot, update, args):
     # mess_id will be used to update the message
     mess_id = sent.message_id
 
-    matches_to_play = bf.create_matches_to_play(db, c, bet_id)
+    matches_to_play = bf.create_matches_to_play(c, bet_id)
 
     db.close()
 
@@ -429,10 +435,9 @@ def play_bet(bot, update, args):
     for match in matches_to_play:
         try:
             basket_message = bf.add_bet_to_basket(browser, match, count,
-                                                  mess_id, dynamic_message,
-                                                  matches_to_play)
-            logger.info('PLAY - Match {} has been added to the ' +
-                        'basket.'.format(match))
+                                                  dynamic_message)
+            logger.info('PLAY - Match {} '.format(match) +
+                        'has been added to the basket.')
 
             bot.edit_message_text(chat_id=update.message.chat_id,
                                   message_id=mess_id, text=basket_message)
@@ -454,10 +459,10 @@ def play_bet(bot, update, args):
         browser.find_element_by_xpath(basket).click()
     except TimeoutException:
         browser.quit()
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=('Problem during placing the bet. ' +
-                               'Please check your internet ' +
-                               'connection and try again.'))
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text=('Problem during placing the bet. ' +
+                                      'Please check your internet ' +
+                                      'connection and try again.'))
 
     summary_path = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
                     '//ul//span[contains(@class,"col-sm-12")]')
@@ -470,8 +475,7 @@ def play_bet(bot, update, args):
     # If this number is equal to the number of bets chosen to play
     if matches_played == len(matches_to_play):
 
-        possible_win = bf.insert_euros(browser, matches_to_play,
-                                       matches_played, euros)
+        possible_win = bf.insert_euros(browser, euros)
 
         logger.info('PLAY - {} matches are about to be played'.format(
                                                             matches_played))
@@ -506,7 +510,7 @@ def play_bet(bot, update, args):
             button_list = browser.find_elements_by_xpath(button_path)
         except NoSuchElementException:
             print('aggiorna')
-            button_path = ('.//button[@class="button-default"]')
+            button_path = './/button[@class="button-default"]'
             button_list = browser.find_elements_by_xpath(button_path)
             print(len(button_list))
             for element in button_list:
@@ -560,8 +564,10 @@ def play_bet(bot, update, args):
 
 def update_results(bot, update):
 
-    '''Updates the columns "bet_result", "pred_result" and "pred_label" in the
-       database.'''
+    """
+    Updates the columns "bet_result", "pred_result" and "pred_label" in the
+    database.
+    """
 
     db, c = dbf.start_db()
     ref_list = list(c.execute('''SELECT bet_id, bet_date FROM bets WHERE
@@ -580,6 +586,13 @@ def update_results(bot, update):
 
     sf.login(browser)
     time.sleep(3)
+
+    # Close popup
+    try:
+        cancel = './/a[@id="id-popup-quote-stellari-btnAnnulla"]'
+        browser.find_element_by_xpath(cancel).click()
+    except NoSuchElementException:
+        pass
 
     try:
         bf.go_to_personal_area(browser, 0)
@@ -668,7 +681,7 @@ def series(bot, update):
 
 def match(bot, update, args):
 
-    '''Return the matches of the requested day.'''
+    """Return the matches of the requested day."""
 
     if not args:
         return bot.send_message(chat_id=update.message.chat_id,
@@ -681,9 +694,9 @@ def match(bot, update, args):
         return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 
-def new_quotes(bot, update):
+def new_quotes():
 
-    '''Fill the db with the new quotes.'''
+    """Fill the db with the new quotes."""
 
     start = time.time()
     logger.info('NEW_QUOTES - Nightly job: Updating quote...')
@@ -787,4 +800,4 @@ dispatcher.add_handler(new_quotes_handler)
 logger = log.set_logging()
 updater.start_polling()
 logger.info('Bet_Bot started.')
-#updater.idle()
+updater.idle()

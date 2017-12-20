@@ -4,11 +4,12 @@ import datetime
 
 def todays_date():
 
-    '''Return a tuple containing the date of the day and the time as integers.
-       If command is sent on May 16th, 1985 at 15:48 the output will be:
+    """
+    Return a tuple containing the date of the day and the time as integers.
+    If command is sent on May 16th, 1985 at 15:48 the output will be:
 
-           (19850516, 1548)
-    '''
+        (19850516, 1548)
+    """
 
     date_time = str(datetime.datetime.now())
 
@@ -36,7 +37,7 @@ def start_db():
 
 def get_table_content(table_name):
 
-    '''Return rows' content of the table.'''
+    """Return rows' content of the table."""
 
     db, c = start_db()
 
@@ -49,7 +50,7 @@ def get_table_content(table_name):
 
 def get_value(column, table_name, WHERE_KEY, WHERE_VALUE):
 
-    '''Return a specific value addressed by the inputs parameters.'''
+    """Return a specific value addressed by the inputs parameters."""
 
     db, c = start_db()
 
@@ -70,7 +71,7 @@ def get_value(column, table_name, WHERE_KEY, WHERE_VALUE):
 
 def empty_table(table_name):
 
-    '''Delete the bet from the temporary folder.'''
+    """Delete the bet from the temporary folder."""
 
     db, c = start_db()
 
@@ -82,16 +83,17 @@ def empty_table(table_name):
 
 def check_before_play(db, c):
 
-    '''Return all the matches in the 'Pending' bet which have been played
-       already or started.'''
+    """
+    Return all the matches in the 'Pending' bet which have been played
+    already or started.
+    """
 
-    matches = []
     invalid_matches = []
 
     date, time = todays_date()
 
     bet_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                  bet_status = "Pending" '''))[0][0]
+                            bet_status = "Pending" '''))[0][0]
 
     matches = list(c.execute('''SELECT pred_id, pred_user, pred_team1,
                              pred_team2, pred_date, pred_time FROM bets INNER
