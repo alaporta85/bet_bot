@@ -6,6 +6,7 @@ logs/
 .DS_Store
 venv/
 Functions/.DS_Store
+config/.DS_Store
 Functions/__pycache__/bot_functions.cpython-36.pyc
 logs/bet_bot.log
 .idea/bet_bot.iml
