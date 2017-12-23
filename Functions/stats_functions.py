@@ -278,14 +278,17 @@ def create_series(c, name, series_pos, series_neg):
     """
 
     try:
-        unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                    bet_result = "Unknown" '''))[0][0]
+        unknown_ids = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                     bet_result = "Unknown" '''))
+        unknown_ids = [element[0] for element in unknown_ids]
+
     except IndexError:
         unknown_id = 0
 
-    ref_list = list(c.execute('''SELECT pred_date, pred_label FROM predictions
-                              WHERE pred_user = ? AND pred_bet != ?''',
-                              (name, unknown_id)))
+    query = ('''SELECT pred_date, pred_label FROM predictions WHERE
+             pred_user = "{}" AND pred_bet NOT IN ({})'''.format(
+		    name, ', '.join('?' * len(unknown_ids))))
+    ref_list = list(c.execute(query, unknown_ids))
 
     count_pos = 0
     dates_pos = []
@@ -366,6 +369,8 @@ def create_series(c, name, series_pos, series_neg):
             # element in the loop
             else:
                 count_neg = 0
+                last_label = label
+                dates_neg = []
                 continue
 
             dates_neg.append(previous_date)
@@ -388,6 +393,8 @@ def create_series(c, name, series_pos, series_neg):
                 series_pos[name] = []
             else:
                 count_pos = 0
+                last_label = label
+                dates_pos = []
                 continue
             dates_pos.append(previous_date)
             dates_pos.insert(0, count_pos)
@@ -448,6 +455,11 @@ def series():
         except ValueError:
             pass
 
+    if len(coming_pos) > 1:
+	    coming_pos.sort(key=lambda x: x[1], reverse=True)
+    if len(coming_neg) > 1:
+	    coming_neg.sort(key=lambda x: x[1], reverse=True)
+
     # From the dicts to_plot_pos and to_plot_neg we create two lists
     # containing the same data but sorted
     to_plot_pos_list = [to_plot_pos[name] for name in to_plot_pos]
@@ -505,7 +517,7 @@ def series():
 
     # Inserting text on the top-right
     message = ''
-    th = 3
+    th = 2
     for element in coming_pos:
         if element[1] + th >= highest_pos:
             text = '- {} {}(P)\n'.format(element[0], element[1])

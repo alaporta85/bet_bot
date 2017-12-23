@@ -126,8 +126,10 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 				matches_completed += 1
 
 		if matches_completed != len(new_bets_list):
+			logger.info('Bet with id {} is still incomplete'.format(ref_id))
 			return 0
 
+		logger.info('Updating bet with id: {}'.format(ref_id))
 		for new_bet in new_bets_list:
 			match = new_bet.find_element_by_xpath('.//td[6]').text
 			team1 = match.split(' - ')[0]
@@ -205,8 +207,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 							'.//td[@class="ng-binding"]').text[:10]
 
 					if date == ref_date:
-
-						logger.info('Updating bet with id: {}'.format(ref_id))
 
 						new_status = bet.find_element_by_xpath(
 								'.//translate-label[@key-default=' +

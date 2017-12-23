@@ -544,8 +544,11 @@ def play_bet(bot, update, args):
 
 		# Print the summary
 		message = 'Bet placed correctly.\n\n'
-		bet_id = dbf.get_value('bet_id', 'bets', 'bet_result', 'Unknown')
 		db, c = dbf.start_db()
+		bet_id_list = list(c.execute(
+			'''SELECT bet_id FROM bets WHERE bet_result = "Unknown" '''))
+		bet_id_list = [element[0] for element in bet_id_list]
+		bet_id = bet_id_list[-1]
 		summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
 								 pred_time, pred_rawbet, pred_quote FROM bets
 								 INNER JOIN predictions on pred_bet = bet_id
@@ -754,14 +757,16 @@ def new_quotes(bot, update):
 
 
 def send_log(bot, update):
-	wdir = os.getcwd()
-	fileName = wdir + '/logs/bet_bot.log'
-
-	f = open(fileName, 'r')
-	message = ''.join(f.readlines())
-	f.close()
-
-	bot.send_message(chat_id=update.message.chat_id, text=message)
+	# wdir = os.getcwd()
+	# fileName = wdir + '/logs/bet_bot.log'
+	#
+	# f = open(fileName, 'r')
+	# message = ''.join(f.readlines())
+	# f.close()
+	#
+	# bot.send_message(chat_id=update.message.chat_id, text=message)
+	bot.send_document(chat_id=update.message.chat_id,
+	                  document=open('logs/bet_bot.log', 'rb'))
 
 
 start_handler = CommandHandler('start', start)
@@ -787,7 +792,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(19, 55, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
