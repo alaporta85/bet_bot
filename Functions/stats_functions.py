@@ -11,7 +11,7 @@ colors_dict = {'Zoppo': '#7fffd4',
                }
 
 
-def perc_success():
+def score():
 
     """Return a bar plot showing the % of right bet for each partecipant."""
 
@@ -26,14 +26,15 @@ def perc_success():
     c.execute("PRAGMA foreign_keys = ON")
 
     try:
-        unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                    bet_result = "Unknown" '''))[0][0]
+        unknown_ids = list(c.execute('''SELECT bet_id FROM bets WHERE
+                                     bet_result = "Unknown" '''))
+        unknown_ids = [element[0] for element in unknown_ids]
     except IndexError:
-        unknown_id = 0
+        unknown_ids = [0]
 
-    all_bets_list = list(c.execute('''SELECT pred_bet, pred_user, pred_label
-                                   FROM predictions WHERE pred_bet != ?''',
-                                   (unknown_id,)))
+    query = ('''SELECT pred_bet, pred_user, pred_label FROM predictions WHERE
+             pred_bet NOT IN ({})'''.format(', '.join('?' * len(unknown_ids))))
+    all_bets_list = list(c.execute(query, unknown_ids))
 
     n_bets = all_bets_list[-1][0]
 
@@ -78,6 +79,55 @@ def perc_success():
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
+
+
+def new_score():
+
+    fin_data = []
+
+    db = sqlite3.connect('extended_db')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
+
+    try:
+        unknown_ids = list(c.execute('''SELECT bet_id FROM bets WHERE
+	                                     bet_result = "Unknown" '''))
+        unknown_ids = [element[0] for element in unknown_ids]
+    except IndexError:
+        unknown_ids = [0]
+
+    for name in partecipants:
+
+        fin_quote = 1
+
+        query = ('''SELECT pred_quote FROM predictions WHERE
+                 pred_label = "WINNING" AND
+                 pred_bet NOT IN ({}) AND pred_user = "{}"'''.format(
+                 ', '.join('?' * len(unknown_ids)), name))
+
+        all_quotes_list = list(c.execute(query, unknown_ids))
+        all_quotes_list = [element[0] for element in all_quotes_list]
+
+        for quote in all_quotes_list:
+            fin_quote *= quote
+
+        fin_data.append((name, round(fin_quote/len(all_quotes_list))))
+
+    fin_data.sort(key=lambda x: x[1], reverse=True)
+
+    db.close()
+
+    names = [element[0] for element in fin_data]
+    colors = [colors_dict[name] for name in names]
+    scores = [element[1] for element in fin_data]
+
+    bars = plt.bar(range(5), scores, 0.5, color=colors)
+    plt.xticks(range(5), names, fontsize=14)
+    plt.ylabel('% of success', fontsize=15)
+
+    plt.savefig('score.png', dpi=120, bbox_inches='tight')
+    plt.gcf().clear()
+
 
 
 def aver_quote():
@@ -283,7 +333,7 @@ def create_series(c, name, series_pos, series_neg):
         unknown_ids = [element[0] for element in unknown_ids]
 
     except IndexError:
-        unknown_id = 0
+        unknown_ids = []
 
     query = ('''SELECT pred_date, pred_label FROM predictions WHERE
              pred_user = "{}" AND pred_bet NOT IN ({})'''.format(
@@ -532,3 +582,58 @@ def series():
 
     plt.savefig('series.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
+
+
+def teams_to_avoid():
+
+    db = sqlite3.connect('extended_db')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
+
+    guessed_teams = list(c.execute('''SELECT pred_team1, pred_team2 FROM
+	                               predictions WHERE
+	                               pred_label = "WINNING" '''))
+    failed_teams = list(c.execute('''SELECT pred_team1, pred_team2 FROM
+	                               predictions WHERE
+	                               pred_label = "LOSING" '''))
+
+    db.close()
+
+    winning = {}
+    losing = {}
+
+    for element in guessed_teams:
+        team1 = element[0]
+        team2 = element[1]
+
+        if team1 in winning:
+            winning[team1] += 1
+        else:
+            winning[team1] = 1
+
+        if team2 in winning:
+            winning[team2] += 1
+        else:
+            winning[team2] = 1
+
+    for element in failed_teams:
+        team1 = element[0]
+        team2 = element[1]
+
+        if team1 in losing:
+            losing[team1] += 1
+        else:
+            losing[team1] = 1
+
+        if team2 in losing:
+            losing[team2] += 1
+        else:
+            losing[team2] = 1
+
+    winning = [(team, winning[team]) for team in winning]
+    winning.sort(key=lambda x: x[1], reverse=True)
+    losing = [(team, losing[team]) for team in losing]
+    losing.sort(key=lambda x: x[1], reverse=True)
+
+    print('ciao')
+

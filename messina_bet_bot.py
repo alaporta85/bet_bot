@@ -649,7 +649,7 @@ def summary(bot, update):
 
 def score(bot, update):
 
-	stf.perc_success()
+	stf.new_score()
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('score.png',
 															  'rb'))
 	os.remove('score.png')
