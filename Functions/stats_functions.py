@@ -100,19 +100,22 @@ def new_score():
 
         fin_quote = 1
 
-        query = ('''SELECT pred_quote FROM predictions WHERE
-                 pred_label = "WINNING" AND
+        query = ('''SELECT pred_quote, pred_label FROM predictions WHERE
                  pred_bet NOT IN ({}) AND pred_user = "{}"'''.format(
                  ', '.join('?' * len(unknown_ids)), name))
 
-        all_quotes_list = list(c.execute(query, unknown_ids))
-        all_quotes_list = [element[0] for element in all_quotes_list]
+        all_quotes = list(c.execute(query, unknown_ids))
+        win_quotes = [element[0] for element in all_quotes if
+                      element[1] == 'WINNING']
 
-        for quote in all_quotes_list:
+        for quote in win_quotes:
             fin_quote *= quote
 
-        fin_data.append((name, round(fin_quote/len(all_quotes_list))))
+        parameter = len(win_quotes)/len(all_quotes)
+        fin_data.append((name, round(fin_quote * parameter)))
 
+    norm_factor = max([element[1] for element in fin_data])
+    fin_data = [(element[0], element[1]/norm_factor) for element in fin_data]
     fin_data.sort(key=lambda x: x[1], reverse=True)
 
     db.close()
@@ -123,7 +126,7 @@ def new_score():
 
     bars = plt.bar(range(5), scores, 0.5, color=colors)
     plt.xticks(range(5), names, fontsize=14)
-    plt.ylabel('% of success', fontsize=15)
+    plt.ylabel('Index of success', fontsize=15)
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
@@ -590,50 +593,61 @@ def teams_to_avoid():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    guessed_teams = list(c.execute('''SELECT pred_team1, pred_team2 FROM
-	                               predictions WHERE
-	                               pred_label = "WINNING" '''))
-    failed_teams = list(c.execute('''SELECT pred_team1, pred_team2 FROM
-	                               predictions WHERE
-	                               pred_label = "LOSING" '''))
+    predictions = list(c.execute('''SELECT pred_team1, pred_team2, pred_label
+                                 FROM predictions'''))
 
     db.close()
 
+    total = {}
     winning = {}
     losing = {}
 
-    for element in guessed_teams:
+    for element in predictions:
         team1 = element[0]
         team2 = element[1]
+        label = element[2]
 
-        if team1 in winning:
+        # Update total dict
+        if team1 in total:
+            total[team1] += 1
+        else:
+            total[team1] = 1
+        if team2 in total:
+            total[team2] += 1
+        else:
+            total[team2] = 1
+
+        # Update team1 data
+        if label == 'WINNING' and team1 in winning:
             winning[team1] += 1
-        else:
+        elif label == 'WINNING' and team1 not in winning:
             winning[team1] = 1
-
-        if team2 in winning:
-            winning[team2] += 1
-        else:
-            winning[team2] = 1
-
-    for element in failed_teams:
-        team1 = element[0]
-        team2 = element[1]
-
-        if team1 in losing:
+        if label == 'LOSING' and team1 in losing:
             losing[team1] += 1
-        else:
+        elif label == 'LOSING' and team1 not in losing:
             losing[team1] = 1
 
-        if team2 in losing:
+        # Update team2 data
+        if label == 'WINNING' and team2 in winning:
+            winning[team2] += 1
+        elif label == 'WINNING' and team2 not in winning:
+            winning[team2] = 1
+        if label == 'LOSING' and team2 in losing:
             losing[team2] += 1
-        else:
+        elif label == 'LOSING' and team2 not in losing:
             losing[team2] = 1
 
-    winning = [(team, winning[team]) for team in winning]
+    # First threshold. Teams played x times with x<th1 will not be counted
+    th1 = 6
+    winning = [(team, winning[team]) for team in winning if total[team] >= th1]
     winning.sort(key=lambda x: x[1], reverse=True)
-    losing = [(team, losing[team]) for team in losing]
+    losing = [(team, losing[team]) for team in losing if total[team] >= th1]
     losing.sort(key=lambda x: x[1], reverse=True)
 
-    print('ciao')
+    th2 = 3
+    max_win = max([element[1] for element in winning])
+    max_lose = max([element[1] for element in losing])
+    winning = [element for element in winning if element[1] >= max_win - th2]
+    losing = [element for element in losing if element[1] >= max_lose - th2]
 
+    print('ciao')

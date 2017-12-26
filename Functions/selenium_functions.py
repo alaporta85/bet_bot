@@ -6,6 +6,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from Functions import logging as log
@@ -17,14 +18,19 @@ countries = {
              'SERIE B': 'ITALIA',
              'PREMIER LEAGUE': 'INGHILTERRA',
              'PRIMERA DIVISION': 'SPAGNA',
-             # 'BUNDESLIGA': 'GERMANIA',
-             # 'LIGUE 1': 'FRANCIA',
+             'BUNDESLIGA': 'GERMANIA',
+             'LIGUE 1': 'FRANCIA',
              'EREDIVISIE': 'OLANDA',
              'CHAMPIONS LEAGUE': 'EUROPA'
              }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
+
+chrome_options = Options()
+chrome_options.add_argument("--headless")
+chrome_options.binary_location = ('/Applications/Google Chrome.app/' +
+                                  'Contents/MacOS/Google Chrome')
 
 absolute_path = os.getcwd()
 chrome_path = absolute_path + '/chromedriver'
@@ -344,6 +350,7 @@ def look_for_quote(text):
         nice_bet = list(c.execute('''SELECT field_nice_value FROM fields
                                   WHERE field_id = ? ''', (field_id,)))[0][0]
     except IndexError:
+        db.close()
         raise SyntaxError('Bet not valid.')
 
     try:
@@ -351,6 +358,7 @@ def look_for_quote(text):
                                  WHERE team_alias_name = ? ''',
                                  (input_team,)))[0][0]
     except IndexError:
+        db.close()
         raise SyntaxError('Team not valid.')
 
     team_name = list(c.execute('''SELECT team_name FROM teams INNER JOIN
@@ -364,10 +372,14 @@ def look_for_quote(text):
                                    WHERE team_name = ? AND team_league != 8''',
                                    (team_name,)))[0][0]
 
-    team1, team2 = list(c.execute('''SELECT match_team1, match_team2 FROM
-                                  matches WHERE match_team1 = ? OR
-                                  match_team2 = ?''', (team_name,
-                                  team_name)))[0]
+    try:
+        team1, team2 = list(c.execute('''SELECT match_team1, match_team2 FROM
+                                      matches WHERE match_team1 = ? OR
+                                      match_team2 = ?''', (team_name,
+                                      team_name)))[0]
+    except IndexError:
+        db.close()
+        raise ValueError('Quotes not available')
 
     match_id = list(c.execute('''SELECT match_id FROM matches
                               WHERE match_team1 = ? AND match_team2 = ?''',
@@ -486,12 +498,19 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
             # To check whether there is any match left in the current table.
             # If not, an IndexError will be returned and it will switch to the
             # following table
-            try:
-                match = all_matches[match_count]
-            except IndexError:
-                table_count += 1
-                match_count = 0
-                continue
+            if all_matches:
+                try:
+                    match = all_matches[match_count]
+                except IndexError:
+                    table_count += 1
+                    match_count = 0
+                    continue
+            else:
+                league = list(c.execute('''SELECT league_name FROM leagues
+                                        WHERE league_id == ?''',
+                                        (league_id,)))[0][0]
+                logger.info('Quotes for {} not available'.format(league))
+                raise IndexError
 
             date_time = match.find_element_by_xpath(
                     './/td[@class="ng-binding"]').text
@@ -543,6 +562,7 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                                                match_url))
 
                 last_id = c.lastrowid
+                # logger.info('Match {} - {} added'.format(team1, team2))
                 break
 
     return last_id, match_count, table_count
@@ -666,6 +686,8 @@ def fill_db_with_quotes():
             logger.info('Updating {} took {}:{}'.format(league, minutes,
                                                         seconds))
             continue
+        except IndexError:
+            continue
     db.close()
     browser.quit()
 
@@ -693,7 +715,7 @@ def alias():
     return message
 
 
-def all_bets_per_team(c, team_name, league_id):
+def all_bets_per_team(db, c, team_name, league_id):
 
     """
     Return two text messages: one showing all the standard bets and the
@@ -701,12 +723,18 @@ def all_bets_per_team(c, team_name, league_id):
     league whose id is "league_id" and team "team_name" is playing.
     """
 
-    match_id, team1, team2 = list(c.execute('''SELECT match_id, match_team1,
-                                            match_team2 FROM matches WHERE
-                                            match_league = ? AND
-                                            (match_team1 = ? OR
-                                            match_team2 = ?)''', (league_id,
-                                            team_name, team_name,)))[0]
+    try:
+        match_id, team1, team2 = list(c.execute('''SELECT match_id,
+                                                match_team1, match_team2 FROM
+                                                matches WHERE match_league = ?
+                                                AND (match_team1 = ? OR
+                                                match_team2 = ?)''',
+                                                (league_id, team_name,
+                                                 team_name,)))[0]
+    except IndexError:
+        db.close()
+        raise ValueError('Quotes not available')
+
     team1 = team1.replace('*', '')
     team2 = team2.replace('*', '')
 

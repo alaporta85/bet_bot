@@ -138,10 +138,13 @@ def quote(bot, update, args):
 												  team_id = ?''',
 												  (team_id,)))[0]
 
-			message_standard, message_combo = sf.all_bets_per_team(c,
-																   team_name,
-																   league_id)
-			db.close()
+			try:
+				message_standard, message_combo = sf.all_bets_per_team(
+						db, c, team_name, league_id)
+				db.close()
+			except ValueError as e:
+				message = str(e)
+				bot.send_message(chat_id=update.message.chat_id, text=message)
 
 			bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 							 text=message_standard)
@@ -224,6 +227,10 @@ def quote(bot, update, args):
 		bot.send_message(chat_id=update.message.chat_id, text=message)
 
 	except ConnectionError as e:
+		message = str(e)
+		bot.send_message(chat_id=update.message.chat_id, text=message)
+
+	except ValueError as e:
 		message = str(e)
 		bot.send_message(chat_id=update.message.chat_id, text=message)
 
@@ -518,14 +525,14 @@ def play_bet(bot, update, args):
 			for element in button_list:
 				if element.is_displayed():
 					print(element.text)
-					element.click()
+					# element.click()
 					time.sleep(3)
 					break
 
 		for element in button_list:
 			if element.is_displayed():
 				print(element.text)
-				element.click()
+				# element.click()
 				logger.info('PLAY - Bet has been played. Possible win: ' +
 							'{}'.format(possible_win))
 				db, c = dbf.start_db()
@@ -792,7 +799,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(11, 45, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
