@@ -387,9 +387,13 @@ def look_for_quote(text):
                               WHERE match_team1 = ? AND match_team2 = ?''',
                               (team1, team2)))[0][0]
 
-    quote = list(c.execute('''SELECT quote_value FROM quotes
-                           WHERE quote_match = ? AND quote_field = ?''',
-                           (match_id, field_id)))[0][0]
+
+    try:
+        quote = list(c.execute('''SELECT quote_value FROM quotes
+                               WHERE quote_match = ? AND quote_field = ?''',
+                               (match_id, field_id)))[0][0]
+    except IndexError:
+        raise ValueError('Quote not available for this match')
 
     db.close()
 
