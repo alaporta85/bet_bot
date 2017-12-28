@@ -104,7 +104,7 @@ def go_to_lottomatica(LIMIT_1):
            'scommesse-sportive.html')
 
     try:
-        browser = webdriver.Chrome(chrome_path)
+        browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
         time.sleep(3)
         browser.set_window_size(1400, 800)
         browser.get(url)
@@ -116,9 +116,9 @@ def go_to_lottomatica(LIMIT_1):
     except TimeoutException:
 
         if LIMIT_1 < 3:
-            print('recursive go_to_lottomatica')
+            logger.info('Recursive go_to_lottomatica')
             browser.quit()
-            go_to_lottomatica(LIMIT_1 + 1)
+            return go_to_lottomatica(LIMIT_1 + 1)
         else:
             raise ConnectionError('Unable to reach Lottomatica webpage. ' +
                                   'Please try again.')
@@ -140,11 +140,12 @@ def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
     except TimeoutException:
         if LIMIT_COUNTRY_BUTTON < 3:
-            print('recursive country button')
+            logger.info('Recursive click_country_button')
             browser.get(current_url)
             time.sleep(3)
             click_calcio_button(browser)
-            click_country_button(browser, league, LIMIT_COUNTRY_BUTTON + 1)
+            return click_country_button(browser, league,
+                                        LIMIT_COUNTRY_BUTTON + 1)
         else:
             browser.quit()
             raise ConnectionError(conn_err_message)
@@ -188,9 +189,10 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):
     try:
         wait_visible(browser, 20, all_panels_path)
         all_panels = browser.find_elements_by_xpath(all_panels_path)
+
     except TimeoutException:
         if LIMIT_ALL_PANELS < 3:
-            print('recursive all_panels button')
+            logger.info('Recursive find_all_panels')
             browser.get(current_url)
             time.sleep(3)
             return find_all_panels(browser, LIMIT_ALL_PANELS + 1)
@@ -287,7 +289,7 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):
     except TimeoutException:
 
         if LIMIT_GET_QUOTE < 3:
-            print('recursive get quote')
+            logger.info('Recursive click_bet')
             browser.get(current_url)
             time.sleep(3)
             click_bet(browser, field, bet, LIMIT_GET_QUOTE + 1)
@@ -479,7 +481,7 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
     try:
         wait_visible(browser, 20, all_days)
     except TimeoutException:
-        print('recursive update_matches')
+        logger.info('Recursive update_matches')
         browser.get(current_url)
         league = list(c.execute('''SELECT league_name FROM leagues where
                                 league_id = ? ''', (league_id,)))[0][0]
@@ -495,10 +497,12 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
             all_matches = table.find_elements_by_xpath(
                     './/tbody/tr[contains(@class,"ng-scope")]')
 
-            # To check whether there is any match left in the current table.
-            # If not, an IndexError will be returned and it will switch to the
-            # following table
+            # If all_matches is not empty it means that quotes are available
             if all_matches:
+
+                # To check whether there is any match left in the current
+                # table. If not, an IndexError will be returned and it will
+                # switch to the following table
                 try:
                     match = all_matches[match_count]
                 except IndexError:
@@ -562,7 +566,6 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                                                match_url))
 
                 last_id = c.lastrowid
-                # logger.info('Match {} - {} added'.format(team1, team2))
                 break
 
     return last_id, match_count, table_count

@@ -33,10 +33,10 @@ def go_to_personal_area(browser, LIMIT_1):
 	except (TimeoutException, ElementNotInteractableException):
 
 		if LIMIT_1 < 3:
-			print('recursive personal area')
+			logger.info('Recursive go_to_personal_area')
 			browser.get(current_url)
 			time.sleep(3)
-			go_to_personal_area(browser, LIMIT_1 + 1)
+			return go_to_personal_area(browser, LIMIT_1 + 1)
 		else:
 			raise ConnectionError('Unable to go to the section: ' +
 								  'AREA PERSONALE. Please try again.')
@@ -81,10 +81,10 @@ def go_to_placed_bets(browser, LIMIT_2):
 	except (TimeoutException, ElementNotInteractableException):
 
 		if LIMIT_2 < 3:
-			print('recursive movimenti e giocate')
+			logger.info('Recursive go_to_placed_bets')
 			browser.get(current_url)
 			time.sleep(3)
-			go_to_placed_bets(browser, LIMIT_2 + 1)
+			return go_to_placed_bets(browser, LIMIT_2 + 1)
 		else:
 			raise ConnectionError('Unable to go to the section: MOVIMENTI E' +
 								  ' GIOCATE. Please try again.')
@@ -117,6 +117,7 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 		new_bets_list = browser.find_elements_by_xpath(
 				new_table_path + '//tr[@class="ng-scope"]')
 
+		# Count the matches inside the bet which are already concluded
 		matches_completed = 0
 		for new_bet in new_bets_list:
 			label_element = new_bet.find_element_by_xpath(
@@ -125,6 +126,7 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 			if label == 'WINNING' or label == 'LOSING':
 				matches_completed += 1
 
+		# If not all of them are concluded code stops here
 		if matches_completed != len(new_bets_list):
 			logger.info('Bet with id {} is still incomplete'.format(ref_id))
 			return 0
@@ -159,10 +161,10 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 	except (TimeoutException, ElementNotInteractableException):
 
 		if LIMIT_4 < 3:
-			print('recursive details table')
+			logger.info('Recursive analyze_details_table')
 			browser.get(current_url)
 			time.sleep(3)
-			analyze_details_table(browser, ref_id, c, LIMIT_4 + 1)
+			return analyze_details_table(browser, ref_id, c, LIMIT_4 + 1)
 		else:
 			raise ConnectionError('Unable to find past bets. ' +
 								  'Please try again.')
@@ -241,10 +243,10 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 	except (TimeoutException, ElementNotInteractableException):
 
 		if LIMIT_3 < 3:
-			print('recursive main table')
+			logger.info('Recursive analyze_main_table')
 			browser.get(current_url)
 			time.sleep(3)
-			analyze_main_table(browser, ref_list, LIMIT_3 + 1)
+			return analyze_main_table(browser, ref_list, LIMIT_3 + 1)
 		else:
 			raise ConnectionError('Unable to find past bets. ' +
 								  'Please try again.')

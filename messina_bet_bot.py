@@ -721,57 +721,9 @@ def new_quotes(bot, update):
 	logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
 																seconds))
 
-	# To update confirmed quotes
-	db, c = dbf.start_db()
-	try:
-		pending_bet = list(c.execute('''SELECT bet_id FROM bets WHERE
-									 bet_status = "Pending" '''))[0][0]
-
-		confirmed_matches = list(c.execute('''SELECT pred_id FROM bets INNER
-										   JOIN predictions on
-										   pred_bet = bet_id WHERE bet_id = ?
-										   AND pred_status = ?''',
-										   (pending_bet, 'Confirmed')))
-
-		confirmed_matches = [element[0] for element in confirmed_matches]
-		for match in confirmed_matches:
-			team1, team2, league, field, old_quote = list(c.execute(
-					'''SELECT pred_team1, pred_team2, pred_league, pred_field,
-					pred_quote FROM predictions WHERE pred_id = ?''',
-					(match,)))[0]
-
-			match_id = list(c.execute('''SELECT match_id FROM matches WHERE
-									  match_league = ? AND match_team1 = ? AND
-									  match_team2 = ?''',
-									  (league, team1, team2)))[0][0]
-
-			new_quote = list(c.execute('''SELECT quote_value FROM quotes WHERE
-									   quote_match = ? AND quote_field = ?''',
-									   (match_id, field)))[0][0]
-
-			c.execute('''UPDATE predictions SET pred_quote = ? WHERE
-					  pred_id = ?''', (new_quote, match))
-
-			logger.info('Quote for {} - {} changed from {} to {}.'.format(
-					team1, team2, old_quote, new_quote))
-
-		db.commit()
-		db.close()
-	except IndexError:
-		db.close()
-		logger.info('No quotes to update were found in the ' +
-					'table "predictions".')
-
 
 def send_log(bot, update):
-	# wdir = os.getcwd()
-	# fileName = wdir + '/logs/bet_bot.log'
-	#
-	# f = open(fileName, 'r')
-	# message = ''.join(f.readlines())
-	# f.close()
-	#
-	# bot.send_message(chat_id=update.message.chat_id, text=message)
+
 	bot.send_document(chat_id=update.message.chat_id,
 	                  document=open('logs/bet_bot.log', 'rb'))
 
@@ -799,7 +751,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(11, 45, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(10, 54, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
