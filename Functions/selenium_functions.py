@@ -104,7 +104,8 @@ def go_to_lottomatica(LIMIT_1):
            'scommesse-sportive.html')
 
     try:
-        browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
+        # browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
+        browser = webdriver.Chrome(chrome_path)
         time.sleep(3)
         browser.set_window_size(1400, 800)
         browser.get(url)

@@ -525,14 +525,14 @@ def play_bet(bot, update, args):
 			for element in button_list:
 				if element.is_displayed():
 					print(element.text)
-					# element.click()
+					element.click()
 					time.sleep(3)
 					break
 
 		for element in button_list:
 			if element.is_displayed():
 				print(element.text)
-				# element.click()
+				element.click()
 				logger.info('PLAY - Bet has been played. Possible win: ' +
 							'{}'.format(possible_win))
 				db, c = dbf.start_db()
@@ -572,6 +572,7 @@ def play_bet(bot, update, args):
 							   'command /play.'))
 
 	# browser.quit()
+	# bf.go_to_personal_area(browser, 0)
 
 
 def update_results(bot, update):
@@ -755,7 +756,7 @@ update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
-							first=datetime.time(5, 00, 00))
+							first=datetime.time(21, 29, 00))
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
