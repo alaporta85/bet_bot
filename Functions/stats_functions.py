@@ -111,7 +111,8 @@ def new_score():
         for quote in win_quotes:
             fin_quote *= quote
 
-        parameter = len(win_quotes)/len(all_quotes)
+        # parameter = len(win_quotes)/len(all_quotes)
+        parameter = 1 / len(all_quotes)
         fin_data.append((name, round(fin_quote * parameter)))
 
     norm_factor = max([element[1] for element in fin_data])

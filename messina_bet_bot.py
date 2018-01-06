@@ -56,6 +56,8 @@ def start(bot, update):
 
 def format_text(content):
 
+	"""Called inside help_stats() function to clean the message text."""
+
 	message = ''.join(content)
 	message = message.replace('\n\n', 'xx')
 	message = message.replace('\n', ' ')
@@ -143,8 +145,10 @@ def quote(bot, update, args):
 						db, c, team_name, league_id)
 				db.close()
 			except ValueError as e:
+				db.close()
 				message = str(e)
-				bot.send_message(chat_id=update.message.chat_id, text=message)
+				return bot.send_message(chat_id=update.message.chat_id,
+				                        text=message)
 
 			bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 							 text=message_standard)
@@ -171,6 +175,7 @@ def quote(bot, update, args):
 
 	warning_message = bf.check_still_to_confirm(db, c, first_name)
 	if warning_message:
+		db.close()
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=warning_message)
 
@@ -215,24 +220,30 @@ def quote(bot, update, args):
 			printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet,
 												  quote)
 
-			bot.send_message(chat_id=update.message.chat_id,
-							 text=('{}\n' + 'Use /confirm or /cancel to ' +
-								   'finalize your bet.').format(printed_bet))
+			return bot.send_message(chat_id=update.message.chat_id,
+							        text=('{}\n' + 'Use /confirm or /cancel ' +
+								   'to finalize your bet.').format(
+									                              printed_bet))
 		else:
+			db.close()
 			message = 'Match already chosen. Please change your bet.'
-			bot.send_message(chat_id=update.message.chat_id, text=message)
+			return bot.send_message(chat_id=update.message.chat_id,
+			                        text=message)
 
 	except SyntaxError as e:
+		db.close()
 		message = str(e)
-		bot.send_message(chat_id=update.message.chat_id, text=message)
+		return bot.send_message(chat_id=update.message.chat_id, text=message)
 
 	except ConnectionError as e:
+		db.close()
 		message = str(e)
-		bot.send_message(chat_id=update.message.chat_id, text=message)
+		return bot.send_message(chat_id=update.message.chat_id, text=message)
 
 	except ValueError as e:
+		db.close()
 		message = str(e)
-		bot.send_message(chat_id=update.message.chat_id, text=message)
+		return bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
 def confirm(bot, update):
@@ -257,6 +268,7 @@ def confirm(bot, update):
 	users_list = [element[0] for element in users_list]
 
 	if first_name not in users_list:
+		db.close()
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='{}, you have no bet to confirm.'
 								.format(first_name))
@@ -281,9 +293,9 @@ def confirm(bot, update):
 	db.commit()
 	db.close()
 
-	bot.send_message(chat_id=update.message.chat_id,
-					 text='{}, your bet has been placed correctly.'
-					 .format(first_name))
+	return bot.send_message(chat_id=update.message.chat_id,
+					        text='{}, your bet has been placed correctly.'
+					        .format(first_name))
 
 
 def cancel(bot, update):
@@ -298,6 +310,7 @@ def cancel(bot, update):
 	users_list = [element[0] for element in users_list]
 
 	if first_name not in users_list:
+		db.close()
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='{}, you have no bet to cancel.'
 								.format(first_name))
@@ -307,8 +320,9 @@ def cancel(bot, update):
 
 	db.commit()
 	db.close()
-	bot.send_message(chat_id=update.message.chat_id,
-					 text='{}, your bet has been canceled.'.format(first_name))
+	return bot.send_message(chat_id=update.message.chat_id,
+					        text='{}, your bet has been canceled.'.format(
+							                                       first_name))
 
 
 def delete(bot, update):
@@ -350,8 +364,9 @@ def delete(bot, update):
 		db.commit()
 
 	db.close()
-	bot.send_message(chat_id=update.message.chat_id,
-					 text='{}, your bet has been deleted.'.format(first_name))
+	return bot.send_message(chat_id=update.message.chat_id,
+					        text='{}, your bet has been deleted.'.format(
+							                                       first_name))
 
 
 def play_bet(bot, update, args):
@@ -360,6 +375,18 @@ def play_bet(bot, update, args):
 	Manage the login and play the bet. Args input is the amount of euros
 	to bet.
 	"""
+
+	def money(browser, xpath):
+
+		"""Extract the text from the HTML element and return it as a float."""
+
+		final_money = browser.find_element_by_xpath(xpath).text
+		final_money = final_money.replace('Saldo: ', '')
+		final_money = final_money.replace(' €', '')
+		final_money = float(final_money.replace(',', '.'))
+
+		return final_money
+
 
 	if not args:
 		return bot.send_message(chat_id=update.message.chat_id, text=(
@@ -396,6 +423,7 @@ def play_bet(bot, update, args):
 	# bet_id of the Pending bet
 	bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
 	if not bet_id:
+		db.close()
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='No bets to play.')
 
@@ -409,7 +437,7 @@ def play_bet(bot, update, args):
 							 str(bet[3])[:4])
 			time_to_print = str(bet[4])[:2] + ':' + str(bet[4])[2:]
 			if x < len(invalid_bets) - 1:
-				logger.info('PLAY - Too late for the following bets: '
+				logger.info('PLAY - Too late for the following bet: ' +
 							'{} , {}, {}.'.format(bet[0], bet[1], bet[2]))
 				bot.send_message(chat_id=update.message.chat_id,
 								 text=message.format(bet[0], bet[1], bet[2],
@@ -497,17 +525,25 @@ def play_bet(bot, update, args):
 							  message_id=mess_id,
 							  text='Logged in')
 
+		money_left_path = ('.//div[@class="user-details-header clearfix ' +
+		                   'reduce-margin-bottom-for-collapsed-login-box"]' +
+		                   '/div[2]/div[1]')
+
 		button_location = './/div[@class="change-bet ng-scope"]'
 
 		try:
+			sf.wait_visible(browser, 20, money_left_path)
 			sf.wait_visible(browser, 20, button_location)
 		except TimeoutException:
 			browser.quit()
 			logger.info('PLAY - "SCOMMETTI" container not found')
-			bot.send_message(chat_id=update.message.chat_id,
+			return bot.send_message(chat_id=update.message.chat_id,
 							 text=('Problem during placing the bet. ' +
 								   'Please check if the bet is valid or ' +
 								   'the connection and try again.'))
+
+		# Money left before playing the bet
+		money_before = money(browser, money_left_path)
 
 		sf.scroll_to_element(browser, 'true',
 							 browser.find_element_by_xpath(
@@ -549,30 +585,44 @@ def play_bet(bot, update, args):
 									  message_id=mess_id, text='Done!')
 				break
 
-		# Print the summary
-		message = 'Bet placed correctly.\n\n'
-		db, c = dbf.start_db()
-		bet_id_list = list(c.execute(
-			'''SELECT bet_id FROM bets WHERE bet_result = "Unknown" '''))
-		bet_id_list = [element[0] for element in bet_id_list]
-		bet_id = bet_id_list[-1]
-		summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
-								 pred_time, pred_rawbet, pred_quote FROM bets
-								 INNER JOIN predictions on pred_bet = bet_id
-								 WHERE bet_id = ?''', (bet_id,)))
+		time.sleep(5)
 
-		db.close()
-		message += (played_bets(summary) + '\nPossible win: {}'.format(
-				possible_win))
-		bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-						 text=message)
+		# Money after playing the bet
+		money_after = money(browser, money_left_path)
+
+		if money_after == money_before - euros:
+
+			# Print the summary
+			message = 'Bet placed correctly.\n\n'
+			db, c = dbf.start_db()
+			bet_id_list = list(c.execute(
+				'''SELECT bet_id FROM bets WHERE bet_result = "Unknown" '''))
+			bet_id_list = [element[0] for element in bet_id_list]
+			bet_id = bet_id_list[-1]
+			summary = list(c.execute('''SELECT pred_user, pred_team1,
+									 pred_team2, pred_time, pred_rawbet,
+									 pred_quote, pred_date FROM bets INNER JOIN
+									 predictions on pred_bet = bet_id WHERE
+									 bet_id = ?''', (bet_id,)))
+
+			db.close()
+			summary = sorted(sorted(summary, key=lambda x: x[3]),
+			                 key=lambda x: x[6])
+			message += (played_bets(summary) +
+			            '\nPossible win: <b>{}</b>'.format(possible_win) +
+			            '\nMoney left: <b>{}</b>'.format(money_after))
+			bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+							 text=message)
+		else:
+			bot.send_message(chat_id=update.message.chat_id,
+			                 text=('Money left did not change, try again ' +
+			                       'the command /play.'))
 	else:
 		bot.send_message(chat_id=update.message.chat_id,
-						 text=('Something went wrong, try again the ' +
-							   'command /play.'))
+						 text=('Not all matches have been added, try again ' +
+							   'the command /play.'))
 
 	# browser.quit()
-	# bf.go_to_personal_area(browser, 0)
 
 
 def update_results(bot, update):
@@ -756,7 +806,7 @@ update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
-							first=datetime.time(21, 29, 00))
+							first=datetime.time(5, 00, 00))
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_handler)
