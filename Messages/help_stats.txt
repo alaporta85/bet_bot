@@ -1,9 +1,11 @@
 /score: graph showing the % of success. Each user is represented by a bar of
 different color and height. On the top of the bar the % of WINNING bets will be
-shown. In parentesis the total number of bet played by the user
+shown. In parentesis the total number of bet played by the user.
+
+/aver_quote: average quote for each user.
 
 /euros_lost: graph showing the amount of euros which has not been won because
-of only 1 match. Relative user is also shown
+of only 1 match. Relative user is also shown.
 
 /series: graph showing the longest positive and negative series of each user.
 Positive is green, negative is red. A green arrow will be present on
@@ -13,6 +15,4 @@ series which are not the longest ones will be shown in the top-right
 corner of the graph. To be shown in the top-right corner, a series
 needs to be 3 matches shorter than the longest one as maximum.
 
-/aver_quote: average quote for each user
-
-/records: highest WINNING and lowest LOSING quotes will be shown
+/stats: General statistical information.

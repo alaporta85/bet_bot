@@ -9,7 +9,7 @@ There are 8 leagues available:
     - EREDIVISIE
     - CHAMPIONS LEAGUE
 
-If the bet is one of the following:
+Bets available:
 
     - ESITO FINALE 1X2
     - UNDER/OVER
@@ -23,8 +23,24 @@ If the bet is one of the following:
     - DOPPIA CHANCE + UNDER/OVER
     - GOAL/NOGOAL + U/O 2,5
     - ESITO 1 TEMPO/FINALE
+    - 1X2 PT + 1X2 ST
+    - DOPPIA CHANCE + GOAL/NO GOAL
 
-The message has to be sent in the form: /get team_bet.
+Use the command /match to receive all the matches scheduled for that day. Ex:
+
+    - /match ven
+    - /match sab
+    - /match dom
+
+Available days are: lun, mar, mer, gio, ven, sab, dom.
+Once you have chosen the match, use the command /get team to receive all the quotes relative to the match played by team. Ex:
+
+    - /get milan
+    - /get barca
+    - /get psg
+
+To place your bet use again the command /get.
+In this case the message has to be sent in the form: /get team_bet.
 
     Example1: /get milan_x pt
     Example2: /get milan_gg + over 2.5
@@ -64,7 +80,5 @@ More commands:
 
 /play: place the bet. It requires the amount of euros as input.
 Ex: /play 3
-
-/update: update the database after the results are updated in Lottomatica
 
 /summary: list of bets already chosen by other users

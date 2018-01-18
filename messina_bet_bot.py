@@ -115,7 +115,7 @@ def info(bot, update):
 	bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
-def quote(bot, update, args):
+def get(bot, update, args):
 
 	"""
 	Update the table "predictions" in the db with the data relative to the
@@ -369,7 +369,7 @@ def delete(bot, update):
 							                                       first_name))
 
 
-def play_bet(bot, update, args):
+def play(bot, update, args):
 
 	"""
 	Manage the login and play the bet. Args input is the amount of euros
@@ -578,7 +578,7 @@ def play_bet(bot, update, args):
 						  (dbf.todays_date()[0], euros, possible_win,
 						   'Placed'))
 				db.commit()
-				logger.info('PLAY - "bets" db table updated!')
+				logger.info('PLAY - "bets" db table updated')
 				db.close()
 
 				bot.edit_message_text(chat_id=update.message.chat_id,
@@ -721,13 +721,6 @@ def aver_quote(bot, update):
 	os.remove('aver_quote.png')
 
 
-def records(bot, update):
-
-	h_message, l_message = stf.records()
-	bot.send_message(chat_id=update.message.chat_id, text=h_message)
-	bot.send_message(chat_id=update.message.chat_id, text=l_message)
-
-
 def euros_lost(bot, update):
 
 	stf.euros_lost_for_one_bet()
@@ -742,6 +735,21 @@ def series(bot, update):
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('series.png',
 															  'rb'))
 	os.remove('series.png')
+
+
+def stats(bot, update):
+
+	message_money = stf.money()
+	message_perc = stf.abs_perc()
+	message_teams = stf.stats_on_teams()
+	message_bets = stf.stats_on_bets()
+	message_quotes = stf.stats_on_quotes()
+
+	fin_mess = (message_money + message_perc + message_teams +
+	            message_bets + message_quotes)
+
+	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+	                 text=fin_mess)
 
 
 def match(bot, update, args):
@@ -780,22 +788,22 @@ def send_log(bot, update):
 
 
 start_handler = CommandHandler('start', start)
-help_handler = CommandHandler('help_quote', help_quote)
-stats_handler = CommandHandler('help_stats', help_stats)
+help_quote_handler = CommandHandler('help_quote', help_quote)
+help_stats_handler = CommandHandler('help_stats', help_stats)
 alias_handler = CommandHandler('alias', alias)
 info_handler = CommandHandler('info', info)
-quote_handler = CommandHandler('get', quote, pass_args=True)
+get_handler = CommandHandler('get', get, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
 cancel_handler = CommandHandler('cancel', cancel)
 delete_handler = CommandHandler('delete', delete)
-play_bet_handler = CommandHandler('play', play_bet, pass_args=True)
+play_handler = CommandHandler('play', play, pass_args=True)
 update_handler = CommandHandler('update', update_results)
 summary_handler = CommandHandler('summary', summary)
 score_handler = CommandHandler('score', score)
 aver_quote_handler = CommandHandler('aver_quote', aver_quote)
-records_handler = CommandHandler('records', records)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 series_handler = CommandHandler('series', series)
+stats_handler = CommandHandler('stats', stats)
 match_handler = CommandHandler('match', match, pass_args=True)
 new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 log_handler = CommandHandler('log', send_log)
@@ -809,22 +817,22 @@ update_tables.run_repeating(update_results, 86400,
 							first=datetime.time(5, 00, 00))
 
 dispatcher.add_handler(start_handler)
-dispatcher.add_handler(help_handler)
-dispatcher.add_handler(stats_handler)
+dispatcher.add_handler(help_quote_handler)
+dispatcher.add_handler(help_stats_handler)
 dispatcher.add_handler(alias_handler)
 dispatcher.add_handler(info_handler)
-dispatcher.add_handler(quote_handler)
+dispatcher.add_handler(get_handler)
 dispatcher.add_handler(confirm_handler)
 dispatcher.add_handler(cancel_handler)
 dispatcher.add_handler(delete_handler)
-dispatcher.add_handler(play_bet_handler)
+dispatcher.add_handler(play_handler)
 dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
 dispatcher.add_handler(score_handler)
 dispatcher.add_handler(aver_quote_handler)
-dispatcher.add_handler(records_handler)
 dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(series_handler)
+dispatcher.add_handler(stats_handler)
 dispatcher.add_handler(match_handler)
 dispatcher.add_handler(new_quotes_handler)
 dispatcher.add_handler(log_handler)
