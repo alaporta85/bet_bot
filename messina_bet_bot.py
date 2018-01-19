@@ -99,7 +99,8 @@ def alias(bot, update):
 	"""Show all alias for each team."""
 
 	message = sf.alias()
-	bot.send_message(chat_id=update.message.chat_id, text=message)
+	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+	                 text=message)
 
 
 def info(bot, update):

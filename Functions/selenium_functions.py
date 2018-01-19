@@ -714,10 +714,11 @@ def alias():
         alias_list = list(c.execute('''SELECT team_alias_name FROM teams_alias
                                     WHERE team_alias_team = ?''',
                                     (team_id,)))
-        alias_list = ['<' + element[0] + '>' for element in alias_list]
-        alias_string = ' '.join(alias_list)
-
-        message += team + ': ' + '{}'.format(alias_string) + '\n'
+        alias_list = [element[0] for element in alias_list if
+                      element[0] != team]
+        if alias_list:
+            alias_string = ', '.join(alias_list)
+            message += team + ': ' + '<b>{}</b>'.format(alias_string) + '\n'
 
     db.close()
 
