@@ -772,33 +772,33 @@ def stats_on_bets():
     losing = {}
 
     for element in predictions:
-        value = element[0]
+        bet = element[0]
         label = element[1]
 
         # Update total dict
-        if value in total:
-            total[value] += 1
+        if bet in total:
+            total[bet] += 1
         else:
-            total[value] = 1
+            total[bet] = 1
 
         # Update data
-        if label == 'WINNING' and value in winning:
-            winning[value] += 1
-        elif label == 'WINNING' and value not in winning:
-            winning[value] = 1
-        if label == 'LOSING' and value in losing:
-            losing[value] += 1
-        elif label == 'LOSING' and value not in losing:
-            losing[value] = 1
+        if label == 'WINNING' and bet in winning:
+            winning[bet] += 1
+        elif label == 'WINNING' and bet not in winning:
+            winning[bet] = 1
+        if label == 'LOSING' and bet in losing:
+            losing[bet] += 1
+        elif label == 'LOSING' and bet not in losing:
+            losing[bet] = 1
 
     # Bets played x times with x<th will not be counted
     th = 6
-    winning = [(round(winning[value] / total[value] * 100, 1), value) for value
-               in winning if total[value] >= th]
+    winning = [(round(winning[bet] / total[bet] * 100, 1), bet) for bet
+               in winning if total[bet] >= th]
     winning.sort(key=lambda x: x[0], reverse=True)
 
-    losing = [(round(losing[value] / total[value] * 100, 1), value) for value
-              in losing if total[value] >= th]
+    losing = [(round(losing[bet] / total[bet] * 100, 1), bet) for bet
+              in losing if total[bet] >= th]
     losing.sort(key=lambda x: x[0], reverse=True)
 
     spots = 2
