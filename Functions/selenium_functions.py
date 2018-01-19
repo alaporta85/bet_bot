@@ -103,13 +103,13 @@ def go_to_lottomatica(LIMIT_1):
     url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
            'scommesse-sportive.html')
 
-    try:
-        # browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
-        browser = webdriver.Chrome(chrome_path)
-        time.sleep(3)
-        browser.set_window_size(1400, 800)
-        browser.get(url)
+    # browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
+    browser = webdriver.Chrome(chrome_path)
+    time.sleep(3)
+    browser.set_window_size(1400, 800)
 
+    try:
+        browser.get(url)
         click_calcio_button(browser)
 
         return browser
@@ -571,9 +571,10 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                                                match_url))
 
                 last_id = c.lastrowid
-                break
+                return last_id, match_count, table_count
+                # break
 
-    return last_id, match_count, table_count
+    raise UnboundLocalError
 
 
 def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
@@ -681,8 +682,8 @@ def fill_db_with_quotes():
 
         table_count = 0
         match_count = 0
-        league_id = c.execute('''SELECT league_id FROM leagues WHERE
-                              league_name = ? ''', (league,))
+        c.execute('''SELECT league_id FROM leagues WHERE league_name = ? ''',
+                  (league,))
         league_id = c.fetchone()[0]
         try:
             scan_league(browser, db, c, league, league_id, table_count,
