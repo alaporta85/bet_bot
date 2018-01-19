@@ -606,7 +606,7 @@ def create_message(integer, message1, message2, list1, list2, astring):
 
     for element in winning:
         if not message1:
-            message1 += '<i>WINNING {}</i> : <b>{}</b> ({}%)'.format(
+            message1 += '<i>WINNING {}</i>: <b>{}</b> ({}%)'.format(
                     astring, '/'.join(element[1]), element[0])
         else:
             message1 += ', <b>{}</b> ({}%)'.format('/'.join(element[1]),
@@ -614,7 +614,7 @@ def create_message(integer, message1, message2, list1, list2, astring):
 
     for element in losing:
         if not message2:
-            message2 += '<i>LOSING {}</i> : <b>{}</b> ({}%)'.format(
+            message2 += '<i>LOSING {}</i>: <b>{}</b> ({}%)'.format(
                     astring, '/'.join(element[1]), element[0])
         else:
             message2 += ', <b>{}</b> ({}%)'.format('/'.join(element[1]),
@@ -644,7 +644,7 @@ def money():
     else:
         money_won = 0
 
-    return '<i>Money balance</i> : <b>{}</b>\n\n'.format(money_won - money_bet)
+    return '<i>Money balance</i>: <b>{}</b>\n\n'.format(money_won - money_bet)
 
 
 def abs_perc():
@@ -658,7 +658,8 @@ def abs_perc():
     total = 0
     win = 0
 
-    raw_list = list(c.execute('''SELECT pred_label FROM predictions'''))
+    raw_list = list(c.execute('''SELECT pred_label FROM predictions WHERE
+                              pred_label != "Unknown"'''))
     db.close()
 
     for element in raw_list:
@@ -668,7 +669,7 @@ def abs_perc():
 
     perc = round(win / total * 100, 2)
 
-    return '<i>WINNING</i> : <b>{} %</b>\n\n'.format(perc)
+    return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(perc)
 
 
 
