@@ -484,7 +484,7 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
     all_days = './/div[contains(@class,"margin-bottom ng-scope")]'
 
     try:
-        wait_visible(browser, 20, all_days)
+        wait_visible(browser, 60, all_days)
     except TimeoutException:
         logger.info('Recursive update_matches')
         browser.get(current_url)
@@ -553,7 +553,7 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                     team2 = '*' + team2
 
                 match_box_path = './/td[contains(@colspan,"1")]/a'
-                wait_clickable(browser, 20, match_box_path)
+                wait_clickable(browser, 60, match_box_path)
                 match_box = match.find_element_by_xpath(match_box_path)
 
                 scroll_to_element(browser, 'false', match_box)
@@ -561,7 +561,7 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                 simulate_hover_and_click(browser, match_box)
                 match_header_path = (
                         './/div[@class="col-sm-12 col-md-12 col-lg-12"]')
-                wait_visible(browser, 20, match_header_path)
+                wait_visible(browser, 60, match_header_path)
                 match_url = browser.current_url
                 c.execute('''INSERT INTO matches (match_league, match_team1,
                                                   match_team2, match_date,
@@ -609,7 +609,7 @@ def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
                     bet_element_path = ('.//a[@ng-click="remCrt.' +
                                         'selectionClick(selection)"]')
 
-                    wait_clickable(browser, 20, bet_element_path)
+                    wait_clickable(browser, 60, bet_element_path)
                     bet_element = new_bet.find_element_by_xpath(
                             bet_element_path)
 
@@ -632,10 +632,6 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
 
     """Update the tables 'matches' and 'quotes' of the db."""
 
-    click_country_button(browser, league, 0)
-    click_league_button(browser, league)
-    time.sleep(2)
-
     last_id, match_count, table_count = update_matches_table(browser, c,
                                                              table_count,
                                                              match_count,
@@ -650,7 +646,11 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
         update_quotes_table(browser, db, c, field_elements, all_fields,
                             last_id)
 
-    click_country_button(browser, league, 0)
+    small_league_button_top_page = browser.find_element_by_xpath(
+                                                        './/a[@ng-if="$last"]')
+    small_league_button_top_page.click()
+    filters = './/div[@class="better-filters margin-bottom"]'
+    wait_visible(browser, 60, filters)
 
     return scan_league(browser, db, c, league, league_id, table_count,
                        match_count + 1, all_fields)
@@ -676,9 +676,15 @@ def fill_db_with_quotes():
     for league in all_leagues:
         start = time.time()
 
-        if all_leagues.index(league) > 0:
-            last_league = all_leagues[all_leagues.index(league) - 1]
-            click_country_button(browser, last_league, 0)
+        # if all_leagues.index(league) > 0:
+        #     last_league = all_leagues[all_leagues.index(league) - 1]
+        #     click_country_button(browser, last_league, 0)
+
+        click_country_button(browser, league, 0)
+        click_league_button(browser, league)
+        click_country_button(browser, league, 0)
+        filters = './/div[@class="better-filters margin-bottom"]'
+        wait_visible(browser, 60, filters)
 
         table_count = 0
         match_count = 0
