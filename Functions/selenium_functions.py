@@ -663,6 +663,15 @@ def fill_db_with_quotes():
     dict "countries" to fully update the db.
     """
 
+    def three_buttons(browser, league):
+
+        click_country_button(browser, league, 0)
+        click_league_button(browser, league)
+        click_country_button(browser, league, 0)
+        filters = './/div[@class="better-filters margin-bottom"]'
+
+        return filters
+
     browser = go_to_lottomatica(0)
     dbf.empty_table('quotes')
     dbf.empty_table('matches')
@@ -680,11 +689,27 @@ def fill_db_with_quotes():
         #     last_league = all_leagues[all_leagues.index(league) - 1]
         #     click_country_button(browser, last_league, 0)
 
-        click_country_button(browser, league, 0)
-        click_league_button(browser, league)
-        click_country_button(browser, league, 0)
-        filters = './/div[@class="better-filters margin-bottom"]'
-        wait_visible(browser, 60, filters)
+        filters = three_buttons(browser, league)
+        skip_league = False
+
+        for i in range(3):
+            try:
+                wait_visible(browser, 10, filters)
+                break
+            except TimeoutException:
+                if i < 2:
+                    logger.info('Recursive {}'.format(league))
+                    current_url = browser.current_url
+                    browser.get(current_url)
+                    time.sleep(3)
+                    continue
+                else:
+                    logger.info('Failing to update quotes from {}'.format(
+                                                                       league))
+                    skip_league = True
+
+        if skip_league:
+            continue
 
         table_count = 0
         match_count = 0
