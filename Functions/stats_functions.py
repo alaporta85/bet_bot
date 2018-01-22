@@ -492,8 +492,9 @@ def series():
 
     bar_width = 0.4
     fig, ax = plt.subplots()
-    im = image.imread('Images/green_arrow.png')
-    height, width = im.shape[:2]
+    im1 = image.imread('Images/green_arrow.png')
+    im2 = image.imread('Images/red_arrow.png')
+    height, width = im1.shape[:2]
     a_ratio = height/width
 
     # Inserting arrows in the plot
@@ -503,7 +504,7 @@ def series():
             to_w = to_plot_pos_list.index(person) - 0.06
             from_h = person[1] + 0.02
             to_h = person[1] + 0.2 + 0.28*a_ratio
-            ax.imshow(im, aspect=a_ratio, extent=(from_w, to_w, from_h, to_h),
+            ax.imshow(im1, aspect=a_ratio, extent=(from_w, to_w, from_h, to_h),
                       zorder=-1)
 
     for person in to_plot_neg_list:
@@ -512,7 +513,7 @@ def series():
             to_w = to_plot_neg_list.index(person) + bar_width - 0.06
             from_h = person[1] + 0.02
             to_h = person[1] + 0.2 + 0.28*a_ratio
-            ax.imshow(im, aspect='auto', extent=(from_w, to_w, from_h, to_h),
+            ax.imshow(im2, aspect='auto', extent=(from_w, to_w, from_h, to_h),
                       zorder=-1)
 
     plt.bar([x - bar_width/2 for x in range(5)], records_pos,
