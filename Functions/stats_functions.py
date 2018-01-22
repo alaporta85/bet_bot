@@ -122,11 +122,29 @@ def new_score():
 
     names = [element[0] for element in fin_data]
     colors = [colors_dict[name] for name in names]
-    scores = [element[1] for element in fin_data]
+    scores = [round(element[1], 2) for element in fin_data]
 
-    plt.bar(range(5), scores, 0.5, color=colors)
+    bars = plt.bar(range(5), scores, 0.5, color=colors)
     plt.xticks(range(5), names, fontsize=14)
-    plt.ylabel('Index of success', fontsize=15)
+    plt.ylabel('Index of success', fontsize=16)
+    plt.ylim(0, 1.13)
+    plt.tick_params(axis='x',
+                    which='both',  # both major and minor ticks are affected
+                    bottom='off',  # ticks along the bottom edge are off
+                    labelbottom='on'
+                    )
+    plt.tick_params(axis='y',
+                    which='both',  # both major and minor ticks are affected
+                    left='off',  # ticks along the bottom edge are off
+                    labelleft='off'
+                    )
+
+    count = 0
+    for bar in bars:
+        plt.text(bar.get_x() + bar.get_width() / 2.0, scores[count] + 0.03,
+                 '{}'.format(scores[count]), ha='center', va='bottom',
+                 fontsize=15)
+        count += 1
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
@@ -167,6 +185,17 @@ def aver_quote():
     plt.yticks(range(1, 5, 1), fontsize=14)
     plt.ylim(1, 4)
     plt.title('Average WINNING quote', fontsize=18)
+
+    plt.tick_params(axis='x',
+                    which='both',  # both major and minor ticks are affected
+                    bottom='off',  # ticks along the bottom edge are off
+                    labelbottom='on'
+                    )
+    plt.tick_params(axis='y',
+                    which='both',  # both major and minor ticks are affected
+                    left='off',  # ticks along the bottom edge are off
+                    labelleft='off'
+                    )
 
     for bar in bars:
         height = bar.get_height()
@@ -225,7 +254,7 @@ def euros_lost_for_one_bet():
 
     plt.axis('equal')
     plt.title('Euros lost for 1 person', fontsize=25, position=(0.5, 1.3))
-    explode = [0.04 for x in range(n_values)]
+    explode = [0.04] * n_values
     explode[0] = 0.07
 
     patches, text, autotext = plt.pie(euros, labels=names, explode=explode,
@@ -636,7 +665,7 @@ def money():
     money_bet = sum([element[0] for element in money_bet])
 
     money_won = list(c.execute('''SELECT bet_prize FROM bets WHERE
-                               bet_status = "WINNING"'''))
+                               bet_result = "WINNING"'''))
     db.close()
 
     if money_won:
@@ -655,7 +684,6 @@ def abs_perc():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    total = 0
     win = 0
 
     raw_list = list(c.execute('''SELECT pred_label FROM predictions WHERE
@@ -663,11 +691,10 @@ def abs_perc():
     db.close()
 
     for element in raw_list:
-        total += 1
         if element[0] == 'WINNING':
             win += 1
 
-    perc = round(win / total * 100, 2)
+    perc = round(win / len(raw_list) * 100, 1)
 
     return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(perc)
 
@@ -685,7 +712,8 @@ def stats_on_teams():
     c.execute("PRAGMA foreign_keys = ON")
 
     predictions = list(c.execute('''SELECT pred_team1, pred_team2, pred_label
-                                 FROM predictions'''))
+                                 FROM predictions WHERE
+                                 pred_label != "NULL"'''))
 
     db.close()
 
@@ -757,7 +785,7 @@ def stats_on_bets():
     c.execute("PRAGMA foreign_keys = ON")
 
     raw_list = list(c.execute('''SELECT pred_field, pred_label FROM
-                                 predictions'''))
+                              predictions WHERE pred_label != "NULL"'''))
 
     predictions = []
     for element in raw_list:
@@ -819,21 +847,13 @@ def stats_on_quotes():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    try:
-        unknown_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                    bet_result = "Unknown" '''))[0][0]
-    except IndexError:
-        unknown_id = 0
-
     winning = list(c.execute('''SELECT pred_quote, pred_user, pred_team1,
-                              pred_team2, pred_rawbet FROM predictions WHERE
-                             pred_bet != ? AND pred_label = "WINNING"''',
-                             (unknown_id,)))
+                             pred_team2, pred_rawbet FROM predictions WHERE
+                             pred_label = "WINNING"'''))
 
     losing = list(c.execute('''SELECT pred_quote, pred_user, pred_team1,
                             pred_team2, pred_rawbet FROM predictions WHERE
-                            pred_bet != ? AND pred_label = "LOSING"''',
-                            (unknown_id,)))
+                            pred_label = "LOSING"'''))
     db.close()
 
     winning.sort(key=lambda x: x[0], reverse=True)
@@ -851,3 +871,27 @@ def stats_on_quotes():
                                      l_quote, ', '.join(grouped_losing[0][1]))
 
     return message1 + '\n' + message2 + '\n\n'
+
+
+def stats_on_combos():
+
+    """Return a message showing the percentage of WINNING combos."""
+
+    db = sqlite3.connect('extended_db')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
+
+    combos = list(c.execute('''SELECT pred_rawbet, pred_label FROM predictions
+                             WHERE pred_label != "NULL"'''))
+    db.close()
+
+    combos = [element for element in combos if '+' in element[0]]
+    win = 0
+
+    for element in combos:
+        if element[1] == 'WINNING':
+            win += 1
+
+    perc = round(win / len(combos) * 100, 1)
+
+    return '<i>WINNING combos</i>: <b>{}%</b>\n\n'.format(perc)

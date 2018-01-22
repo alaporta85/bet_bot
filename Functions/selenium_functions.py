@@ -36,6 +36,8 @@ absolute_path = os.getcwd()
 chrome_path = absolute_path + '/chromedriver'
 logger = log.get_flogger()
 
+WAIT = 10
+
 
 def wait_clickable(browser, seconds, element):
 
@@ -87,7 +89,7 @@ def simulate_hover_and_click(browser, element):
 def click_calcio_button(browser):
 
     calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
-    wait_clickable(browser, 20, calcio)
+    wait_clickable(browser, WAIT, calcio)
     calcio_button = browser.find_element_by_xpath(calcio)
 
     scroll_to_element(browser, 'true', calcio_button)
@@ -188,7 +190,7 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):
     current_url = browser.current_url
 
     try:
-        wait_visible(browser, 20, all_panels_path)
+        wait_visible(browser, WAIT, all_panels_path)
         all_panels = browser.find_elements_by_xpath(all_panels_path)
 
     except TimeoutException:
@@ -473,7 +475,8 @@ def format_day(input_day):
     return new_date
 
 
-def update_matches_table(browser, c, table_count, match_count, league_id):
+def update_matches_table(browser, c, table_count, match_count, league,
+                         league_id):
 
     """
     Extract all the data relative to a match and insert a new row in the
@@ -484,15 +487,13 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
     all_days = './/div[contains(@class,"margin-bottom ng-scope")]'
 
     try:
-        wait_visible(browser, 60, all_days)
+        wait_visible(browser, WAIT, all_days)
     except TimeoutException:
         logger.info('Recursive update_matches')
         browser.get(current_url)
-        league = list(c.execute('''SELECT league_name FROM leagues where
-                                league_id = ? ''', (league_id,)))[0][0]
         click_league_button(browser, league)
         return update_matches_table(browser, c, table_count, match_count,
-                                    league_id)
+                                    league, league_id)
 
     all_tables = browser.find_elements_by_xpath(all_days)
 
@@ -515,9 +516,6 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
                     match_count = 0
                     continue
             else:
-                league = list(c.execute('''SELECT league_name FROM leagues
-                                        WHERE league_id == ?''',
-                                        (league_id,)))[0][0]
                 logger.info('Quotes for {} not available'.format(league))
                 raise IndexError
 
@@ -543,36 +541,33 @@ def update_matches_table(browser, c, table_count, match_count, league_id):
             match_text = match.find_element_by_xpath(
                     './/td[contains(@colspan,"1")]/a/strong').text
 
-            if all_matches.index(match) == match_count:
+            team1 = match_text.split(' - ')[0]
+            team2 = match_text.split(' - ')[1]
 
-                team1 = match_text.split(' - ')[0]
-                team2 = match_text.split(' - ')[1]
+            if league_id == 8:
+                team1 = '*' + team1
+                team2 = '*' + team2
 
-                if league_id == 8:
-                    team1 = '*' + team1
-                    team2 = '*' + team2
+            match_box_path = './/td[contains(@colspan,"1")]/a'
+            wait_clickable(browser, WAIT, match_box_path)
+            match_box = match.find_element_by_xpath(match_box_path)
 
-                match_box_path = './/td[contains(@colspan,"1")]/a'
-                wait_clickable(browser, 60, match_box_path)
-                match_box = match.find_element_by_xpath(match_box_path)
+            scroll_to_element(browser, 'false', match_box)
 
-                scroll_to_element(browser, 'false', match_box)
+            simulate_hover_and_click(browser, match_box)
+            match_header_path = (
+                    './/div[@class="col-sm-12 col-md-12 col-lg-12"]')
+            wait_visible(browser, WAIT, match_header_path)
+            match_url = browser.current_url
+            c.execute('''INSERT INTO matches (match_league, match_team1,
+                                              match_team2, match_date,
+                                              match_time, match_url)
+            VALUES (?, ?, ?, ?, ?, ?)''', (league_id, team1, team2,
+                                           match_date, match_time,
+                                           match_url))
 
-                simulate_hover_and_click(browser, match_box)
-                match_header_path = (
-                        './/div[@class="col-sm-12 col-md-12 col-lg-12"]')
-                wait_visible(browser, 60, match_header_path)
-                match_url = browser.current_url
-                c.execute('''INSERT INTO matches (match_league, match_team1,
-                                                  match_team2, match_date,
-                                                  match_time, match_url)
-                VALUES (?, ?, ?, ?, ?, ?)''', (league_id, team1, team2,
-                                               match_date, match_time,
-                                               match_url))
-
-                last_id = c.lastrowid
-                return last_id, match_count, table_count
-                # break
+            last_id = c.lastrowid
+            return last_id, match_count, table_count
 
     raise UnboundLocalError
 
@@ -609,7 +604,7 @@ def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
                     bet_element_path = ('.//a[@ng-click="remCrt.' +
                                         'selectionClick(selection)"]')
 
-                    wait_clickable(browser, 60, bet_element_path)
+                    wait_clickable(browser, WAIT, bet_element_path)
                     bet_element = new_bet.find_element_by_xpath(
                             bet_element_path)
 
@@ -627,14 +622,15 @@ def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
                     db.commit()
 
 
-def scan_league(browser, db, c, league, league_id, table_count, match_count,
-                all_fields):
+def scan_league(browser, db, c, league, league_id, league_url, table_count,
+                match_count, all_fields):
 
     """Update the tables 'matches' and 'quotes' of the db."""
 
     last_id, match_count, table_count = update_matches_table(browser, c,
                                                              table_count,
                                                              match_count,
+                                                             league,
                                                              league_id)
 
     all_panels = find_all_panels(browser, 0)
@@ -650,10 +646,25 @@ def scan_league(browser, db, c, league, league_id, table_count, match_count,
                                                         './/a[@ng-if="$last"]')
     small_league_button_top_page.click()
     filters = './/div[@class="better-filters margin-bottom"]'
-    wait_visible(browser, 60, filters)
 
-    return scan_league(browser, db, c, league, league_id, table_count,
-                       match_count + 1, all_fields)
+    for i in range(3):
+        try:
+            wait_visible(browser, WAIT, filters)
+            return scan_league(browser, db, c, league, league_id, league_url,
+                               table_count, match_count + 1, all_fields)
+        except TimeoutException:
+            if i < 2:
+                logger.info('Recursive. League: {}, table: {}, match: {}'
+                            .format(league, table_count, match_count))
+                browser.get(league_url)
+                return scan_league(browser, db, c, league, league_id,
+                                   league_url, table_count, match_count + 1,
+                                   all_fields)
+            else:
+                logger.info('Problems during {} quotes, check it.'
+                            .format(league))
+                raise UnboundLocalError
+
 
 
 def fill_db_with_quotes():
@@ -684,23 +695,19 @@ def fill_db_with_quotes():
 
     for league in all_leagues:
         start = time.time()
-
-        # if all_leagues.index(league) > 0:
-        #     last_league = all_leagues[all_leagues.index(league) - 1]
-        #     click_country_button(browser, last_league, 0)
-
         filters = three_buttons(browser, league)
+        league_url = browser.current_url
+        time.sleep(3)
         skip_league = False
 
         for i in range(3):
             try:
-                wait_visible(browser, 10, filters)
+                wait_visible(browser, WAIT, filters)
                 break
             except TimeoutException:
                 if i < 2:
                     logger.info('Recursive {}'.format(league))
-                    current_url = browser.current_url
-                    browser.get(current_url)
+                    browser.get(league_url)
                     time.sleep(3)
                     continue
                 else:
@@ -713,12 +720,13 @@ def fill_db_with_quotes():
 
         table_count = 0
         match_count = 0
+
         c.execute('''SELECT league_id FROM leagues WHERE league_name = ? ''',
                   (league,))
         league_id = c.fetchone()[0]
         try:
-            scan_league(browser, db, c, league, league_id, table_count,
-                        match_count, all_fields)
+            scan_league(browser, db, c, league, league_id, league_url,
+                        table_count, match_count, all_fields)
         except UnboundLocalError:
             end = time.time() - start
             minutes = int(end//60)
