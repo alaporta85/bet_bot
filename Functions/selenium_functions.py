@@ -36,7 +36,7 @@ absolute_path = os.getcwd()
 chrome_path = absolute_path + '/chromedriver'
 logger = log.get_flogger()
 
-WAIT = 10
+WAIT = 60
 
 
 def wait_clickable(browser, seconds, element):
