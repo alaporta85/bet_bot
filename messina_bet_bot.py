@@ -489,35 +489,38 @@ def play(bot, update, args):
 						  text='Checking everything is fine...')
 
 	# Find the basket with all the bets
-	try:
-		basket = ('.//nav[@id="toolbarForHidden"]/ul/' +
-				  'li[@class="toolbar-nav-item ng-scope"]/a')
-		sf.wait_clickable(browser, 20, basket)
+	# try:
+	# 	basket = ('.//nav[@id="toolbarForHidden"]/ul/' +
+	# 			  'li[@class="toolbar-nav-item ng-scope"]/a')
+	# 	sf.wait_clickable(browser, 20, basket)
+	#
+	# 	browser.find_element_by_xpath(basket).click()
+	# 	logger.info('PLAY - Basket icon clicked')
+	# except TimeoutException:
+	# 	browser.quit()
+	# 	logger.info('PLAY - Unable to click the basket')
+	# 	return bot.send_message(chat_id=update.message.chat_id,
+	# 							text=('Problem during placing the bet. ' +
+	# 								  'Please check your internet ' +
+	# 								  'connection and try again.'))
+	#
+	# summary_path = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
+	# 				'//ul//span[contains(@class,"col-sm-12")]')
+	#
+	# summary_element = browser.find_element_by_xpath(summary_path)
+	#
+	# # and extract the actual number of bets present in the basket
+	# matches_played = int(summary_element.text.split(' ')[2][1:-1])
 
-		browser.find_element_by_xpath(basket).click()
-		logger.info('PLAY - Basket icon clicked')
-	except TimeoutException:
-		browser.quit()
-		logger.info('PLAY - Unable to click the basket')
-		return bot.send_message(chat_id=update.message.chat_id,
-								text=('Problem during placing the bet. ' +
-									  'Please check your internet ' +
-									  'connection and try again.'))
-
-	summary_path = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
-					'//ul//span[contains(@class,"col-sm-12")]')
-
-	summary_element = browser.find_element_by_xpath(summary_path)
-
-	# and extract the actual number of bets present in the basket
-	matches_played = int(summary_element.text.split(' ')[2][1:-1])
+	avv = './/div[@class="col-lg-4 col-md-4 col-sm-4 col-xs-4 text-right"]'
+	matches_played = int(browser.find_element_by_xpath(avv).text)
 
 	# If this number is equal to the number of bets chosen to play
 	if matches_played == len(matches_to_play):
 
 		possible_win = bf.insert_euros(browser, euros)
 
-		browser.find_element_by_xpath(basket).click()
+		# browser.find_element_by_xpath(basket).click()
 
 		# Make the login
 		sf.login(browser)
