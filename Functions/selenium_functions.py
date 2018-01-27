@@ -429,8 +429,10 @@ def check_single_bet(browser, anumber, team1, team2):
     basket = ('.//ul[@class="toolbar-nav-list"]/li[contains(@class,' +
               '"ng-scope")]/a/span[contains(@class,"pill pill")]')
 
+    avv = './/div[@class="col-lg-4 col-md-4 col-sm-4 col-xs-4 text-right"]'
+
     try:
-        current_number = int(browser.find_element_by_xpath(basket).text)
+        current_number = int(browser.find_element_by_xpath(avv).text)
 
         if current_number != anumber + 1:
             browser.quit()
