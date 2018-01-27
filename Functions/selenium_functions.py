@@ -137,7 +137,7 @@ def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
     countries_container = './/ul[@id="better-table-tennis"]'
     try:
-        wait_clickable(browser, 20, countries_container)
+        wait_clickable(browser, WAIT, countries_container)
         all_countries = browser.find_elements_by_xpath(
                 countries_container + '/li')
 
