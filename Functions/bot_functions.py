@@ -19,16 +19,16 @@ def go_to_personal_area(browser, LIMIT_1):
 	current_url = browser.current_url
 
 	try:
-		area_pers_path1 = './/a[@title="Area Personale"]'
+		area_pers_path1 = './/a[@class="account-link theme-button"]'
 		sf.wait_clickable(browser, 20, area_pers_path1)
 		area_pers_button1 = browser.find_element_by_xpath(area_pers_path1)
 		area_pers_button1.click()
 
-		area_pers_path2 = ('.//div[@id="profile-home"]/' +
-						   'a[@href="/area-personale"]')
-		sf.wait_clickable(browser, 20, area_pers_path2)
-		area_pers_button2 = browser.find_element_by_xpath(area_pers_path2)
-		area_pers_button2.click()
+		# area_pers_path2 = ('.//div[@id="profile-home"]/' +
+		# 				   'a[@href="/area-personale"]')
+		# sf.wait_clickable(browser, 20, area_pers_path2)
+		# area_pers_button2 = browser.find_element_by_xpath(area_pers_path2)
+		# area_pers_button2.click()
 
 	except (TimeoutException, ElementNotInteractableException):
 

@@ -105,8 +105,8 @@ def go_to_lottomatica(LIMIT_1):
     url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
            'scommesse-sportive.html')
 
-    # browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
-    browser = webdriver.Chrome(chrome_path)
+    browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
+    # browser = webdriver.Chrome(chrome_path)
     time.sleep(3)
     browser.set_window_size(1400, 800)
 

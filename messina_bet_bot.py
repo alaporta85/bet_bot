@@ -626,7 +626,7 @@ def play(bot, update, args):
 						 text=('Not all matches have been added, try again ' +
 							   'the command /play.'))
 
-	# browser.quit()
+	browser.quit()
 
 
 def update_results(bot, update):
