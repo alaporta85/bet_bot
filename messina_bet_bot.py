@@ -488,30 +488,6 @@ def play(bot, update, args):
 	bot.edit_message_text(chat_id=update.message.chat_id, message_id=mess_id,
 						  text='Checking everything is fine...')
 
-	# Find the basket with all the bets
-	# try:
-	# 	basket = ('.//nav[@id="toolbarForHidden"]/ul/' +
-	# 			  'li[@class="toolbar-nav-item ng-scope"]/a')
-	# 	sf.wait_clickable(browser, 20, basket)
-	#
-	# 	browser.find_element_by_xpath(basket).click()
-	# 	logger.info('PLAY - Basket icon clicked')
-	# except TimeoutException:
-	# 	browser.quit()
-	# 	logger.info('PLAY - Unable to click the basket')
-	# 	return bot.send_message(chat_id=update.message.chat_id,
-	# 							text=('Problem during placing the bet. ' +
-	# 								  'Please check your internet ' +
-	# 								  'connection and try again.'))
-	#
-	# summary_path = ('.//div[@id="toolbarContent"]/div[@id="basket"]' +
-	# 				'//ul//span[contains(@class,"col-sm-12")]')
-	#
-	# summary_element = browser.find_element_by_xpath(summary_path)
-	#
-	# # and extract the actual number of bets present in the basket
-	# matches_played = int(summary_element.text.split(' ')[2][1:-1])
-
 	avv = './/div[@class="col-lg-4 col-md-4 col-sm-4 col-xs-4 text-right"]'
 	matches_played = int(browser.find_element_by_xpath(avv).text)
 
@@ -519,8 +495,6 @@ def play(bot, update, args):
 	if matches_played == len(matches_to_play):
 
 		possible_win = bf.insert_euros(browser, euros)
-
-		# browser.find_element_by_xpath(basket).click()
 
 		# Make the login
 		sf.login(browser)
@@ -711,7 +685,7 @@ def summary(bot, update):
 
 def score(bot, update):
 
-	stf.new_score()
+	stf.score()
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('score.png',
 															  'rb'))
 	os.remove('score.png')
@@ -755,6 +729,13 @@ def stats(bot, update):
 
 	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 	                 text=fin_mess)
+
+
+def sotm(bot, update):
+	stf.stats_of_the_month()
+	bot.send_photo(chat_id=update.message.chat_id, photo=open('sotm.png',
+	                                                          'rb'))
+	os.remove('sotm.png')
 
 
 def match(bot, update, args):
@@ -809,6 +790,7 @@ aver_quote_handler = CommandHandler('aver_quote', aver_quote)
 euros_lost_handler = CommandHandler('euros_lost', euros_lost)
 series_handler = CommandHandler('series', series)
 stats_handler = CommandHandler('stats', stats)
+sotm_handler = CommandHandler('sotm', sotm)
 match_handler = CommandHandler('match', match, pass_args=True)
 new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 log_handler = CommandHandler('log', send_log)
@@ -838,6 +820,7 @@ dispatcher.add_handler(aver_quote_handler)
 dispatcher.add_handler(euros_lost_handler)
 dispatcher.add_handler(series_handler)
 dispatcher.add_handler(stats_handler)
+dispatcher.add_handler(sotm_handler)
 dispatcher.add_handler(match_handler)
 dispatcher.add_handler(new_quotes_handler)
 dispatcher.add_handler(log_handler)

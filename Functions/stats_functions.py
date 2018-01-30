@@ -13,76 +13,6 @@ colors_dict = {'Zoppo': '#7fffd4',
 
 def score():
 
-    """Return a bar plot showing the % of right bet for each partecipant."""
-
-    # Dict to store the TOTAL number of bets played by each partecipant
-    total = {name: 0 for name in partecipants}
-
-    # Dict to store the WINNING number of bets played by each partecipant
-    wins = {name: 0 for name in partecipants}
-
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    try:
-        unknown_ids = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                     bet_result = "Unknown" '''))
-        unknown_ids = [element[0] for element in unknown_ids]
-    except IndexError:
-        unknown_ids = [0]
-
-    query = ('''SELECT pred_bet, pred_user, pred_label FROM predictions WHERE
-             pred_bet NOT IN ({})'''.format(', '.join('?' * len(unknown_ids))))
-    all_bets_list = list(c.execute(query, unknown_ids))
-
-    n_bets = all_bets_list[-1][0]
-
-    db.close()
-
-    # Fill the dicts
-    for bet in all_bets_list:
-        user = bet[1]
-        label = bet[2]
-        total[user] += 1
-        if label == 'WINNING':
-            wins[user] += 1
-
-    # Prepare the data for the plot
-    final_data = [(user, total[user], round(((wins[user]/total[user])*100), 1))
-                  for user in total]
-    final_data.sort(key=lambda x: x[2], reverse=True)
-
-    names = [element[0] for element in final_data]
-    colors = [colors_dict[name] for name in names]
-    perc = [element[2] for element in final_data]
-    printed_perc = []
-    for x in range(len(names)):
-        user = names[x]
-        single_perc = str(perc[x])
-        personal_bets = str(total[user])
-        printed_perc.append(single_perc + '({})'.format(personal_bets))
-
-    bars = plt.bar(range(5), perc, 0.5,  color=colors)
-    plt.xticks(range(5), names, fontsize=14)
-    plt.ylabel('% of success', fontsize=15)
-    plt.ylim(0, 100)
-    plt.title('Total number of bets: {}'.format(n_bets), fontsize=18)
-
-    count = 0
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, height+2,
-                 '{}'.format(printed_perc[count]), ha='center', va='bottom',
-                 fontsize=15)
-        count += 1
-
-    plt.savefig('score.png', dpi=120, bbox_inches='tight')
-    plt.gcf().clear()
-
-
-def new_score():
-
     fin_data = []
 
     db = sqlite3.connect('extended_db')
@@ -517,10 +447,10 @@ def series():
                       zorder=-1)
 
     plt.bar([x - bar_width/2 for x in range(5)], records_pos,
-            bar_width, color='g', label='Positive')
+            bar_width, color='g')
 
     plt.bar([x + bar_width/2 for x in range(5)], records_neg,
-            bar_width, color='r', label='Negative')
+            bar_width, color='r')
 
     plt.xticks(range(5), names, fontsize=14)
     plt.title('Series', fontsize=18)
@@ -896,3 +826,95 @@ def stats_on_combos():
     perc = round(win / len(combos) * 100, 1)
 
     return '<i>WINNING combos</i>: <b>{}%</b>\n\n'.format(perc)
+
+
+def stats_of_the_month():
+    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
+              'Oct', 'Nov', 'Dec', ]
+
+    dict_win = {name: [] for name in partecipants}
+    dict_lose = {name: [] for name in partecipants}
+
+    db = sqlite3.connect('extended_db')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
+
+    all_preds = list(c.execute('''SELECT pred_user, pred_date, pred_quote,
+                               pred_label FROM predictions WHERE
+                               pred_label != "NULL" '''))
+    db.close()
+
+    for x in range(1, 13):
+        indexes = {name: 0 for name in partecipants}
+        preds_month = [el for el in all_preds if int(str(el[1])[4:6]) == x]
+        if preds_month:
+            highest = 0
+            lowest = 100000
+            year = '\'' + str(preds_month[0][1])[2:4]
+            date = months[x - 1] + ' {}'.format(year)
+            for name in partecipants:
+                index = 1
+                preds_name = [el for el in preds_month if el[0] == name]
+                for pred in preds_name:
+                    if pred[3] == 'WINNING':
+                        index *= pred[2]
+                index /= len(preds_name)
+                if index > highest:
+                    highest = index
+                if index < lowest:
+                    lowest = index
+                indexes[name] = index
+            for name in indexes:
+                if indexes[name] == highest:
+                    dict_win[name].append((round(indexes[name], 1), date))
+                if indexes[name] == lowest:
+                    dict_lose[name].append((round(indexes[name], 1), date))
+
+    win = [(name, len(dict_win[name])) for name in partecipants]
+    win.sort(key=lambda x: x[1], reverse=True)
+
+    names = [el[0] for el in win]
+    lose = [(name, len(dict_lose[name])) for name in names]
+
+    abs_max = max(max([el[1] for el in win]), max([el[1] for el in lose]))
+
+    fig, ax = plt.subplots()
+    fig.set_size_inches(13, 6)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    bar_width = 0.45
+    bars1 = plt.bar([x - bar_width/2 for x in range(5)], [el[1] for el in win],
+            bar_width, color='g')
+    bars2 = plt.bar([x + bar_width / 2 for x in range(5)],
+                    [el[1] for el in lose], bar_width, color='r')
+
+    plt.xticks(range(5), names, fontsize=25)
+    plt.yticks(range(abs_max + 1), fontsize=16)
+    plt.tick_params(axis='x', which='both', bottom='off', labelbottom='on')
+
+    for x in range(5):
+        dict_win[names[x]].sort(key=lambda x: int(x[1][5:]))
+        dict_win[names[x]].reverse()
+        message = ''
+        for bet in dict_win[names[x]]:
+            message += bet[1] + '\n'
+        message = message[:-1]
+
+        plt.text(bars1[x].get_x() + bars1[x].get_width() / 2,
+                 bars1[x].get_height() + 0.05, message, ha='center',
+                 va='bottom', fontsize=15)
+
+    for x in range(5):
+        dict_lose[names[x]].sort(key=lambda x: int(x[1][5:]))
+        dict_lose[names[x]].reverse()
+        message = ''
+        for bet in dict_lose[names[x]]:
+            message += bet[1] + '\n'
+        message = message[:-1]
+
+        plt.text(bars2[x].get_x() + bars2[x].get_width() / 2,
+                 bars2[x].get_height() + 0.05, message, ha='center',
+                 va='bottom', fontsize=15)
+
+    plt.savefig('sotm.png', dpi=120, bbox_inches='tight')
+    plt.gcf().clear()

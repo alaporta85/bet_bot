@@ -426,9 +426,6 @@ def check_single_bet(browser, anumber, team1, team2):
     message = ('Problems with the match {} - {}. '.format(team1, team2) +
                'Possible reason: bad internet connection. Please try again.')
 
-    basket = ('.//ul[@class="toolbar-nav-list"]/li[contains(@class,' +
-              '"ng-scope")]/a/span[contains(@class,"pill pill")]')
-
     avv = './/div[@class="col-lg-4 col-md-4 col-sm-4 col-xs-4 text-right"]'
 
     try:
