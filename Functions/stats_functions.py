@@ -1,3 +1,4 @@
+import datetime
 import matplotlib.pyplot as plt
 import sqlite3
 import matplotlib.image as image
@@ -78,7 +79,6 @@ def score():
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
-
 
 
 def aver_quote():
@@ -918,3 +918,44 @@ def stats_of_the_month():
 
     plt.savefig('sotm.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
+
+
+def stats_on_weekday():
+    db = sqlite3.connect('extended_db')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
+
+    all_preds = list(c.execute('''SELECT pred_user, pred_date, pred_label FROM
+                               predictions WHERE pred_label != "NULL" '''))
+    db.close()
+
+    tot_sat = 0
+    win_sat = 0
+    tot_sun = 0
+    win_sun = 0
+
+    for pred in all_preds:
+        year = int(str(pred[1])[:4])
+        month = int(str(pred[1])[4:6])
+        day = int(str(pred[1])[6:])
+        label = pred[2]
+
+        weekday = datetime.date(year, month, day).weekday()
+
+        if weekday == 5:
+            tot_sat += 1
+            if label == 'WINNING':
+                win_sat += 1
+        elif weekday == 6:
+            tot_sun += 1
+            if label == 'WINNING':
+                win_sun += 1
+
+    perc_sat = round(win_sat / tot_sat * 100, 1)
+    perc_sun = round(win_sun / tot_sun * 100, 1)
+
+    message = ('<i>Matches won/played on Saturday</i>: {}/{} (<b>{}%</b>)\n'
+               '<i>Matches won/played on Sunday</i>: {}/{} (<b>{}%</b>)\n\n'
+               .format(win_sat, tot_sat, perc_sat, win_sun, tot_sun, perc_sun))
+
+    return message

@@ -723,9 +723,11 @@ def stats(bot, update):
 	message_bets = stf.stats_on_bets()
 	message_quotes = stf.stats_on_quotes()
 	message_combos = stf.stats_on_combos()
+	message_weekday = stf.stats_on_weekday()
 
 	fin_mess = (message_money + message_perc + message_teams +
-	            message_bets + message_quotes + message_combos)
+	            message_bets + message_quotes + message_combos +
+	            message_weekday)
 
 	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 	                 text=fin_mess)
