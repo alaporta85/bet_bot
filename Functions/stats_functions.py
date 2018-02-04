@@ -924,34 +924,47 @@ def stats_of_the_month():
 
 def stats_on_weekday():
 
-    """Return a message showing the percentage of WINNING matches on Saturday
-       and Sunday, separately."""
+    """Return a message showing:
+
+        1. The percentage of WINNING matches on Saturday
+        2. The percentage of WINNING matches on Sunday
+        3. The percentage of WINNING matches in SERIE A on Saturday
+        4. The percentage of WINNING matches in OTHERS on Saturday
+    """
 
     db = sqlite3.connect('extended_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    all_preds = list(c.execute('''SELECT pred_user, pred_date, pred_label FROM
-                               predictions WHERE pred_label != "NULL" '''))
-    db.close()
+    all_preds = list(c.execute('''SELECT pred_user, pred_date, pred_label,
+                               pred_league FROM predictions WHERE
+                               pred_label != "NULL" '''))
 
     tot_sat = 0
     win_sat = 0
     tot_sun = 0
     win_sun = 0
+    leagues_tot = {'SERIE A': 0, 'OTHERS': 0}
+    leagues_win = {'SERIE A': 0, 'OTHERS': 0}
 
     for pred in all_preds:
         year = int(str(pred[1])[:4])
         month = int(str(pred[1])[4:6])
         day = int(str(pred[1])[6:])
         label = pred[2]
+        league = list(c.execute('''SELECT league_name FROM leagues WHERE
+                                league_id = {}'''.format(pred[3])))[0][0]
+        if league != 'SERIE A':
+            league = 'OTHERS'
 
         weekday = datetime.date(year, month, day).weekday()
 
         if weekday == 5:
             tot_sat += 1
+            leagues_tot[league] += 1
             if label == 'WINNING':
                 win_sat += 1
+                leagues_win[league] += 1
         elif weekday == 6:
             tot_sun += 1
             if label == 'WINNING':
@@ -959,9 +972,19 @@ def stats_on_weekday():
 
     perc_sat = round(win_sat / tot_sat * 100, 1)
     perc_sun = round(win_sun / tot_sun * 100, 1)
+    perc_seriea = round(leagues_win['SERIE A'] / leagues_tot['SERIE A'] * 100,
+                        1)
+    perc_others = round(leagues_win['OTHERS'] / leagues_tot['OTHERS'] * 100, 1)
 
     message = ('<i>Matches won/played on Saturday</i>: {}/{} (<b>{}%</b>)\n'
-               '<i>Matches won/played on Sunday</i>: {}/{} (<b>{}%</b>)\n\n'
-               .format(win_sat, tot_sat, perc_sat, win_sun, tot_sun, perc_sun))
+               '<i>Matches won/played on Sunday</i>: {}/{} (<b>{}%</b>)\n'
+               '<i>Matches won/played in SERIE A on Saturday</i>: {}/{} '
+               '(<b>{}%</b>)\n'
+               '<i>Matches won/played in OTHERS on Saturday</i>: {}/{} '
+               '(<b>{}%</b>)\n\n'
+               .format(win_sat, tot_sat, perc_sat, win_sun, tot_sun, perc_sun,
+                       leagues_win['SERIE A'], leagues_tot['SERIE A'],
+                       perc_seriea, leagues_win['OTHERS'],
+                       leagues_tot['OTHERS'], perc_others))
 
     return message
