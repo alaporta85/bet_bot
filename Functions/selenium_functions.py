@@ -665,7 +665,6 @@ def scan_league(browser, db, c, league, league_id, league_url, table_count,
                 raise UnboundLocalError
 
 
-
 def fill_db_with_quotes():
 
     """

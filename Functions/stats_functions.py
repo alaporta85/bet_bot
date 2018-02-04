@@ -630,7 +630,6 @@ def abs_perc():
     return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(perc)
 
 
-
 def stats_on_teams():
 
     """
@@ -829,6 +828,9 @@ def stats_on_combos():
 
 
 def stats_of_the_month():
+
+    """Best and Worst of every month based on the index."""
+
     months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
               'Oct', 'Nov', 'Dec', ]
 
@@ -921,6 +923,10 @@ def stats_of_the_month():
 
 
 def stats_on_weekday():
+
+    """Return a message showing the percentage of WINNING matches on Saturday
+       and Sunday, separately."""
+
     db = sqlite3.connect('extended_db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
