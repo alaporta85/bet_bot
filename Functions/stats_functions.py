@@ -163,14 +163,13 @@ def euros_lost_for_one_bet():
         temp_id = all_bets_list[x][0]
         temp_prize = all_bets_list[x][1]
 
-        losing_list = list(c.execute('''SELECT pred_user FROM bets INNER JOIN
-                                     predictions ON pred_bet = bet_id WHERE
-                                     pred_bet = ? AND pred_label = "LOSING"''',
-                                     (temp_id,)))
+        losing_list = list(c.execute('''SELECT pred_user, pred_quote FROM bets
+                                     INNER JOIN predictions ON
+                                     pred_bet = bet_id WHERE pred_bet = ? AND
+                                     pred_label = "LOSING"''', (temp_id,)))
 
-        losing_list = [element[0] for element in losing_list]
         if len(losing_list) == 1:
-            amount[losing_list[0]] += temp_prize
+            amount[losing_list[0][0]] += temp_prize/losing_list[0][1]
 
     db.close()
 
@@ -422,27 +421,26 @@ def series():
 
     bar_width = 0.4
     fig, ax = plt.subplots()
+    fig.set_size_inches(10, 7)
     im1 = image.imread('Images/green_arrow.png')
     im2 = image.imread('Images/red_arrow.png')
-    height, width = im1.shape[:2]
-    a_ratio = height/width
 
     # Inserting arrows in the plot
     for person in to_plot_pos_list:
         if person[3] == 'Ongoing':
-            from_w = to_plot_pos_list.index(person) - bar_width + 0.06
-            to_w = to_plot_pos_list.index(person) - 0.06
-            from_h = person[1] + 0.02
-            to_h = person[1] + 0.2 + 0.28*a_ratio
-            ax.imshow(im1, aspect=a_ratio, extent=(from_w, to_w, from_h, to_h),
+            from_w = to_plot_pos_list.index(person) - bar_width
+            to_w = to_plot_pos_list.index(person)
+            from_h = person[1] + abs_max/200
+            to_h = person[1] + abs_max/10
+            ax.imshow(im1, aspect=1, extent=(from_w, to_w, from_h, to_h),
                       zorder=-1)
 
     for person in to_plot_neg_list:
         if person[3] == 'Ongoing':
-            from_w = to_plot_neg_list.index(person) + 0.06
-            to_w = to_plot_neg_list.index(person) + bar_width - 0.06
-            from_h = person[1] + 0.02
-            to_h = person[1] + 0.2 + 0.28*a_ratio
+            from_w = to_plot_neg_list.index(person)
+            to_w = to_plot_neg_list.index(person) + bar_width
+            from_h = person[1] + abs_max/200
+            to_h = person[1] + abs_max/10
             ax.imshow(im2, aspect='auto', extent=(from_w, to_w, from_h, to_h),
                       zorder=-1)
 
@@ -452,10 +450,10 @@ def series():
     plt.bar([x + bar_width/2 for x in range(5)], records_neg,
             bar_width, color='r')
 
-    plt.xticks(range(5), names, fontsize=14)
-    plt.title('Series', fontsize=18)
+    plt.xticks(range(5), names, fontsize=17)
+    plt.title('Series', fontsize=22)
     plt.ylim(1)
-    plt.yticks(range(abs_max + 1))
+    plt.yticks(range(abs_max + 1), fontsize=13)
 
     # Inserting text on the top-right
     message = ''
