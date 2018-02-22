@@ -43,19 +43,21 @@ def score():
             fin_quote *= quote
 
         parameter = 1 / len(all_quotes)
-        fin_data.append((name, round(fin_quote * parameter)))
+        fin_data.append((name, fin_quote * parameter))
 
-    norm_factor = max([element[1] for element in fin_data])
-    fin_data = [(element[0], element[1]/norm_factor) for element in fin_data]
     fin_data.sort(key=lambda x: x[1], reverse=True)
+    norm_factor = max([element[1] for element in fin_data])
+    scores_norm = [element[1]/norm_factor for element in fin_data]
+    scores_exp = ['{:.2e}'.format(element[1]) for element in fin_data]
 
     db.close()
 
     names = [element[0] for element in fin_data]
     colors = [colors_dict[name] for name in names]
-    scores = [round(element[1], 2) for element in fin_data]
+    # scores_norm = [element[1] for element in fin_data_norm]
+    # scores_exp = [element[1] for element in fin_data_exp]
 
-    bars = plt.bar(range(5), scores, 0.5, color=colors)
+    bars = plt.bar(range(5), scores_norm, 0.5, color=colors)
     plt.xticks(range(5), names, fontsize=14)
     plt.ylabel('Index of success', fontsize=16)
     plt.ylim(0, 1.13)
@@ -72,9 +74,9 @@ def score():
 
     count = 0
     for bar in bars:
-        plt.text(bar.get_x() + bar.get_width() / 2.0, scores[count] + 0.03,
-                 '{}'.format(scores[count]), ha='center', va='bottom',
-                 fontsize=15)
+        plt.text(bar.get_x() + bar.get_width() / 2.0, scores_norm[count] + 0.03,
+                 '{}'.format(scores_exp[count]), ha='center', va='bottom',
+                 fontsize=12)
         count += 1
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
