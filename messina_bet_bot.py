@@ -3,6 +3,7 @@ import time
 import datetime
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
+from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
