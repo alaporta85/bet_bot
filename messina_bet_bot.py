@@ -564,7 +564,7 @@ def play(bot, update, args):
 									  message_id=mess_id, text='Done!')
 				break
 
-		time.sleep(20)
+		time.sleep(30)
 
 		# Money after playing the bet
 		money_after = money(browser, money_left_path)
