@@ -5,7 +5,7 @@ import matplotlib.image as image
 
 partecipants = ['Testazza', 'Nonno', 'Pacco', 'Zoppo', 'Nano']
 colors_dict = {'Zoppo': '#7fffd4',
-               'Nano': '#ffad33',
+               'Nano': '#ffff35',
                'Testazza': '#2eb82e',
                'Nonno': '#ff3300',
                'Pacco': '#028eb9'
