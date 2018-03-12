@@ -21,9 +21,8 @@ def score():
     c.execute("PRAGMA foreign_keys = ON")
 
     try:
-        unknown_ids = list(c.execute('''SELECT bet_id FROM bets WHERE
-	                                     bet_result = "Unknown" '''))
-        unknown_ids = [element[0] for element in unknown_ids]
+        query = '''SELECT bet_id FROM bets WHERE bet_result = "Unknown"'''
+        unknown_ids = [element[0] for element in list(c.execute(query))]
     except IndexError:
         unknown_ids = [0]
 
@@ -42,8 +41,7 @@ def score():
         for quote in win_quotes:
             fin_quote *= quote
 
-        parameter = 1 / len(all_quotes)
-        fin_data.append((name, fin_quote * parameter))
+        fin_data.append((name, fin_quote / len(all_quotes)))
 
     fin_data.sort(key=lambda x: x[1], reverse=True)
     norm_factor = fin_data[0][1]
@@ -92,14 +90,13 @@ def aver_quote():
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
-    all_bets_list = list(c.execute('''SELECT pred_user, pred_quote FROM
-                                   predictions WHERE pred_label = "WINNING"
-                                   '''))
+    query = ('''SELECT pred_user, pred_quote FROM predictions WHERE
+             pred_label = "WINNING"''')
+
+    all_bets_list = list(c.execute(query))
     db.close()
 
-    for bet in all_bets_list:
-        user = bet[0]
-        quote = bet[1]
+    for user, quote in all_bets_list:
         total[user] += 1
         quotes[user] += quote
 
