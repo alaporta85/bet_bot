@@ -91,8 +91,8 @@ def click_calcio_button(browser):
     wait_clickable(browser, WAIT, calcio)
     calcio_button = browser.find_element_by_xpath(calcio)
 
-    # scroll_to_element(browser, 'true', calcio_button)
-    # scroll_to_element(browser, 'false', calcio_button)
+    scroll_to_element(browser, 'true', calcio_button)
+    scroll_to_element(browser, 'false', calcio_button)
 
     calcio_button.click()
 
