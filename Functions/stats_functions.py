@@ -2,6 +2,7 @@ import datetime
 import matplotlib.pyplot as plt
 import sqlite3
 import matplotlib.image as image
+import numpy as np
 
 partecipants = ['Testazza', 'Nonno', 'Pacco', 'Zoppo', 'Nano']
 colors_dict = {'Zoppo': '#7fffd4',
@@ -37,15 +38,21 @@ def score():
         all_quotes = list(c.execute(query, unknown_ids))
         win_quotes = [element[0] for element in all_quotes if
                       element[1] == 'WINNING']
+        perc = round(len(win_quotes) / len(all_quotes) * 100, 1)
 
         for quote in win_quotes:
             fin_quote *= quote
 
-        fin_data.append((name, fin_quote / len(all_quotes)))
+        fin_data.append((name, fin_quote / len(all_quotes),
+                         '{}/{}'.format(len(win_quotes), len(all_quotes)),
+                         perc, float(round(np.array(win_quotes).mean(), 2))))
 
     fin_data.sort(key=lambda x: x[1], reverse=True)
     norm_factor = fin_data[0][1]
     scores_norm = [round(element[1]/norm_factor, 3) for element in fin_data]
+    prop = [el[2] for el in fin_data]
+    perc = [el[3] for el in fin_data]
+    aver_quote = [el[4] for el in fin_data]
 
     db.close()
 
@@ -55,7 +62,7 @@ def score():
     bars = plt.bar(range(5), scores_norm, 0.5, color=colors)
     plt.xticks(range(5), names, fontsize=14)
     plt.ylabel('Index of success', fontsize=16)
-    plt.ylim(0, 1.13)
+    plt.ylim(0, 1.35)
     plt.tick_params(axis='x',
                     which='both',  # both major and minor ticks are affected
                     bottom='off',  # ticks along the bottom edge are off
@@ -69,9 +76,11 @@ def score():
 
     count = 0
     for bar in bars:
+        text = '{}\n{}\n({}%)\n{}'.format(scores_norm[count], prop[count],
+                                          perc[count], aver_quote[count])
         plt.text(bar.get_x() + bar.get_width() / 2.0,
                  scores_norm[count] + 0.03,
-                 '{}'.format(scores_norm[count]), ha='center', va='bottom',
+                 '{}'.format(text), ha='center', va='bottom',
                  fontsize=12)
         count += 1
 
