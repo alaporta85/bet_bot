@@ -429,7 +429,7 @@ def series():
             to_w = to_plot_pos_list.index(person)
             from_h = person[1] + abs_max/200
             to_h = person[1] + abs_max/10
-            ax.imshow(im1, aspect=1, extent=(from_w, to_w, from_h, to_h),
+            ax.imshow(im1, aspect='auto', extent=(from_w, to_w, from_h, to_h),
                       zorder=-1)
 
     for person in to_plot_neg_list:
