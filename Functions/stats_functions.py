@@ -38,6 +38,7 @@ def score():
         all_quotes = list(c.execute(query, unknown_ids))
         win_quotes = [element[0] for element in all_quotes if
                       element[1] == 'WINNING']
+        win_quotes.sort()
         perc = round(len(win_quotes) / len(all_quotes) * 100, 1)
 
         for quote in win_quotes:
@@ -45,7 +46,8 @@ def score():
 
         fin_data.append((name, fin_quote / len(all_quotes),
                          '{}/{}'.format(len(win_quotes), len(all_quotes)),
-                         perc, float(round(np.array(win_quotes).mean(), 2))))
+                         perc, float(round(np.array(win_quotes[1:-1]).mean(),
+                                           2))))
 
     fin_data.sort(key=lambda x: x[1], reverse=True)
     norm_factor = fin_data[0][1]
