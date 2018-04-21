@@ -78,12 +78,21 @@ def score():
 
     count = 0
     for bar in bars:
-        text = '{}\n{}\n({}%)\n{}'.format(scores_norm[count], prop[count],
-                                          perc[count], aver_quote[count])
+        text = '{}\n({}%)\n{}'.format(prop[count], perc[count],
+                                      aver_quote[count])
         plt.text(bar.get_x() + bar.get_width() / 2.0,
                  scores_norm[count] + 0.03,
                  '{}'.format(text), ha='center', va='bottom',
-                 fontsize=12)
+                 fontsize=10, style='italic')
+        count += 1
+
+    count = 0
+    for bar in bars:
+        text = '{}'.format(scores_norm[count])
+        plt.text(bar.get_x() + bar.get_width() / 2.0,
+                 scores_norm[count] + 0.2,
+                 '{}'.format(text), ha='center', va='bottom',
+                 fontsize=12, fontweight='bold')
         count += 1
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
