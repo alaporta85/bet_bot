@@ -90,7 +90,7 @@ def score():
     for bar in bars:
         text = '{}'.format(scores_norm[count])
         plt.text(bar.get_x() + bar.get_width() / 2.0,
-                 scores_norm[count] + 0.2,
+                 scores_norm[count] + 0.22,
                  '{}'.format(text), ha='center', va='bottom',
                  fontsize=12, fontweight='bold')
         count += 1
