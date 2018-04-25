@@ -1,4 +1,7 @@
+import Classes as cl
 import datetime
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import sqlite3
 import matplotlib.image as image
@@ -15,85 +18,35 @@ colors_dict = {'Zoppo': '#7fffd4',
 
 def score():
 
-    fin_data = []
-
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    try:
-        query = '''SELECT bet_id FROM bets WHERE bet_result = "Unknown"'''
-        unknown_ids = [element[0] for element in list(c.execute(query))]
-    except IndexError:
-        unknown_ids = [0]
-
-    for name in partecipants:
-
-        fin_quote = 1
-
-        query = ('''SELECT pred_quote, pred_label FROM predictions WHERE
-                 pred_bet NOT IN ({}) AND pred_user = "{}"'''.format(
-                 ', '.join('?' * len(unknown_ids)), name))
-
-        all_quotes = list(c.execute(query, unknown_ids))
-        win_quotes = [element[0] for element in all_quotes if
-                      element[1] == 'WINNING']
-        win_quotes.sort()
-        perc = round(len(win_quotes) / len(all_quotes) * 100, 1)
-
-        for quote in win_quotes:
-            fin_quote *= quote
-
-        fin_data.append((name, fin_quote / len(all_quotes),
-                         '{}/{}'.format(len(win_quotes), len(all_quotes)),
-                         perc, float(round(np.array(win_quotes[1:-1]).mean(),
-                                           2))))
-
+    fin_data = [(name, cl.players[name].index) for name in cl.players]
     fin_data.sort(key=lambda x: x[1], reverse=True)
-    norm_factor = fin_data[0][1]
-    scores_norm = [round(element[1]/norm_factor, 3) for element in fin_data]
-    prop = [el[2] for el in fin_data]
-    perc = [el[3] for el in fin_data]
-    aver_quote = [el[4] for el in fin_data]
+    max_value = fin_data[0][1]
 
-    db.close()
-
-    names = [element[0] for element in fin_data]
+    names = [el[0] for el in fin_data]
+    indices = [round(el[1] / max_value, 3) for el in fin_data]
+    ratio = [cl.players[name].ratio for name in names]
+    perc = [cl.players[name].perc for name in names]
+    mean_quote = [cl.players[name].mean_quote for name in names]
     colors = [colors_dict[name] for name in names]
 
-    bars = plt.bar(range(5), scores_norm, 0.5, color=colors)
+    bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
+                   linewidth=0.5, clip_on=False)
     plt.xticks(range(5), names, fontsize=14)
-    plt.ylabel('Index of success', fontsize=16)
     plt.ylim(0, 1.35)
-    plt.tick_params(axis='x',
-                    which='both',  # both major and minor ticks are affected
-                    bottom='off',  # ticks along the bottom edge are off
-                    labelbottom='on'
-                    )
-    plt.tick_params(axis='y',
-                    which='both',  # both major and minor ticks are affected
-                    left='off',  # ticks along the bottom edge are off
-                    labelleft='off'
-                    )
+    plt.box(on=None)
+    plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
+    plt.tick_params(axis='y', which='both', left=False, labelleft=False)
 
-    count = 0
-    for bar in bars:
-        text = '{}\n({}%)\n{}'.format(prop[count], perc[count],
-                                      aver_quote[count])
-        plt.text(bar.get_x() + bar.get_width() / 2.0,
-                 scores_norm[count] + 0.03,
-                 '{}'.format(text), ha='center', va='bottom',
-                 fontsize=10, style='italic')
-        count += 1
-
-    count = 0
-    for bar in bars:
-        text = '{}'.format(scores_norm[count])
-        plt.text(bar.get_x() + bar.get_width() / 2.0,
-                 scores_norm[count] + 0.22,
-                 '{}'.format(text), ha='center', va='bottom',
-                 fontsize=12, fontweight='bold')
-        count += 1
+    for i, bar in enumerate(bars):
+        text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], mean_quote[i])
+        plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
+                 '{}'.format(text), ha='center', va='bottom', fontsize=10,
+                 style='italic')
+    for i, bar in enumerate(bars):
+        text = '{}'.format(indices[i])
+        plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.22,
+                 '{}'.format(text), ha='center', va='bottom', fontsize=12,
+                 fontweight='bold')
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
