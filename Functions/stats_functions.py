@@ -52,62 +52,7 @@ def score():
     plt.gcf().clear()
 
 
-def aver_quote():
-
-    """Return a bar plot showing the average quote for each partecipant."""
-
-    total = {name: 0 for name in partecipants}
-    quotes = {name: 0 for name in partecipants}
-
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    query = ('''SELECT pred_user, pred_quote FROM predictions WHERE
-             pred_label = "WINNING"''')
-
-    all_bets_list = list(c.execute(query))
-    db.close()
-
-    for user, quote in all_bets_list:
-        total[user] += 1
-        quotes[user] += quote
-
-    final_data = [(user, round(quotes[user]/total[user], 2)) for user in total]
-    final_data.sort(key=lambda x: x[1], reverse=True)
-
-    names = [element[0] for element in final_data]
-    colors = [colors_dict[name] for name in names]
-    values = [element[1] for element in final_data]
-
-    bars = plt.bar(range(5), values, 0.5,  color=colors)
-    plt.xticks(range(5), names, fontsize=14)
-    plt.yticks(range(1, 5, 1), fontsize=14)
-    plt.ylim(1, 4)
-    plt.title('Average WINNING quote', fontsize=18)
-
-    plt.tick_params(axis='x',
-                    which='both',  # both major and minor ticks are affected
-                    bottom='off',  # ticks along the bottom edge are off
-                    labelbottom='on'
-                    )
-    plt.tick_params(axis='y',
-                    which='both',  # both major and minor ticks are affected
-                    left='off',  # ticks along the bottom edge are off
-                    labelleft='off'
-                    )
-
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, height+0.1,
-                 '{:.2f}'.format(height), ha='center', va='bottom',
-                 fontsize=16)
-
-    plt.savefig('aver_quote.png', dpi=120, bbox_inches='tight')
-    plt.gcf().clear()
-
-
-def euros_lost_for_one_bet():
+def cake():
 
     """
     Return a pie chart showing the amount of euros lost because of only one
@@ -120,44 +65,20 @@ def euros_lost_for_one_bet():
 
         return round(val/100*sum(euros), 1)
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    amount = {name: 0 for name in partecipants}
-
-    all_bets_list = list(c.execute('''SELECT bet_id, bet_prize FROM bets
-                                   WHERE bet_result = "LOSING" '''))
-
-    for x in range(len(all_bets_list)):
-        temp_id = all_bets_list[x][0]
-        temp_prize = all_bets_list[x][1]
-
-        losing_list = list(c.execute('''SELECT pred_user, pred_quote FROM bets
-                                     INNER JOIN predictions ON
-                                     pred_bet = bet_id WHERE pred_bet = ? AND
-                                     pred_label = "LOSING"''', (temp_id,)))
-
-        if len(losing_list) == 1:
-            amount[losing_list[0][0]] += temp_prize/losing_list[0][1]
-
-    db.close()
-
-    data = [(name, amount[name]) for name in amount]
+    data = [(name, cl.players[name].cake) for name in partecipants if
+            cl.players[name].cake]
     data.sort(key=lambda x: x[1], reverse=True)
 
-    names = [element[0] for element in data if element[1]]
+    names = [el[0] for el in data]
+    euros = [el[1] for el in data]
     colors = [colors_dict[name] for name in names]
-    euros = [element[1] for element in data if element[1]]
-    n_values = len(euros)
 
     plt.axis('equal')
-    plt.title('Euros lost for 1 person', fontsize=25, position=(0.5, 1.3))
-    explode = [0.04] * n_values
+    explode = [0.04] * len(names)
     explode[0] = 0.07
 
     patches, text, autotext = plt.pie(euros, labels=names, explode=explode,
-                                      colors=colors[:n_values],
+                                      colors=colors[:len(names)],
                                       startangle=120, radius=1.5,
                                       autopct=real_value)
 
@@ -165,16 +86,13 @@ def euros_lost_for_one_bet():
     for patch in patches:
         patch.set_linewidth(1.5)
         patch.set_edgecolor('black')
-    for x in range(n_values):
+    for x in range(len(names)):
         if x == 0:
             text[x].set_fontsize(30)
+            autotext[x].set_fontsize(30)
         else:
             text[x].set_fontsize(18)
-    for y in range(n_values):
-        if y == 0:
-            autotext[y].set_fontsize(30)
-        else:
-            autotext[y].set_fontsize(18)
+            autotext[x].set_fontsize(18)
 
     plt.savefig('euros_lost.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
