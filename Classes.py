@@ -1,5 +1,6 @@
 import sqlite3
 import numpy as np
+from itertools import groupby, count
 
 
 partecipants = ['Testazza', 'Nonno', 'Pacco', 'Zoppo', 'Nano']
@@ -33,8 +34,8 @@ class Player(object):
 		self.perc = round(len(self.quotes_win) / self.bets_played * 100, 1)
 		self.mean_quote = round(np.array(self.quotes_win[1:-1]).mean(), 2)
 		self.index = np.prod(self.quotes_index) / self.bets_played
-		self.best_series = 0
-		self.worst_series = 0
+		self.best_series = self.set_best_series()
+		self.worst_series = self.set_worst_series()
 		self.cake = self.set_cake_value()
 
 
@@ -67,6 +68,27 @@ class Player(object):
 
 		return round(value, 1)
 
+	def set_best_series(self):
+		last_pred = [el[1] for el in preds if el[2] == self.name][-1]
+		data = [el[1] for el in preds if el[2] == self.name and
+		        el[13] == 'WINNING']
+		c = count()
+		series = max((list(g) for _, g in groupby(data, lambda x: x - next(c))),
+		             key=len)
+
+		return ((len(series), 'Concluded') if series[-1] != last_pred else
+		        (len(series), 'Ongoing'))
+
+	def set_worst_series(self):
+		last_pred = [el[1] for el in preds if el[2] == self.name][-1]
+		data = [el[1] for el in preds if el[2] == self.name and
+		        el[13] == 'LOSING']
+		c = count()
+		series = max((list(g) for _, g in groupby(data, lambda x: x - next(c))),
+		             key=len)
+
+		return ((len(series), 'Concluded') if series[-1] != last_pred else
+		        (len(series), 'Ongoing'))
 
 
 
