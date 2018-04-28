@@ -1,4 +1,6 @@
 import datetime
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import sqlite3
 import matplotlib.image as image
