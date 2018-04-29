@@ -1,3 +1,4 @@
+import Classes as cl
 import datetime
 import matplotlib
 matplotlib.use('TkAgg')
@@ -17,146 +18,41 @@ colors_dict = {'Zoppo': '#7fffd4',
 
 def score():
 
-    fin_data = []
-
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    try:
-        query = '''SELECT bet_id FROM bets WHERE bet_result = "Unknown"'''
-        unknown_ids = [element[0] for element in list(c.execute(query))]
-    except IndexError:
-        unknown_ids = [0]
-
-    for name in partecipants:
-
-        fin_quote = 1
-
-        query = ('''SELECT pred_quote, pred_label FROM predictions WHERE
-                 pred_bet NOT IN ({}) AND pred_user = "{}"'''.format(
-                 ', '.join('?' * len(unknown_ids)), name))
-
-        all_quotes = list(c.execute(query, unknown_ids))
-        win_quotes = [element[0] for element in all_quotes if
-                      element[1] == 'WINNING']
-        win_quotes.sort()
-        perc = round(len(win_quotes) / len(all_quotes) * 100, 1)
-
-        for quote in win_quotes:
-            fin_quote *= quote
-
-        fin_data.append((name, fin_quote / len(all_quotes),
-                         '{}/{}'.format(len(win_quotes), len(all_quotes)),
-                         perc, float(round(np.array(win_quotes[1:-1]).mean(),
-                                           2))))
-
+    fin_data = [(name, cl.players[name].index) for name in cl.players]
     fin_data.sort(key=lambda x: x[1], reverse=True)
-    norm_factor = fin_data[0][1]
-    scores_norm = [round(element[1]/norm_factor, 3) for element in fin_data]
-    prop = [el[2] for el in fin_data]
-    perc = [el[3] for el in fin_data]
-    aver_quote = [el[4] for el in fin_data]
+    max_value = fin_data[0][1]
 
-    db.close()
-
-    names = [element[0] for element in fin_data]
+    names = [el[0] for el in fin_data]
+    indices = [round(el[1] / max_value, 3) for el in fin_data]
+    ratio = [cl.players[name].ratio for name in names]
+    perc = [cl.players[name].perc for name in names]
+    mean_quote = [cl.players[name].mean_quote for name in names]
     colors = [colors_dict[name] for name in names]
 
-    bars = plt.bar(range(5), scores_norm, 0.5, color=colors)
+    bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
+                   linewidth=0.5, clip_on=False)
     plt.xticks(range(5), names, fontsize=14)
-    plt.ylabel('Index of success', fontsize=16)
     plt.ylim(0, 1.35)
-    plt.tick_params(axis='x',
-                    which='both',  # both major and minor ticks are affected
-                    bottom='off',  # ticks along the bottom edge are off
-                    labelbottom='on'
-                    )
-    plt.tick_params(axis='y',
-                    which='both',  # both major and minor ticks are affected
-                    left='off',  # ticks along the bottom edge are off
-                    labelleft='off'
-                    )
+    plt.box(on=None)
+    plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
+    plt.tick_params(axis='y', which='both', left=False, labelleft=False)
 
-    count = 0
-    for bar in bars:
-        text = '{}\n({}%)\n{}'.format(prop[count], perc[count],
-                                      aver_quote[count])
-        plt.text(bar.get_x() + bar.get_width() / 2.0,
-                 scores_norm[count] + 0.03,
-                 '{}'.format(text), ha='center', va='bottom',
-                 fontsize=10, style='italic')
-        count += 1
-
-    count = 0
-    for bar in bars:
-        text = '{}'.format(scores_norm[count])
-        plt.text(bar.get_x() + bar.get_width() / 2.0,
-                 scores_norm[count] + 0.22,
-                 '{}'.format(text), ha='center', va='bottom',
-                 fontsize=12, fontweight='bold')
-        count += 1
+    for i, bar in enumerate(bars):
+        text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], mean_quote[i])
+        plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
+                 '{}'.format(text), ha='center', va='bottom', fontsize=10,
+                 style='italic')
+    for i, bar in enumerate(bars):
+        text = '{}'.format(indices[i])
+        plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.22,
+                 '{}'.format(text), ha='center', va='bottom', fontsize=12,
+                 fontweight='bold')
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
 
 
-def aver_quote():
-
-    """Return a bar plot showing the average quote for each partecipant."""
-
-    total = {name: 0 for name in partecipants}
-    quotes = {name: 0 for name in partecipants}
-
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    query = ('''SELECT pred_user, pred_quote FROM predictions WHERE
-             pred_label = "WINNING"''')
-
-    all_bets_list = list(c.execute(query))
-    db.close()
-
-    for user, quote in all_bets_list:
-        total[user] += 1
-        quotes[user] += quote
-
-    final_data = [(user, round(quotes[user]/total[user], 2)) for user in total]
-    final_data.sort(key=lambda x: x[1], reverse=True)
-
-    names = [element[0] for element in final_data]
-    colors = [colors_dict[name] for name in names]
-    values = [element[1] for element in final_data]
-
-    bars = plt.bar(range(5), values, 0.5,  color=colors)
-    plt.xticks(range(5), names, fontsize=14)
-    plt.yticks(range(1, 5, 1), fontsize=14)
-    plt.ylim(1, 4)
-    plt.title('Average WINNING quote', fontsize=18)
-
-    plt.tick_params(axis='x',
-                    which='both',  # both major and minor ticks are affected
-                    bottom='off',  # ticks along the bottom edge are off
-                    labelbottom='on'
-                    )
-    plt.tick_params(axis='y',
-                    which='both',  # both major and minor ticks are affected
-                    left='off',  # ticks along the bottom edge are off
-                    labelleft='off'
-                    )
-
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, height+0.1,
-                 '{:.2f}'.format(height), ha='center', va='bottom',
-                 fontsize=16)
-
-    plt.savefig('aver_quote.png', dpi=120, bbox_inches='tight')
-    plt.gcf().clear()
-
-
-def euros_lost_for_one_bet():
+def cake():
 
     """
     Return a pie chart showing the amount of euros lost because of only one
@@ -169,44 +65,20 @@ def euros_lost_for_one_bet():
 
         return round(val/100*sum(euros), 1)
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    amount = {name: 0 for name in partecipants}
-
-    all_bets_list = list(c.execute('''SELECT bet_id, bet_prize FROM bets
-                                   WHERE bet_result = "LOSING" '''))
-
-    for x in range(len(all_bets_list)):
-        temp_id = all_bets_list[x][0]
-        temp_prize = all_bets_list[x][1]
-
-        losing_list = list(c.execute('''SELECT pred_user, pred_quote FROM bets
-                                     INNER JOIN predictions ON
-                                     pred_bet = bet_id WHERE pred_bet = ? AND
-                                     pred_label = "LOSING"''', (temp_id,)))
-
-        if len(losing_list) == 1:
-            amount[losing_list[0][0]] += temp_prize/losing_list[0][1]
-
-    db.close()
-
-    data = [(name, amount[name]) for name in amount]
+    data = [(name, cl.players[name].cake) for name in partecipants if
+            cl.players[name].cake]
     data.sort(key=lambda x: x[1], reverse=True)
 
-    names = [element[0] for element in data if element[1]]
+    names = [el[0] for el in data]
+    euros = [el[1] for el in data]
     colors = [colors_dict[name] for name in names]
-    euros = [element[1] for element in data if element[1]]
-    n_values = len(euros)
 
     plt.axis('equal')
-    plt.title('Euros lost for 1 person', fontsize=25, position=(0.5, 1.3))
-    explode = [0.04] * n_values
+    explode = [0.04] * len(names)
     explode[0] = 0.07
 
     patches, text, autotext = plt.pie(euros, labels=names, explode=explode,
-                                      colors=colors[:n_values],
+                                      colors=colors[:len(names)],
                                       startangle=120, radius=1.5,
                                       autopct=real_value)
 
@@ -214,229 +86,30 @@ def euros_lost_for_one_bet():
     for patch in patches:
         patch.set_linewidth(1.5)
         patch.set_edgecolor('black')
-    for x in range(n_values):
+    for x in range(len(names)):
         if x == 0:
             text[x].set_fontsize(30)
+            autotext[x].set_fontsize(30)
         else:
             text[x].set_fontsize(18)
-    for y in range(n_values):
-        if y == 0:
-            autotext[y].set_fontsize(30)
-        else:
-            autotext[y].set_fontsize(18)
+            autotext[x].set_fontsize(18)
 
     plt.savefig('euros_lost.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
 
 
-def create_series(c, name, series_pos, series_neg):
-
-    """
-    Fill the dicts series_pos and series_neg with the elements representing
-    the series for each player.
-    """
-
-    try:
-        unknown_ids = list(c.execute('''SELECT bet_id FROM bets WHERE
-                                     bet_result = "Unknown" '''))
-        unknown_ids = [element[0] for element in unknown_ids]
-
-    except IndexError:
-        unknown_ids = []
-
-    query = ('''SELECT pred_date, pred_label FROM predictions WHERE
-             pred_user = "{}" AND pred_bet NOT IN ({})'''.format(
-		    name, ', '.join('?' * len(unknown_ids))))
-    ref_list = list(c.execute(query, unknown_ids))
-
-    count_pos = 0
-    dates_pos = []
-    count_neg = 0
-    dates_neg = []
-    last_label = ''
-
-    for x in range(len(ref_list)):
-        date = ref_list[x][0]
-        label = ref_list[x][1]
-
-        # If it is the first element we just update the count and append it
-        if not last_label and label == 'WINNING':
-            count_pos += 1
-            dates_pos.append(date)
-
-        elif not last_label and label == 'LOSING':
-            count_neg += 1
-            dates_neg.append(date)
-
-        # If the current label is the same as the previous one we distinguish
-        # two cases
-        elif last_label == 'WINNING' and label == 'WINNING':
-
-            # 1. It is the last element in the list. In this case we "mark" it
-            # as "Ongoing" and append it to series_pos
-            if x == len(ref_list) - 1:
-                count_pos += 1
-                if (not series_pos[name] or
-                   count_pos == series_pos[name][0][0]):
-                    pass
-                elif count_pos > series_pos[name][0][0]:
-                    series_pos[name] = []
-                dates_pos.append('Ongoing')
-                dates_pos.insert(0, count_pos)
-                series_pos[name].append(dates_pos)
-
-            # 2. It is not the last element in list. Simply increase the
-            # counter
-            else:
-                count_pos += 1
-
-        # Same as above
-        elif last_label == 'LOSING' and label == 'LOSING':
-            if x == len(ref_list) - 1:
-                count_neg += 1
-                if (not series_neg[name] or
-                   count_neg == series_neg[name][0][0]):
-                    pass
-                elif count_neg > series_neg[name][0][0]:
-                    series_neg[name] = []
-                dates_neg.append('Ongoing')
-                dates_neg.insert(0, count_neg)
-                series_neg[name].append(dates_neg)
-            else:
-                count_neg += 1
-
-        # If the current label is diffent from the last one
-        elif last_label == 'LOSING' and label == 'WINNING':
-
-            # Store the date of the previous element
-            previous_date = ref_list[x-1][0]
-
-            # If not last element, start the counter for the new serie and
-            # append the date
-            if x != len(ref_list) - 1:
-                count_pos += 1
-                dates_pos.append(date)
-
-            # If no element for this person is present or the value is equal
-            # to the one already present we just go ahead
-            if not series_neg[name] or count_neg == series_neg[name][0][0]:
-                pass
-            # If the record is higher we empty the list
-            elif count_neg > series_neg[name][0][0]:
-                series_neg[name] = []
-            # If it is lower we set the counter to 0 again and go to the next
-            # element in the loop
-            else:
-                count_neg = 0
-                last_label = label
-                dates_neg = []
-                continue
-
-            dates_neg.append(previous_date)
-            dates_neg.insert(0, count_neg)
-            series_neg[name].append(dates_neg)
-            count_neg = 0
-            dates_neg = []
-
-        # Same as above
-        elif last_label == 'WINNING' and label == 'LOSING':
-            previous_date = ref_list[x-1][0]
-
-            if x != len(ref_list) - 1:
-                count_neg += 1
-                dates_neg.append(date)
-
-            if not series_pos[name] or count_pos == series_pos[name][0][0]:
-                pass
-            elif count_pos > series_pos[name][0][0]:
-                series_pos[name] = []
-            else:
-                count_pos = 0
-                last_label = label
-                dates_pos = []
-                continue
-            dates_pos.append(previous_date)
-            dates_pos.insert(0, count_pos)
-            series_pos[name].append(dates_pos)
-            count_pos = 0
-            dates_pos = []
-
-        last_label = label
-
-
 def series():
 
-    series_pos = {name: [] for name in partecipants}
-    series_neg = {name: [] for name in partecipants}
+    series_pos = sorted([(name, cl.players[name].best_series) for name in
+                         partecipants], key=lambda x: x[1][0], reverse=True)
+    green_arrows = [g for i, g in enumerate(series_pos) if g[1] == 'Ongoing']
+    names = [el[0] for el in series_pos]
+    series_pos = [el[1][0] for el in series_pos]
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    for name in partecipants:
-        create_series(c, name, series_pos, series_neg)
-
-    db.close()
-
-    # Delete all the series only 1 match long
-    for name in partecipants:
-        series_pos[name] = [element for element in series_pos[name]
-                            if element[0] > 1]
-        series_neg[name] = [element for element in series_neg[name]
-                            if element[0] > 1]
-
-    # Here we divide the series in two groups: the longest ones which go inside
-    # the to_plot lists and the ones which are not yet the longest but still
-    # ongoing which will go inside the coming list
-    to_plot_pos = {name: (name, 0, 0, 0) for name in partecipants}
-    to_plot_neg = {name: (name, 0, 0, 0) for name in partecipants}
-    coming_pos = []
-    coming_neg = []
-
-    for name in partecipants:
-        try:
-            record = max([serie[0] for serie in series_pos[name]])
-            for serie in series_pos[name]:
-                if serie[0] == record:
-                    to_plot_pos[name] = tuple([name] + serie)
-                elif serie[0] < record and serie[2] == 'Ongoing':
-                    coming_pos.append(tuple([name] + serie))
-        except ValueError:
-            pass
-
-        try:
-            record = max([serie[0] for serie in series_neg[name]])
-            for serie in series_neg[name]:
-                if serie[0] == record:
-                    to_plot_neg[name] = tuple([name] + serie)
-                elif serie[0] < record and serie[2] == 'Ongoing':
-                    coming_neg.append(tuple([name] + serie))
-        except ValueError:
-            pass
-
-    if len(coming_pos) > 1:
-        coming_pos.sort(key=lambda x: x[1], reverse=True)
-    if len(coming_neg) > 1:
-        coming_neg.sort(key=lambda x: x[1], reverse=True)
-
-    # From the dicts to_plot_pos and to_plot_neg we create two lists
-    # containing the same data but sorted
-    to_plot_pos_list = [to_plot_pos[name] for name in to_plot_pos]
-    to_plot_pos_list.sort(key=lambda x: x[1], reverse=True)
-    to_plot_neg_list = [to_plot_neg[element[0]] for element
-                        in to_plot_pos_list]
-
-    names = []
-    records_pos = []
-    records_neg = []
-    for x in range(5):
-        names.append(to_plot_pos_list[x][0])
-        records_pos.append(to_plot_pos_list[x][1])
-        records_neg.append(to_plot_neg_list[x][1])
-
-    highest_pos = max(records_pos)
-    highest_neg = max(records_neg)
-    abs_max = max([highest_pos, highest_neg])
+    series_neg = [cl.players[name].worst_series for name in names]
+    red_arrows = [i for i, g in enumerate(series_neg) if g[1] == 'Ongoing']
+    series_neg = [el[0] for el in series_neg]
+    abs_max = max((max(series_pos), max(series_neg)))
 
     bar_width = 0.4
     fig, ax = plt.subplots()
@@ -445,49 +118,36 @@ def series():
     im2 = image.imread('Images/red_arrow.png')
 
     # Inserting arrows in the plot
-    for person in to_plot_pos_list:
-        if person[3] == 'Ongoing':
-            from_w = to_plot_pos_list.index(person) - bar_width
-            to_w = to_plot_pos_list.index(person)
-            from_h = person[1] + abs_max/200
-            to_h = person[1] + abs_max/10
+    for i, e in enumerate(names):
+        if i in green_arrows:
+            from_w = i - bar_width
+            to_w = i
+            from_h = series_pos[i] + abs_max / 200
+            to_h = series_pos[i] + abs_max / 10
             ax.imshow(im1, aspect='auto', extent=(from_w, to_w, from_h, to_h),
                       zorder=-1)
 
-    for person in to_plot_neg_list:
-        if person[3] == 'Ongoing':
-            from_w = to_plot_neg_list.index(person)
-            to_w = to_plot_neg_list.index(person) + bar_width
-            from_h = person[1] + abs_max/200
-            to_h = person[1] + abs_max/10
+        elif i in red_arrows:
+            from_w = i
+            to_w = i + bar_width
+            from_h = series_neg[i] + abs_max / 200
+            to_h = series_neg[i] + abs_max / 10
             ax.imshow(im2, aspect='auto', extent=(from_w, to_w, from_h, to_h),
                       zorder=-1)
 
-    plt.bar([x - bar_width/2 for x in range(5)], records_pos,
-            bar_width, color='g')
+    plt.bar([x - bar_width / 2 for x in range(5)], series_pos, bar_width,
+            color='g')
 
-    plt.bar([x + bar_width/2 for x in range(5)], records_neg,
-            bar_width, color='r')
+    plt.bar([x + bar_width/2 for x in range(5)], series_neg, bar_width,
+            color='r')
 
     plt.xticks(range(5), names, fontsize=17)
-    plt.title('Series', fontsize=22)
-    plt.ylim(1)
-    plt.yticks(range(abs_max + 1), fontsize=13)
-
-    # Inserting text on the top-right
-    message = ''
-    th = 2
-    for element in coming_pos:
-        if element[1] + th >= highest_pos:
-            text = '- {} {}(P)\n'.format(element[0], element[1])
-            message += text
-    for element in coming_neg:
-        if element[1] + th >= highest_neg:
-            text = '- {} {}(N)\n'.format(element[0], element[1])
-            message += text
-    ax.annotate(message, xy=(1, 1), xycoords='axes fraction', fontsize=16,
-                xytext=(-150, -5), textcoords='offset points', ha='left',
-                va='top')
+    plt.yticks(fontsize=15)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    plt.tick_params(axis='x', bottom=False)
+    plt.ylim(0, abs_max)
 
     plt.savefig('series.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()
