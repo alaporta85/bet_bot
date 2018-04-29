@@ -692,17 +692,9 @@ def score(bot, update):
 	os.remove('score.png')
 
 
-def aver_quote(bot, update):
+def cake(bot, update):
 
-	stf.aver_quote()
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('aver_quote.png',
-															  'rb'))
-	os.remove('aver_quote.png')
-
-
-def euros_lost(bot, update):
-
-	stf.euros_lost_for_one_bet()
+	stf.cake()
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('euros_lost.png',
 															  'rb'))
 	os.remove('euros_lost.png')
@@ -789,8 +781,7 @@ play_handler = CommandHandler('play', play, pass_args=True)
 update_handler = CommandHandler('update', update_results)
 summary_handler = CommandHandler('summary', summary)
 score_handler = CommandHandler('score', score)
-aver_quote_handler = CommandHandler('aver_quote', aver_quote)
-euros_lost_handler = CommandHandler('euros_lost', euros_lost)
+cake_handler = CommandHandler('cake', cake)
 series_handler = CommandHandler('series', series)
 stats_handler = CommandHandler('stats', stats)
 sotm_handler = CommandHandler('sotm', sotm)
@@ -819,8 +810,7 @@ dispatcher.add_handler(play_handler)
 dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
 dispatcher.add_handler(score_handler)
-dispatcher.add_handler(aver_quote_handler)
-dispatcher.add_handler(euros_lost_handler)
+dispatcher.add_handler(cake_handler)
 dispatcher.add_handler(series_handler)
 dispatcher.add_handler(stats_handler)
 dispatcher.add_handler(sotm_handler)
