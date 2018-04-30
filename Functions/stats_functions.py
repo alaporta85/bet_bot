@@ -153,158 +153,56 @@ def series():
     plt.gcf().clear()
 
 
-def first_n_spots(integer, alist):
+def create_message(integer, list1, list2, astring):
+    win_to_print = []
+    lose_to_print = []
 
-    """
-    Input 'alist' is a sorted list of tuples and has the form:
-
-        alist = [(43.5, MILAN), (40.2, JUVENTUS), (40.2, INTER), (38.7, LAZIO)]
-
-    Return the first 'integer' elements of alist. In case there are elements
-    with the same value, all those elements will be included.
-    In the example above with integer = 2, function should return the first 2
-    teams of the list, MILAN and JUVENTUS. But actually INTER shares the spot
-    with JUVENTUS because they have the same value. That means in this case
-
-        first_n_spots(2, alist)
-
-    will return
-
-        [(43.5, MILAN), (40.2, JUVENTUS), (40.2, INTER)]
-
-    Used inside create_message.
-    """
-
-    if len(alist) <= integer:
-        return alist
-    else:
-        if alist[integer - 1][0] != alist[integer][0]:
-            return alist[:integer]
+    counter = 0
+    for i, g in cl.groupby(list1, lambda x: x[0]):
+        if counter < integer:
+            lst = list(g)
+            teams = '/'.join([el[1] for el in lst])
+            win_to_print.append((i, teams))
+            counter += len(lst)
         else:
-            return first_n_spots(integer + 1, alist)
+            counter = 0
+            break
 
-
-def group_by_value(integer, alist):
-
-    """
-    Input 'alist' is the output of first_n_spots.
-    Return a list where the elements with the same value are grouped. If
-
-        alist = [(43.5, MILAN), (40.2, JUVENTUS), (40.2, INTER)]
-
-    then group_by_value(alist) will return
-
-        [(43.5, [MILAN]), (40.2, [JUVENTUS, INTER])]
-
-    Used inside create_message.
-    """
-
-    output = first_n_spots(integer, alist)
-    only_values = [element[0] for element in output]
-
-    if len(set(only_values)) == len(output):
-        new_list = [(element[0], [element[1]]) for element in output]
-        return new_list
-    else:
-        last = output[0][0]
-        temp = [output[0][1]]
-        fin = []
-        for x in range(1, len(output)):
-            perc = output[x][0]
-            team = output[x][1]
-            if perc == last and x != len(output) - 1:
-                temp.append(team)
-            elif perc == last and x == len(output) - 1:
-                temp.append(team)
-                fin.append((last, temp))
-                return fin
-            elif perc != last and x != len(output) - 1:
-                fin.append((last, temp))
-                temp = [team]
-                last = perc
-            else:
-                fin.append((last, temp))
-                return fin
-
-
-def create_message(integer, message1, message2, list1, list2, astring):
-
-    """
-    Fill message1 and message2, put them together and return the result.
-    Used inside two functions:
-
-        - stats_on_teams
-        - stats_on_bets
-        - stats_on_quotes
-    """
-
-    winning = group_by_value(integer, list1)
-    losing = group_by_value(integer, list2)
-
-    for element in winning:
-        if not message1:
-            message1 += '<i>WINNING {}</i>: <b>{}</b> ({}%)'.format(
-                    astring, '/'.join(element[1]), element[0])
+    for i, g in cl.groupby(list2, lambda x: x[0]):
+        if counter < integer:
+            lst = list(g)
+            teams = '/'.join([el[1] for el in lst])
+            lose_to_print.append((i, teams))
+            counter += len(lst)
         else:
-            message1 += ', <b>{}</b> ({}%)'.format('/'.join(element[1]),
-                                                   element[0])
+            break
 
-    for element in losing:
-        if not message2:
-            message2 += '<i>LOSING {}</i>: <b>{}</b> ({}%)'.format(
-                    astring, '/'.join(element[1]), element[0])
-        else:
-            message2 += ', <b>{}</b> ({}%)'.format('/'.join(element[1]),
-                                                   element[0])
+    message1 = '<i>WINNING {}</i>: '.format(astring)
+    message2 = '<i>LOSING {}</i>: '.format(astring)
 
-    return message1 + '\n' + message2 + '\n\n'
+    for perc, teams in win_to_print:
+        message1 += '<b>{}</b>({}%), '.format(teams, perc)
+    message1 = message1[:-2]
+
+    for perc, teams in lose_to_print:
+        message2 += '<b>{}</b>({}%), '.format(teams, perc)
+    message2 = message2[:-2]
+
+    return '{}\n{}'.format(message1, message2)
 
 
 def money():
 
     """Return a message showing the money balance."""
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    money_bet = list(c.execute('''SELECT bet_euros FROM bets WHERE
-                               bet_result != "Unknown"'''))
-    money_bet = sum([element[0] for element in money_bet])
-
-    money_won = list(c.execute('''SELECT bet_prize FROM bets WHERE
-                               bet_result = "WINNING"'''))
-    db.close()
-
-    if money_won:
-        money_won = sum([element[0] for element in money_won])
-    else:
-        money_won = 0
-
-    return '<i>Money balance</i>: <b>{}</b>\n\n'.format(money_won - money_bet)
+    return '<i>Money balance</i>: <b>{}</b>\n\n'.format(cl.stats.money_bal())
 
 
 def abs_perc():
 
     """Return a message showing the percentage of WINNING bets."""
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    win = 0
-
-    raw_list = list(c.execute('''SELECT pred_label FROM predictions WHERE
-                              pred_label != "Unknown"'''))
-    db.close()
-
-    for element in raw_list:
-        if element[0] == 'WINNING':
-            win += 1
-
-    perc = round(win / len(raw_list) * 100, 1)
-
-    return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(perc)
+    return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(cl.stats.win_preds)
 
 
 def stats_on_teams():
@@ -313,71 +211,10 @@ def stats_on_teams():
     Return a message showing the teams which have been guessed and failed
     the most together with their percentages.
     """
+    win = cl.stats.win_teams
+    lose = cl.stats.lose_teams
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    predictions = list(c.execute('''SELECT pred_team1, pred_team2, pred_label
-                                 FROM predictions WHERE
-                                 pred_label != "NULL"'''))
-
-    db.close()
-
-    total = {}
-    winning = {}
-    losing = {}
-
-    for element in predictions:
-        team1 = element[0]
-        team2 = element[1]
-        label = element[2]
-
-        # Update total dict
-        if team1 in total:
-            total[team1] += 1
-        else:
-            total[team1] = 1
-        if team2 in total:
-            total[team2] += 1
-        else:
-            total[team2] = 1
-
-        # Update team1 data
-        if label == 'WINNING' and team1 in winning:
-            winning[team1] += 1
-        elif label == 'WINNING' and team1 not in winning:
-            winning[team1] = 1
-        if label == 'LOSING' and team1 in losing:
-            losing[team1] += 1
-        elif label == 'LOSING' and team1 not in losing:
-            losing[team1] = 1
-
-        # Update team2 data
-        if label == 'WINNING' and team2 in winning:
-            winning[team2] += 1
-        elif label == 'WINNING' and team2 not in winning:
-            winning[team2] = 1
-        if label == 'LOSING' and team2 in losing:
-            losing[team2] += 1
-        elif label == 'LOSING' and team2 not in losing:
-            losing[team2] = 1
-
-    # Teams which played x times with x<th will not be counted
-    th = 6
-    winning = [(round(winning[team] / total[team] * 100, 1), team) for team in
-               winning if total[team] >= th]
-    winning.sort(key=lambda x: x[0], reverse=True)
-
-    losing = [(round(losing[team] / total[team] * 100, 1), team) for team in
-              losing if total[team] >= th]
-    losing.sort(key=lambda x: x[0], reverse=True)
-
-    spots = 2
-
-    message = create_message(spots, '', '', winning, losing, 'teams')
-
-    return message
+    return create_message(2, win, lose, 'teams') + '\n\n'
 
 
 def stats_on_bets():
@@ -386,61 +223,10 @@ def stats_on_bets():
     Return a message showing the bets which have been guessed and failed
     the most together with their percentages.
     """
+    win = cl.stats.win_bets
+    lose = cl.stats.lose_bets
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
-
-    raw_list = list(c.execute('''SELECT pred_field, pred_label FROM
-                              predictions WHERE pred_label != "NULL"'''))
-
-    predictions = []
-    for element in raw_list:
-        value = list(c.execute('''SELECT field_nice_value FROM fields WHERE
-                               field_id = ?''', (element[0],)))[0][0]
-        predictions.append((value, element[1]))
-
-    db.close()
-
-    total = {}
-    winning = {}
-    losing = {}
-
-    for element in predictions:
-        bet = element[0]
-        label = element[1]
-
-        # Update total dict
-        if bet in total:
-            total[bet] += 1
-        else:
-            total[bet] = 1
-
-        # Update data
-        if label == 'WINNING' and bet in winning:
-            winning[bet] += 1
-        elif label == 'WINNING' and bet not in winning:
-            winning[bet] = 1
-        if label == 'LOSING' and bet in losing:
-            losing[bet] += 1
-        elif label == 'LOSING' and bet not in losing:
-            losing[bet] = 1
-
-    # Bets played x times with x<th will not be counted
-    th = 6
-    winning = [(round(winning[bet] / total[bet] * 100, 1), bet) for bet
-               in winning if total[bet] >= th]
-    winning.sort(key=lambda x: x[0], reverse=True)
-
-    losing = [(round(losing[bet] / total[bet] * 100, 1), bet) for bet
-              in losing if total[bet] >= th]
-    losing.sort(key=lambda x: x[0], reverse=True)
-
-    spots = 2
-
-    message = create_message(spots, '', '', winning, losing, 'bets')
-
-    return message
+    return create_message(2, win, lose, 'bets') + '\n\n'
 
 
 def stats_on_quotes():
@@ -450,32 +236,14 @@ def stats_on_quotes():
     together with the user who played them.
     """
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
+    message1 = '<i>Highest WINNING quote</i>: <b>{}</b> ({})'
+    message2 = '<i>Lowest LOSING quote</i>: <b>{}</b> ({})'
 
-    winning = list(c.execute('''SELECT pred_quote, pred_user, pred_team1,
-                             pred_team2, pred_rawbet FROM predictions WHERE
-                             pred_label = "WINNING"'''))
+    quote, user = cl.stats.highest_win_quote
+    message1 = message1.format(quote, user)
 
-    losing = list(c.execute('''SELECT pred_quote, pred_user, pred_team1,
-                            pred_team2, pred_rawbet FROM predictions WHERE
-                            pred_label = "LOSING"'''))
-    db.close()
-
-    winning.sort(key=lambda x: x[0], reverse=True)
-    losing.sort(key=lambda x: x[0])
-
-    grouped_winning = group_by_value(1, winning[:2])
-    grouped_losing = group_by_value(1, losing[:2])
-
-    h_quote = grouped_winning[0][0]
-    l_quote = grouped_losing[0][0]
-
-    message1 = '<i>Highest WINNING quote</i>: <b>{}</b> ({})'.format(
-                                     h_quote, ', '.join(grouped_winning[0][1]))
-    message2 = '<i>Lowest LOSING quote</i>: <b>{}</b> ({})'.format(
-                                     l_quote, ', '.join(grouped_losing[0][1]))
+    quote, user = cl.stats.lowest_los_quote
+    message2 = message2.format(quote, user)
 
     return message1 + '\n' + message2 + '\n\n'
 
