@@ -15,6 +15,7 @@ from Functions import db_functions as dbf
 
 countries = {
              'SERIE A': 'ITALIA',
+             'SERIE B': 'ITALIA',
              'PREMIER LEAGUE': 'INGHILTERRA',
              'PRIMERA DIVISION': 'SPAGNA',
              'BUNDESLIGA': 'GERMANIA',
