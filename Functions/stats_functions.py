@@ -47,6 +47,9 @@ def score():
         plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.22,
                  '{}'.format(text), ha='center', va='bottom', fontsize=12,
                  fontweight='bold')
+    for bar in bars:
+        if not bar.get_height():
+            bar.set_linewidth(0)
 
     plt.savefig('score.png', dpi=120, bbox_inches='tight')
     plt.gcf().clear()

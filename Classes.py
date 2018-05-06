@@ -5,19 +5,25 @@ from itertools import groupby, count
 
 partecipants = ['Testazza', 'Nonno', 'Pacco', 'Zoppo', 'Nano']
 
-db = sqlite3.connect('extended_db')
-c = db.cursor()
-c.execute("PRAGMA foreign_keys = ON")
 
-bets = list(c.execute('''SELECT bet_id, bet_date, bet_euros, bet_prize,
-					  bet_result FROM bets WHERE bet_result != "Unknown"'''))
+def update_bets_preds():
 
-preds = list(c.execute('''SELECT pred_id, pred_bet, pred_user, pred_date,
-					   pred_time, pred_team1, pred_team2, pred_league,
-					   pred_field, pred_rawbet, pred_quote, pred_status,
-					   pred_result, pred_label FROM predictions WHERE
-					   pred_label != "NULL"'''))
-db.close()
+	db = sqlite3.connect('extended_db')
+	c = db.cursor()
+	c.execute("PRAGMA foreign_keys = ON")
+
+	bets = list(c.execute('''SELECT bet_id, bet_date, bet_euros, bet_prize,
+						  bet_result FROM bets WHERE
+						  bet_result != "Unknown"'''))
+
+	preds = list(c.execute('''SELECT pred_id, pred_bet, pred_user, pred_date,
+						   pred_time, pred_team1, pred_team2, pred_league,
+						   pred_field, pred_rawbet, pred_quote, pred_status,
+						   pred_result, pred_label FROM predictions WHERE
+						   pred_label != "NULL"'''))
+	db.close()
+
+	return bets, preds
 
 
 class Player(object):
@@ -164,6 +170,7 @@ class Stats(object):
 
 
 
+bets, preds = update_bets_preds()
 players = {name: Player(name) for name in partecipants}
 stats = Stats()
 # print('aaa')

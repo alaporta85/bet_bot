@@ -9,6 +9,7 @@ from Functions import selenium_functions as sf
 from Functions import bot_functions as bf
 from Functions import stats_functions as stf
 from Functions import logging as log
+import Classes as cl
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -619,6 +620,7 @@ def update_results(bot, update):
 
 	if not ref_list:
 		logger.info('UPDATE - No bets must be updated')
+		cl.bets, cl.preds = cl.update_bets_preds()
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='No bets to update.')
 
@@ -649,6 +651,9 @@ def update_results(bot, update):
 	browser.quit()
 
 	if bets_updated:
+		cl.bets, cl.preds = cl.update_bets_preds()
+		cl.players = {name: cl.Player(name) for name in cl.partecipants}
+		cl.stats = cl.Stats()
 		logger.info('UPDATE - Database updated correctly.')
 	else:
 		logger.info('No completed bets were found.')
