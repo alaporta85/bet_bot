@@ -481,14 +481,20 @@ def matches_per_day(day):
 				match_time = str(match[3]).zfill(4)
 				match_time = match_time[:2] + ':' + match_time[2:]
 
-				short_team1 = list(c.execute('''SELECT team_short_value FROM
-											 teams_short WHERE
-											 team_short_name = ?''',
-											 (team1,)))[0][0]
-				short_team2 = list(c.execute('''SELECT team_short_value FROM
-											 teams_short WHERE
-											 team_short_name = ?''',
-											 (team2,)))[0][0]
+				try:
+					short_team1 = list(c.execute('''SELECT team_short_value
+												 FROM teams_short WHERE
+												 team_short_name = ?''',
+												 (team1,)))[0][0]
+				except IndexError:
+					short_team1 = team1[:3]
+				try:
+					short_team2 = list(c.execute('''SELECT team_short_value
+												 FROM teams_short WHERE
+												 team_short_name = ?''',
+												 (team2,)))[0][0]
+				except IndexError:
+					short_team2 = team2[:3]
 
 				quote1 = list(c.execute('''SELECT quote_value FROM quotes WHERE
 										quote_match = ? AND quote_field = 1''',
