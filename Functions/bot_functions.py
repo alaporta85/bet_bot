@@ -127,14 +127,14 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 
 		logger.info('Updating bet with id: {}'.format(ref_id))
 		for new_bet in new_bets_list:
-			match = new_bet.find_element_by_xpath('.//td[4]').text
+			match = new_bet.find_element_by_xpath('.//td[6]').text
 			team1 = match.split(' - ')[0]
 			team2 = match.split(' - ')[1]
 			label_element = new_bet.find_element_by_xpath(
 					'.//div[contains(@class,"ng-scope")]')
 			label = label_element.get_attribute('ng-switch-when')
-			quote = float(new_bet.find_element_by_xpath('.//td[8]').text)
-			result = new_bet.find_element_by_xpath('.//td[9]').text
+			quote = float(new_bet.find_element_by_xpath('.//td[10]').text)
+			result = new_bet.find_element_by_xpath('.//td[11]').text
 
 			c.execute('''SELECT pred_id FROM bets INNER JOIN predictions on
 					  pred_bet = bet_id WHERE bet_id = ? AND
