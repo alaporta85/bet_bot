@@ -10,6 +10,8 @@ from Functions import bot_functions as bf
 from Functions import stats_functions as stf
 from Functions import logging as log
 import Classes as cl
+from nltk.metrics.distance import jaccard_distance
+from nltk.util import ngrams
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -117,6 +119,23 @@ def info(bot, update):
 	bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
+def jaccard_team(c, string):
+	teams = list(c.execute('''SELECT team_name FROM teams'''))
+	dist = 10
+	tri_guess = set(ngrams(string, 3))
+	res = ''
+
+	for t in teams:
+		trit = set(ngrams(t[0], 3))
+		jd = jaccard_distance(tri_guess, trit)
+		if jd < dist:
+			dist = jd
+			res = t
+
+	return list(c.execute('''SELECT team_alias_team FROM teams_alias
+						     WHERE team_alias_name = ?''', (res[0],)))[0][0]
+
+
 def get(bot, update, args):
 
 	"""
@@ -135,31 +154,30 @@ def get(bot, update, args):
 		db, c = dbf.start_db()
 		team_id = list(c.execute('''SELECT team_alias_team FROM teams_alias
 								 WHERE team_alias_name = ?''', (guess,)))
-		if team_id:
-			team_id = team_id[0][0]
-			team_name, league_id = list(c.execute('''SELECT team_name,
-												  team_league FROM teams WHERE
-												  team_id = ?''',
-												  (team_id,)))[0]
-
-			try:
-				message_standard, message_combo = sf.all_bets_per_team(
-						db, c, team_name, league_id)
-				db.close()
-			except ValueError as e:
-				db.close()
-				message = str(e)
-				return bot.send_message(chat_id=update.message.chat_id,
-				                        text=message)
-
-			bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-							 text=message_standard)
-			return bot.send_message(parse_mode='HTML',
-									chat_id=update.message.chat_id,
-									text=message_combo)
+		if not team_id:
+			team_id = jaccard_team(c, guess)
 		else:
+			team_id = team_id[0][0]
+		team_name, league_id = list(c.execute('''SELECT team_name,
+											  team_league FROM teams WHERE
+											  team_id = ?''',
+											  (team_id,)))[0]
+
+		try:
+			message_standard, message_combo = sf.all_bets_per_team(
+					db, c, team_name, league_id)
+			db.close()
+		except ValueError as e:
+			db.close()
+			message = str(e)
 			return bot.send_message(chat_id=update.message.chat_id,
-									text='Request not valid.')
+			                        text=message)
+
+		bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+						 text=message_standard)
+		return bot.send_message(parse_mode='HTML',
+								chat_id=update.message.chat_id,
+								text=message_combo)
 
 	elif guess[0] == '_' or guess[-1] == '_':
 		return bot.send_message(chat_id=update.message.chat_id,
@@ -795,7 +813,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(9, 44, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,

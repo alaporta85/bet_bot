@@ -14,14 +14,20 @@ from Functions import db_functions as dbf
 
 
 countries = {
-             'SERIE A': 'ITALIA',
-             'PREMIER LEAGUE': 'INGHILTERRA',
-             'PRIMERA DIVISION': 'SPAGNA',
-             'BUNDESLIGA': 'GERMANIA',
-             'LIGUE 1': 'FRANCIA',
-             'EREDIVISIE': 'OLANDA',
-             'CHAMPIONS LEAGUE': 'EUROPA'
+             # 'SERIE A': 'ITALIA',
+             # 'PREMIER LEAGUE': 'INGHILTERRA',
+             # 'PRIMERA DIVISION': 'SPAGNA',
+             # 'BUNDESLIGA': 'GERMANIA',
+             # 'LIGUE 1': 'FRANCIA',
+             # 'EREDIVISIE': 'OLANDA',
+             # 'CHAMPIONS LEAGUE': 'EUROPA',
+             'MONDIALI': 'MONDO'
              }
+
+months = {'GENNAIO': '01', 'FEBBRAIO': '02', 'MARZO': '03', 'APRILE': '04',
+          'MAGGIO': '05', 'GIUGNO': '06', 'LUGLIO': '07', 'AGOSTO': '08',
+          'SETTEMBRE': '09', 'OTTOBRE': '10', 'NOVEMBRE': '11',
+          'DICEMBRE': '12'}
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
@@ -214,9 +220,7 @@ def find_all_fields(browser):
 
     all_fields_path = '//div[@class="panel-collapse collapse in"]/div'
 
-    all_fields = browser.find_elements_by_xpath(all_fields_path)
-
-    return all_fields
+    return browser.find_elements_by_xpath(all_fields_path)
 
 
 def find_all_bets(field, new_field):
@@ -495,8 +499,8 @@ def update_matches_table(browser, c, table_count, match_count, league,
 
     all_tables = browser.find_elements_by_xpath(all_days)
 
-    for table in all_tables:
-        if all_tables.index(table) == table_count:
+    for i, table in enumerate(all_tables):
+        if i == table_count:
 
             all_matches = table.find_elements_by_xpath(
                     './/tbody/tr[contains(@class,"ng-scope")]')
@@ -570,6 +574,37 @@ def update_matches_table(browser, c, table_count, match_count, league,
     raise UnboundLocalError
 
 
+def update_matches_table2(browser, c, league_id, string_to_split):
+
+    wait_visible(browser, 10, './/div[@class="title-single-event"]/span')
+
+    team1, team2 = string_to_split.split(' - ')
+    if league_id == 8:
+        team1 = '*' + team1
+        team2 = '*' + team2
+
+    check = False
+    while not check:
+        date_time = browser.find_element_by_xpath(
+                                   './/span[@class="ng-binding"]').text.split()
+        if len(date_time) == 7:
+            check = True
+
+    _, dd, mm, yy, _, _, hhmm = date_time
+    mm = months[mm]
+    match_date = int(yy + mm + dd)
+    match_time = int(hhmm.replace(':', ''))
+    time.sleep(4)
+    c.execute('''INSERT INTO matches (match_league, match_team1, match_team2,
+                 match_date, match_time, match_url) VALUES (?, ?, ?, ?, ?, ?)
+              ''', (league_id, team1, team2, match_date, match_time,
+                    browser.current_url))
+
+    last_id = c.lastrowid
+
+    return last_id
+
+
 def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
 
     """
@@ -620,6 +655,60 @@ def update_quotes_table(browser, db, c, field_elements, all_fields, last_id):
                     db.commit()
 
 
+def update_quotes_table2(browser, db, c, all_fields, last_id):
+
+    all_panels = find_all_panels(browser, 0)
+
+    for panel in all_panels:
+        panel.click()
+        field_elements = find_all_fields(browser)
+
+        for new_field in field_elements:
+            field_name = new_field.find_element_by_xpath(
+                              './/div[@class="text-left col ng-binding"]').text
+
+            if field_name in all_fields:
+                all_bets = find_all_bets(field_name, new_field)
+
+                for new_bet in all_bets:
+                    # Handle the case when the field space in the website has
+                    # empty elements
+                    try:
+                        bet_name = new_bet.find_element_by_xpath(
+                                './/div[@class="sel-ls"]/a').text
+                    except NoSuchElementException:
+                        continue
+
+                    field_id = list(c.execute('''SELECT field_id from fields
+                                              WHERE field_name = ? AND
+                                              field_value = ?''',
+                                              (field_name, bet_name)))[0][0]
+
+                    # Handle the case when the bet is locked in the website
+                    try:
+                        bet_element_path = ('.//a[@ng-click="remCrt.' +
+                                            'selectionClick(selection)"]')
+
+                        wait_clickable(browser, WAIT, bet_element_path)
+                        bet_element = new_bet.find_element_by_xpath(
+                                bet_element_path)
+
+                        bet_quote = float(bet_element.text)
+
+                        c.execute('''INSERT INTO quotes (quote_match,
+                                                         quote_field,
+                                                         quote_value)
+                        VALUES (?, ?, ?)''', (last_id, field_id, bet_quote))
+                        db.commit()
+
+                    except NoSuchElementException:
+                        c.execute('''INSERT INTO quotes (quote_match,
+                                                         quote_field,
+                                                         quote_value)
+                        VALUES (?, ?, ?)''', (last_id, field_id, 'LOCKED'))
+                        db.commit()
+
+
 def scan_league(browser, db, c, league, league_id, league_url, table_count,
                 match_count, all_fields):
 
@@ -664,6 +753,26 @@ def scan_league(browser, db, c, league, league_id, league_url, table_count,
                 raise UnboundLocalError
 
 
+def world_cup(browser, db, c):
+
+    all_filters = ('.//div[@class="better-filters margin-bottom"]//' +
+                   'div[@ng-click="remCrt.tabCategoryClick(category,node);"]')
+    wait_visible(browser, 30, all_filters)
+    all_filters = browser.find_elements_by_xpath(all_filters)
+    for filt in all_filters:
+        if filt.text == 'ANTEPOST':
+            filt.find_element_by_xpath('./a').click()
+            rows = browser.find_elements_by_xpath(
+                                       './/div[@ng-if="!eventM.filterByDate"]')
+            for row in rows:
+                title = row.find_element_by_xpath(
+                        './/div[@class="inner-text linkable"]//' +
+                        'strong[@class="ng-binding"]').text
+                # if 'VINCENTE ACCOPPIATA' in title:
+
+            break
+
+
 def fill_db_with_quotes():
 
     """
@@ -685,12 +794,10 @@ def fill_db_with_quotes():
     dbf.empty_table('matches')
     db, c = dbf.start_db()
 
-    all_leagues = [league for league in countries]
-
     all_fields = list(c.execute('''SELECT field_name FROM fields'''))
     all_fields = [element[0] for element in all_fields]
 
-    for league in all_leagues:
+    for league in countries:
         start = time.time()
         filters = three_buttons(browser, league)
         league_url = browser.current_url
@@ -715,24 +822,56 @@ def fill_db_with_quotes():
         if skip_league:
             continue
 
-        table_count = 0
-        match_count = 0
+        main_page = browser.current_url
+        matches = [m.text for m in browser.find_elements_by_xpath(
+                   './/a[@ng-click="remCrt.openEvent(eventM)"]')]
 
         c.execute('''SELECT league_id FROM leagues WHERE league_name = ? ''',
                   (league,))
         league_id = c.fetchone()[0]
-        try:
-            scan_league(browser, db, c, league, league_id, league_url,
-                        table_count, match_count, all_fields)
-        except UnboundLocalError:
-            end = time.time() - start
-            minutes = int(end//60)
-            seconds = round(end % 60)
-            logger.info('Updating {} took {}:{}'.format(league, minutes,
-                                                        seconds))
-            continue
-        except IndexError:
-            continue
+
+        if league_id == 9:
+            world_cup(browser, db, c)
+
+        for i in range(500):
+            try:
+                WebDriverWait(
+                        browser, 30).until(EC.element_to_be_clickable(
+                                                   (By.LINK_TEXT, matches[i])))
+                match = browser.find_elements_by_xpath(
+                               './/a[@ng-click="remCrt.openEvent(eventM)"]')[i]
+                scroll_to_element(browser, 'false', match)
+                match.click()
+                last_id = update_matches_table2(browser, c, league_id,
+                                                matches[i])
+                update_quotes_table2(browser, db, c, all_fields, last_id)
+                browser.get(main_page)
+            except IndexError:
+                end = time.time() - start
+                minutes = int(end // 60)
+                seconds = round(end % 60)
+                logger.info('Updating {} took {}:{}'.format(league, minutes,
+                                                            seconds))
+                continue
+
+        # table_count = 0
+        # match_count = 0
+        #
+        # c.execute('''SELECT league_id FROM leagues WHERE league_name = ? ''',
+        #           (league,))
+        # league_id = c.fetchone()[0]
+        # try:
+        #     scan_league(browser, db, c, league, league_id, league_url,
+        #                 table_count, match_count, all_fields)
+        # except UnboundLocalError:
+        #     end = time.time() - start
+        #     minutes = int(end//60)
+        #     seconds = round(end % 60)
+        #     logger.info('Updating {} took {}:{}'.format(league, minutes,
+        #                                                 seconds))
+        #     continue
+        # except IndexError:
+        #     continue
     db.close()
     browser.quit()
 
