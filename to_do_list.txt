@@ -1,0 +1,6 @@
+TO DO LIST
+1) ogni comando deve avere SEMPRE una risposta, anche se non esiste. (Nonno)
+2) Introdurre il comando info che fa la stessa cosa di help. (Nonno)
+3) Raggruppare le scommesse per competizione, in modo che per esempio quelle fatte fino ad ora, appartengano alla stagione 2017-18, ora facciamo quelle mondiali e poi 2018-19.
+   In questo modo manterrei il comando /score per vedere lo score delle scommesse attuali, e poi uno /score_history per vedere lo score di sempre. (Nonno)
+4) Che ne pensate di utilizzare i bottoni per le statistiche? Sembravano carini quando hai provato a implementarli polps. (Nonno)
