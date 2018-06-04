@@ -251,15 +251,15 @@ def check_still_to_confirm(db, c, first_name):
 	# This a list of the users who have their bets in the status
 	# 'Not Confirmed'
 	users_list = list(c.execute('''SELECT pred_user FROM predictions WHERE
-								pred_status = "Not Confirmed"'''))
+								   pred_status = "Not Confirmed"'''))
 	users_list = [element[0] for element in users_list]
 
 	if first_name in users_list:
 
-		ref_list = list(c.execute('''SELECT pred_team1, pred_team2,
-								  pred_rawbet, pred_quote FROM predictions
-								  WHERE pred_status = "Not Confirmed" AND
-								  pred_user = ?''', (first_name,)))
+		ref_list = list(c.execute(
+				'''SELECT pred_team1, pred_team2, pred_rawbet, pred_quote FROM
+				   predictions WHERE pred_status = "Not Confirmed" AND
+				   pred_user = ?''', (first_name,)))
 		db.close()
 
 		team1, team2, bet, bet_quote = ref_list[0]

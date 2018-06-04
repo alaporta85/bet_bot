@@ -1,159 +1,17 @@
+from Functions import db_functions as dbf
 import Classes as cl
 import datetime
+from itertools import groupby
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import sqlite3
-import matplotlib.image as image
-import numpy as np
 
-partecipants = ['Testazza', 'Nonno', 'Pacco', 'Zoppo', 'Nano']
-colors_dict = {'Zoppo': '#7fffd4',
-               'Nano': '#ffff35',
-               'Testazza': '#2eb82e',
-               'Nonno': '#ff3300',
-               'Pacco': '#028eb9'
-               }
-
-
-def score():
-
-    fin_data = [(name, cl.players[name].index) for name in cl.players]
-    fin_data.sort(key=lambda x: x[1], reverse=True)
-    max_value = fin_data[0][1]
-
-    names = [el[0] for el in fin_data]
-    indices = [round(el[1] / max_value, 3) for el in fin_data]
-    ratio = [cl.players[name].ratio for name in names]
-    perc = [cl.players[name].perc for name in names]
-    mean_quote = [cl.players[name].mean_quote for name in names]
-    colors = [colors_dict[name] for name in names]
-
-    bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
-                   linewidth=0.5, clip_on=False)
-    plt.xticks(range(5), names, fontsize=14)
-    plt.ylim(0, 1.35)
-    plt.box(on=None)
-    plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
-    plt.tick_params(axis='y', which='both', left=False, labelleft=False)
-
-    for i, bar in enumerate(bars):
-        text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], mean_quote[i])
-        plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
-                 '{}'.format(text), ha='center', va='bottom', fontsize=10,
-                 style='italic')
-    for i, bar in enumerate(bars):
-        text = '{}'.format(indices[i])
-        plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.22,
-                 '{}'.format(text), ha='center', va='bottom', fontsize=12,
-                 fontweight='bold')
-    for bar in bars:
-        if not bar.get_height():
-            bar.set_linewidth(0)
-
-    plt.savefig('score.png', dpi=120, bbox_inches='tight')
-    plt.gcf().clear()
-
-
-def cake():
-
-    """
-    Return a pie chart showing the amount of euros lost because of only one
-    LOSING bet.
-    """
-
-    def real_value(val):
-
-        """Return the real value instead of the %."""
-
-        return round(val/100*sum(euros), 1)
-
-    data = [(name, cl.players[name].cake) for name in partecipants if
-            cl.players[name].cake]
-    data.sort(key=lambda x: x[1], reverse=True)
-
-    names = [el[0] for el in data]
-    euros = [el[1] for el in data]
-    colors = [colors_dict[name] for name in names]
-
-    plt.axis('equal')
-    explode = [0.04] * len(names)
-    explode[0] = 0.07
-
-    patches, text, autotext = plt.pie(euros, labels=names, explode=explode,
-                                      colors=colors[:len(names)],
-                                      startangle=120, radius=1.5,
-                                      autopct=real_value)
-
-    # Change the style of the plot
-    for patch in patches:
-        patch.set_linewidth(1.5)
-        patch.set_edgecolor('black')
-    for x in range(len(names)):
-        if x == 0:
-            text[x].set_fontsize(30)
-            autotext[x].set_fontsize(30)
-        else:
-            text[x].set_fontsize(18)
-            autotext[x].set_fontsize(18)
-
-    plt.savefig('euros_lost.png', dpi=120, bbox_inches='tight')
-    plt.gcf().clear()
-
-
-def series():
-
-    series_pos = sorted([(name, cl.players[name].best_series) for name in
-                         partecipants], key=lambda x: x[1][0], reverse=True)
-    green_arrows = [g for i, g in enumerate(series_pos) if g[1] == 'Ongoing']
-    names = [el[0] for el in series_pos]
-    series_pos = [el[1][0] for el in series_pos]
-
-    series_neg = [cl.players[name].worst_series for name in names]
-    red_arrows = [i for i, g in enumerate(series_neg) if g[1] == 'Ongoing']
-    series_neg = [el[0] for el in series_neg]
-    abs_max = max((max(series_pos), max(series_neg)))
-
-    bar_width = 0.4
-    fig, ax = plt.subplots()
-    fig.set_size_inches(10, 7)
-    im1 = image.imread('Images/green_arrow.png')
-    im2 = image.imread('Images/red_arrow.png')
-
-    # Inserting arrows in the plot
-    for i, e in enumerate(names):
-        if i in green_arrows:
-            from_w = i - bar_width
-            to_w = i
-            from_h = series_pos[i] + abs_max / 200
-            to_h = series_pos[i] + abs_max / 10
-            ax.imshow(im1, aspect='auto', extent=(from_w, to_w, from_h, to_h),
-                      zorder=-1)
-
-        elif i in red_arrows:
-            from_w = i
-            to_w = i + bar_width
-            from_h = series_neg[i] + abs_max / 200
-            to_h = series_neg[i] + abs_max / 10
-            ax.imshow(im2, aspect='auto', extent=(from_w, to_w, from_h, to_h),
-                      zorder=-1)
-
-    plt.bar([x - bar_width / 2 for x in range(5)], series_pos, bar_width,
-            color='g')
-
-    plt.bar([x + bar_width/2 for x in range(5)], series_neg, bar_width,
-            color='r')
-
-    plt.xticks(range(5), names, fontsize=17)
-    plt.yticks(fontsize=15)
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    plt.tick_params(axis='x', bottom=False)
-    plt.ylim(0, abs_max)
-
-    plt.savefig('series.png', dpi=120, bbox_inches='tight')
-    plt.gcf().clear()
+db, c = dbf.start_db()
+colors_dict = list(c.execute('''SELECT person, color FROM colors'''))
+colors_dict = {el[0]: el[1] for el in colors_dict}
+partecipants = [el for el in colors_dict]
+db.close()
 
 
 def create_message(integer, list1, list2, astring):
@@ -161,7 +19,7 @@ def create_message(integer, list1, list2, astring):
     lose_to_print = []
 
     counter = 0
-    for i, g in cl.groupby(list1, lambda x: x[0]):
+    for i, g in groupby(list1, lambda x: x[0]):
         if counter < integer:
             lst = list(g)
             teams = '/'.join([el[1] for el in lst])
@@ -171,7 +29,7 @@ def create_message(integer, list1, list2, astring):
             counter = 0
             break
 
-    for i, g in cl.groupby(list2, lambda x: x[0]):
+    for i, g in groupby(list2, lambda x: x[0]):
         if counter < integer:
             lst = list(g)
             teams = '/'.join([el[1] for el in lst])

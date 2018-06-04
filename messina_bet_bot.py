@@ -43,12 +43,8 @@ def played_bets(summary):
 		time = str(bet[3])[:2] + ':' + str(bet[3])[2:]
 		rawbet = bet[4]
 		quote = bet[5]
-		message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(user,
-																	   team1,
-																	   team2,
-																	   time,
-																	   rawbet,
-																	   quote)
+		message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
+				user, team1, team2, time, rawbet, quote)
 
 	return message
 
@@ -97,15 +93,6 @@ def help_stats(bot, update):
 	bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
-def alias(bot, update):
-
-	"""Show all alias for each team."""
-
-	message = sf.alias()
-	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-	                 text=message)
-
-
 def info(bot, update):
 
 	f = open('Messages/info.txt', 'r')
@@ -147,21 +134,14 @@ def get(bot, update, args):
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='Please insert the bet.')
 
+	db, c = dbf.start_db()
 	guess = ' '.join(args).upper()
+	team_id = jaccard_team(c, guess)
+	team_name, league_id = list(c.execute(
+			'''SELECT team_name, team_league FROM teams WHERE team_id = ?
+			''', (team_id,)))[0]
 
 	if '_' not in guess:
-
-		db, c = dbf.start_db()
-		team_id = list(c.execute('''SELECT team_alias_team FROM teams_alias
-								 WHERE team_alias_name = ?''', (guess,)))
-		if not team_id:
-			team_id = jaccard_team(c, guess)
-		else:
-			team_id = team_id[0][0]
-		team_name, league_id = list(c.execute('''SELECT team_name,
-											  team_league FROM teams WHERE
-											  team_id = ?''',
-											  (team_id,)))[0]
 
 		try:
 			message_standard, message_combo = sf.all_bets_per_team(
@@ -186,12 +166,9 @@ def get(bot, update, args):
 	# User sending the message
 	first_name = nickname(update.message.from_user.first_name)
 
-	team, bet = guess.split('_')
-	bet = bet.replace(' ', '')
-	bet = bet.replace(',', '.')
-	guess = '_'.join([team, bet])
-
-	db, c = dbf.start_db()
+	_, bet = guess.split('_')
+	bet = bet.replace(' ', '').replace(',', '.')
+	guess = '_'.join([team_name, bet])
 
 	warning_message = bf.check_still_to_confirm(db, c, first_name)
 	if warning_message:
@@ -207,63 +184,43 @@ def get(bot, update, args):
 									   pred_status = "Confirmed"
 									   AND pred_bet = ?''', (bet_id,)))
 
-	try:
+	team1, team2, field_id, league_id, nice_bet, quote = sf.look_for_quote(
+																	guess)
 
-		team1, team2, field_id, league_id, nice_bet, quote = sf.look_for_quote(
-																		guess)
+	if (not confirmed_matches
+	   or (team1, team2) not in confirmed_matches):
 
-		if (not confirmed_matches
-		   or (team1, team2) not in confirmed_matches):
+		match_date, match_time = list(c.execute(
+				'''SELECT match_date, match_time FROM matches WHERE
+				   match_team1 = ? and match_team2 = ?''',
+				(team1, team2)))[0]
 
-			match_date, match_time = list(c.execute('''SELECT match_date,
-													match_time FROM matches
-													WHERE match_team1 = ? and
-													match_team2 = ?''',
-													(team1, team2)))[0]
+		team1 = team1.replace('*', '')
+		team2 = team2.replace('*', '')
 
-			team1 = team1.replace('*', '')
-			team2 = team2.replace('*', '')
+		# Update table
+		c.execute('''INSERT INTO predictions (pred_user, pred_date,
+					 pred_time, pred_team1, pred_team2, pred_league,
+					 pred_field, pred_rawbet, pred_quote, pred_status)
+				     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+				  (first_name, match_date, match_time, team1, team2,
+				   league_id, field_id, nice_bet, quote, 'Not Confirmed'))
 
-			# Update table
-			c.execute('''INSERT INTO predictions (pred_user, pred_date,
-												  pred_time, pred_team1,
-												  pred_team2, pred_league,
-												  pred_field, pred_rawbet,
-												  pred_quote, pred_status)
-					  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-					  (first_name, match_date, match_time, team1, team2,
-					   league_id, field_id, nice_bet, quote, 'Not Confirmed'))
-
-			db.commit()
-			db.close()
-
-			printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet,
-												  quote)
-
-			return bot.send_message(chat_id=update.message.chat_id,
-							        text=('{}\n' + 'Use /confirm or /cancel ' +
-								   'to finalize your bet.').format(
-									                              printed_bet))
-		else:
-			db.close()
-			message = 'Match already chosen. Please change your bet.'
-			return bot.send_message(chat_id=update.message.chat_id,
-			                        text=message)
-
-	except SyntaxError as e:
+		db.commit()
 		db.close()
-		message = str(e)
-		return bot.send_message(chat_id=update.message.chat_id, text=message)
 
-	except ConnectionError as e:
-		db.close()
-		message = str(e)
-		return bot.send_message(chat_id=update.message.chat_id, text=message)
+		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet,
+											  quote)
 
-	except ValueError as e:
+		return bot.send_message(chat_id=update.message.chat_id,
+						        text=('{}\n' + 'Use /confirm or /cancel ' +
+							   'to finalize your bet.').format(
+								                              printed_bet))
+	else:
 		db.close()
-		message = str(e)
-		return bot.send_message(chat_id=update.message.chat_id, text=message)
+		message = 'Match already chosen. Please change your bet.'
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text=message)
 
 
 def confirm(bot, update):
@@ -284,7 +241,7 @@ def confirm(bot, update):
 	# This a list of the users who have their bets in the status
 	# 'Not Confirmed'
 	users_list = list(c.execute('''SELECT pred_user FROM predictions WHERE
-								pred_status = "Not Confirmed"'''))
+								   pred_status = "Not Confirmed"'''))
 	users_list = [element[0] for element in users_list]
 
 	if first_name not in users_list:
@@ -708,26 +665,20 @@ def summary(bot, update):
 
 def score(bot, update):
 
-	stf.score()
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('score.png',
 															  'rb'))
-	os.remove('score.png')
 
 
 def cake(bot, update):
 
-	stf.cake()
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('euros_lost.png',
-															  'rb'))
-	os.remove('euros_lost.png')
+	bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png',
+	                                                          'rb'))
 
 
 def series(bot, update):
 
-	stf.series()
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('series.png',
 															  'rb'))
-	os.remove('series.png')
 
 
 def stats(bot, update):
@@ -793,7 +744,6 @@ def send_log(bot, update):
 start_handler = CommandHandler('start', start)
 help_quote_handler = CommandHandler('help_quote', help_quote)
 help_stats_handler = CommandHandler('help_stats', help_stats)
-alias_handler = CommandHandler('alias', alias)
 info_handler = CommandHandler('info', info)
 get_handler = CommandHandler('get', get, pass_args=True)
 confirm_handler = CommandHandler('confirm', confirm)
@@ -813,7 +763,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(9, 44, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(10, 7, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
@@ -822,7 +772,6 @@ update_tables.run_repeating(update_results, 86400,
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_quote_handler)
 dispatcher.add_handler(help_stats_handler)
-dispatcher.add_handler(alias_handler)
 dispatcher.add_handler(info_handler)
 dispatcher.add_handler(get_handler)
 dispatcher.add_handler(confirm_handler)
