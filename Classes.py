@@ -1,7 +1,9 @@
 from Functions import db_functions as dbf
 import matplotlib.image as image
 import sqlite3
+from datetime import datetime
 import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -18,69 +20,47 @@ db.close()
 class Player(object):
 	def __init__(self, name):
 		self.name = name
-		self.bets_played = len([1 for pred in preds if pred[2] == self.name])
-		self.quotes_index = self.set_quotes_index()
-		self.quotes_win = sorted([pred[10] for pred in preds if
-								  pred[2] == self.name and
-								  pred[13] == 'WINNING'], reverse=True)
-		self.quotes_lose = [prev[10] for prev in preds if prev[2] == self.name
-							and prev[13] == 'LOSING']
+		self.bets_played = len(preds[preds['User'] == self.name])
+		self.indices = compute_indices(preds, self.name)
+		self.quotes_win, self.quotes_lose = self.quotes_win_lose()
 		self.ratio = '{}/{}'.format(len(self.quotes_win), self.bets_played)
 		self.perc = round(len(self.quotes_win) / self.bets_played * 100, 1)
-		self.mean_quote = round(np.array(self.quotes_win[1:-1]).mean(), 2)
-		self.index = np.prod(self.quotes_index) / self.bets_played
-		self.best_series = self.set_best_series()
-		self.worst_series = self.set_worst_series()
+		self.mean_quote = round(self.quotes_win[1:-1].mean(), 2)
+		self.index = self.indices[-1]
+		self.best_series = self.set_series('WINNING')
+		self.worst_series = self.set_series('LOSING')
 		self.cake = self.set_cake_value()
 
+	def quotes_win_lose(self):
 
-	def set_quotes_index(self):
-		quotes_index = []
+		df = preds[preds['User'] == self.name]
 
-		for i in range(1, len(bets) + 1):
-			try:
-				bet = [(el[1], el[10], el[13]) for el in preds if el[1] == i
-					   and el[2] == self.name][0]
-				if bet[2] == 'WINNING':
-					quotes_index.append(bet[1])
-				else:
-					quotes_index.append(1)
-			except IndexError:
-				quotes_index.append(1)
+		quotes_win = df[df['Label'] == 'WINNING']['Quote'].values
+		quotes_lose = df[df['Label'] == 'LOSING']['Quote'].values
 
-		return np.array(quotes_index)
+		return quotes_win, quotes_lose
 
 	def set_cake_value(self):
+
 		value = 0
-		for bet in bets:
-			_id = bet[0]
-			prize = bet[3]
-			if bet[4] == 'LOSING':
-				losing_preds = [pred for pred in preds if pred[1] == _id and
-								pred[13] == 'LOSING']
-				if len(losing_preds) == 1 and losing_preds[0][2] == self.name:
-					value += prize / losing_preds[0][10]
+
+		for i in preds['Bet'].unique():
+			df = preds[(preds['Bet'] == i) & (preds['Label'] == 'LOSING')]
+			prize = bets.loc[i, 'Prize']
+			if (len(df) == 1) and (df['User'].iloc[0] == self.name):
+				value += prize/df['Quote'].values[0]
 
 		return round(value, 1)
 
-	def set_best_series(self):
-		last_pred = [el[1] for el in preds if el[2] == self.name][-1]
-		data = [el[1] for el in preds if el[2] == self.name and
-				el[13] == 'WINNING']
-		c = count()
-		series = max((list(g) for _, g in groupby(data, lambda x: x - next(c))),
-					 key=len)
+	def set_series(self, label):
 
-		return ((len(series), 'Concluded') if series[-1] != last_pred else
-				(len(series), 'Ongoing'))
-
-	def set_worst_series(self):
-		last_pred = [el[1] for el in preds if el[2] == self.name][-1]
-		data = [el[1] for el in preds if el[2] == self.name and
-				el[13] == 'LOSING']
-		c = count()
-		series = max((list(g) for _, g in groupby(data, lambda x: x - next(c))),
-					 key=len)
+		df = preds[preds['User'] == self.name]['Label'].reset_index(drop=True)
+		last_pred = df.index[-1]
+		cn = count()
+		data = df[df == label].index
+		series = max(
+				(list(g) for _, g in groupby(data, lambda x: x - next(cn))),
+				 key=len)
 
 		return ((len(series), 'Concluded') if series[-1] != last_pred else
 				(len(series), 'Ongoing'))
@@ -91,12 +71,15 @@ class Stats(object):
 		self.win_teams, self.lose_teams = stats_on_teams_or_bets('teams')
 		self.win_bets, self.lose_bets = stats_on_teams_or_bets('bets')
 		self.win_preds = winning_preds()
+		self.win_combos = winning_combos()
 		self.money = money_bal()
 		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
+		normalize_indices()
 		score()
 		cake()
 		series()
+		stats_of_the_month()
 
 
 def update_bets_preds():
@@ -105,94 +88,142 @@ def update_bets_preds():
 	c = db.cursor()
 	c.execute("PRAGMA foreign_keys = ON")
 
-	bets = list(c.execute('''SELECT bet_id, bet_date, bet_euros, bet_prize,
-						  bet_result FROM bets WHERE
-						  bet_result != "Unknown"'''))
+	query_bets = (
+		'''SELECT bet_id, bet_date, bet_euros, bet_prize, bet_result FROM bets
+		   WHERE bet_result != "Unknown"''')
+	header_bets = ['Id', 'Date', 'Euros', 'Prize', 'Result']
 
-	preds = list(c.execute('''SELECT pred_id, pred_bet, pred_user, pred_date,
-						   pred_time, pred_team1, pred_team2, pred_league,
-						   pred_field, pred_rawbet, pred_quote, pred_status,
-						   pred_result, pred_label FROM predictions WHERE
-						   pred_label != "NULL"'''))
+	bets = pd.DataFrame(list(c.execute(query_bets)), columns=header_bets)
+	bets.set_index('Id', drop=True, inplace=True)
+	bets.index.name = None
+
+	query_preds = (
+		'''SELECT pred_id, pred_bet, pred_user, pred_date, pred_team1,
+		   pred_team2, pred_league, pred_field, pred_rawbet, pred_quote,
+		   pred_status, pred_result, pred_label FROM predictions WHERE
+		   pred_label != "NULL"''')
+	header_preds = ['Id', 'Bet', 'User', 'Date', 'Team1', 'Team2', 'League',
+	                'Field', 'Rawbet', 'Quote', 'Status', 'Result', 'Label']
+
+	preds = pd.DataFrame(list(c.execute(query_preds)), columns=header_preds)
+	preds.set_index('Id', drop=True, inplace=True)
+	preds.index.name = None
+
 	db.close()
 
 	return bets, preds
 
 
+def compute_indices(dataframe, name):
+
+	indices = []
+
+	for i, g in dataframe.groupby('Bet'):
+		if name not in g['User'].values and not indices:
+			indices.append(0)
+		elif name not in g['User'].values:
+			indices.append(indices[-1])
+		else:
+			df = dataframe[(dataframe['Bet'] <= i) &
+			               (dataframe['User'] == name)]
+			df_win = df[df['Label'] == 'WINNING']
+			if len(df_win):
+				indices.append(np.prod(df_win['Quote'])/len(df))
+			else:
+				indices.append(0)
+
+	return np.array(indices)
+
+
+def normalize_indices():
+
+	data = {name: players[name].indices for name in players}
+
+	for i in range(len(bets)):
+		maximum = max([data[name][i] for name in data])
+		for name in data:
+			players[name].indices[i] /= maximum
+
+	return
+
+
 def stats_on_teams_or_bets(string):
 
-		total = {}
-		win = {}
-		lose = {}
+	def for_teams(label):
 
-		if string == 'teams':
-			data = [(el[5], el[6], el[13]) for el in preds]
-		else:
-			data = [(el[0], el[9], el[13]) for el in preds]
+		res = preds[preds['Label'] == label][['Team1', 'Team2']]
+		res = pd.concat([res['Team1'], res['Team2']])
+		res = res.value_counts()
 
-		for var1, var2, label in data:
-			if string == 'teams':
-				total[var1] = total[var1] + 1 if var1 in total else 1
-			total[var2] = total[var2] + 1 if var2 in total else 1
-			if label == 'WINNING':
-				if string == 'teams':
-					win[var1] = win[var1] + 1 if var1 in win else 1
-				win[var2] = win[var2] + 1 if var2 in win else 1
-			else:
-				if string == 'teams':
-					lose[var1] = lose[var1] + 1 if var1 in lose else 1
-				lose[var2] = lose[var2] + 1 if var2 in lose else 1
+		return {team: res.loc[team] for team in res.index}
 
-		# Teams which played x times with x<th will not be counted
-		th = 6
-		win = [(round(win[team] / total[team] * 100, 1), team) for team
-				in win if total[team] >= th]
-		win.sort(key=lambda x: x[0], reverse=True)
+	def for_bets(label):
 
-		lose = [(round(lose[team] / total[team] * 100, 1), team) for team
-				in lose if total[team] >= th]
-		lose.sort(key=lambda x: x[0], reverse=True)
+		res = preds[preds['Label'] == label]['Rawbet']
+		res = res.value_counts()
 
-		return win, lose
+		return {bet: res.loc[bet] for bet in res.index}
+
+	if string == 'teams':
+		win = for_teams('WINNING')
+		lose = for_teams('LOSING')
+
+	else:
+		win = for_bets('WINNING')
+		lose = for_bets('LOSING')
+
+	total = {x: (win.get(x, 0) + lose.get(x, 0)) for x in set(win) | set(lose)}
+
+	# Teams which played x times with x<th will not be counted
+	th = 6
+	win = [(round(win[team] / total[team] * 100, 1), team) for team
+			in win if total[team] >= th]
+	win.sort(key=lambda x: x[0], reverse=True)
+
+	lose = [(round(lose[team] / total[team] * 100, 1), team) for team
+			in lose if total[team] >= th]
+	lose.sort(key=lambda x: x[0], reverse=True)
+
+	return win, lose
 
 
 def winning_preds():
-		return round(sum([1 for el in preds if el[13] == 'WINNING']) /
-					 len(preds) * 100, 1)
+
+	return round(len(preds[preds['Label'] == 'WINNING'])/len(preds) * 100, 1)
+
+
+def winning_combos():
+
+	comb = preds[preds['Rawbet'].str.contains('+', regex=False)]
+
+	return round(len(comb[comb['Label'] == 'WINNING']) / len(comb) * 100, 1)
 
 
 def money_bal():
-		return (sum([el[3] for el in bets if el[4] == 'WINNING']) -
-				sum([el[2] for el in bets]))
+
+	return bets[bets['Result'] == 'WINNING']['Prize'].sum() - bets['Euros'].sum()
 
 
 def quotes_rec():
 
-		win, lose = (0, 0)
+	maximum = preds[preds['Label'] == 'WINNING']['Quote'].max()
+	minimum = preds[preds['Label'] == 'LOSING']['Quote'].min()
 
-		data = [(el[2], el[10]) for el in preds if el[13] == 'WINNING']
-		data.sort(key=lambda x: x[1], reverse=True)
-		for i, g in groupby(data, lambda x: x[1]):
-			win = (i, '/'.join(list([el[0] for el in g])))
-			break
+	win = (maximum,
+	       '/'.join(list(preds[preds['Quote'] == maximum]['User'].values)))
+	lose = (minimum,
+	       '/'.join(list(preds[preds['Quote'] == minimum]['User'].values)))
 
-		data = [(el[2], el[10]) for el in preds if el[13] == 'LOSING']
-		data.sort(key=lambda x: x[1])
-		for i, g in groupby(data, lambda x: x[1]):
-			lose = (i, '/'.join(list([el[0] for el in g])))
-			break
-
-		return win, lose
+	return win, lose
 
 
 def score():
 
-		fin_data = [(name, players[name].index) for name in players]
+		fin_data = [(name, players[name].indices[-1]) for name in players]
 		fin_data.sort(key=lambda x: x[1], reverse=True)
-		max_value = fin_data[0][1]
 
 		names = [el[0] for el in fin_data]
-		indices = [round(el[1] / max_value, 3) for el in fin_data]
+		indices = [round(el[1], 3) for el in fin_data]
 		ratio = [players[name].ratio for name in names]
 		perc = [players[name].perc for name in names]
 		mean_quote = [players[name].mean_quote for name in names]
@@ -323,6 +354,100 @@ def series():
 
 	plt.savefig('series.png', dpi=120, bbox_inches='tight')
 	plt.gcf().clear()
+
+
+def stats_of_the_month():
+
+	"""Best and Worst of every month based on the index."""
+
+	def lmb1():
+		return lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S').year
+
+	def lmb2():
+		return lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S').month
+
+	def plot(dict1, dict2):
+
+		win = [(name, len(dict1[name])) for name in partecipants]
+		win.sort(key=lambda x: x[1], reverse=True)
+
+		names = [el[0] for el in win]
+		lose = [(name, len(dict2[name])) for name in names]
+
+		abs_max = max(max([el[1] for el in win]), max([el[1] for el in lose]))
+
+		fig, ax = plt.subplots()
+		fig.set_size_inches(13, 6)
+		ax.spines['top'].set_visible(False)
+		ax.spines['right'].set_visible(False)
+		bar_width = 0.45
+		bars1 = plt.bar([x - bar_width / 2 for x in range(5)],
+		                [el[1] for el in win],
+		                bar_width, color='g')
+		bars2 = plt.bar([x + bar_width / 2 for x in range(5)],
+		                [el[1] for el in lose], bar_width, color='r')
+
+		plt.xticks(range(5), names, fontsize=25)
+		plt.yticks(range(abs_max + 1), fontsize=16)
+		plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
+
+		for x in range(5):
+			dict1[names[x]].reverse()
+			message = '\n'.join(dict1[names[x]])
+
+			plt.text(bars1[x].get_x() + bars1[x].get_width() / 2,
+			         bars1[x].get_height() + 0.05, message, ha='center',
+			         va='bottom', fontsize=15)
+
+		for x in range(5):
+			dict2[names[x]].reverse()
+			message = '\n'.join(dict2[names[x]])
+
+			plt.text(bars2[x].get_x() + bars2[x].get_width() / 2,
+			         bars2[x].get_height() + 0.05, message, ha='center',
+			         va='bottom', fontsize=15)
+
+		plt.savefig('sotm.png', dpi=120, bbox_inches='tight')
+		plt.gcf().clear()
+
+	dict_win = {name: [] for name in partecipants}
+	dict_lose = {name: [] for name in partecipants}
+
+	df1 = preds.copy()
+	df1['Year'] = df1['Date'].apply(lmb1())
+	df1['Month'] = df1['Date'].apply(lmb2())
+	df1 = df1[['Bet', 'User', 'Quote', 'Label', 'Year', 'Month']]
+	df1.set_index(['Year', 'Month'], inplace=True)
+	for i, g in df1.groupby(df1.index):
+		temp = []
+		for name in partecipants:
+			temp.append((name, compute_indices(g, name)[-1]))
+		maximum = max([el[1] for el in temp])
+		minimum = min([el[1] for el in temp])
+
+		winners = [el[0] for el in temp if el[1] == maximum]
+		losers = [el[0] for el in temp if el[1] == minimum]
+
+		for name in winners:
+			yy = datetime.strptime(''.join([str(m) for m in i]),
+			                       '%Y%m').strftime('%y')
+
+			mm = datetime.strptime(''.join([str(m) for m in i]),
+			                       '%Y%m').strftime('%b')
+
+			dict_win[name].append(mm + "'" + yy)
+
+		for name in losers:
+			yy = datetime.strptime(''.join([str(m) for m in i]),
+			                       '%Y%m').strftime('%y')
+
+			mm = datetime.strptime(''.join([str(m) for m in i]),
+			                       '%Y%m').strftime('%b')
+
+			dict_lose[name].append(mm + "'" + yy)
+
+	plot(dict_win, dict_lose)
+
 
 
 bets, preds = update_bets_preds()

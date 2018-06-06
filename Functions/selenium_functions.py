@@ -495,13 +495,13 @@ def update_matches_table(browser, c, league_id, string_to_split):
 
     _, dd, mm, yy, _, _, hhmm = date_time
     mm = months[mm]
-    match_date = int(yy + mm + dd)
-    match_time = int(hhmm.replace(':', ''))
+    match_date = datetime.datetime.strptime(yy + mm + dd, '%Y%m%d')
+    match_date = match_date.replace(hour=int(hhmm.split(':')[0]),
+                                    minute=int(hhmm.split(':')[1]))
     time.sleep(4)
     c.execute('''INSERT INTO matches (match_league, match_team1, match_team2,
-                 match_date, match_time, match_url) VALUES (?, ?, ?, ?, ?, ?)
-              ''', (league_id, team1, team2, match_date, match_time,
-                    browser.current_url))
+                 match_date, match_url) VALUES (?, ?, ?, ?, ?)
+              ''', (league_id, team1, team2, match_date, browser.current_url))
 
     last_id = c.lastrowid
 
@@ -619,7 +619,7 @@ def fill_db_with_quotes():
                   (league,))
         league_id = c.fetchone()[0]
 
-        for i in range(500):
+        for i in range(5):
             try:
                 WebDriverWait(
                         browser, 30).until(EC.element_to_be_clickable(

@@ -1,5 +1,6 @@
 import sqlite3
 import datetime
+import re
 
 
 def todays_date():
@@ -90,20 +91,19 @@ def check_before_play(db, c):
 
     invalid_matches = []
 
-    date, time = todays_date()
+    time_now = datetime.datetime.now()
 
     bet_id = list(c.execute('''SELECT bet_id FROM bets WHERE
                             bet_status = "Pending" '''))[0][0]
 
     matches = list(c.execute('''SELECT pred_id, pred_user, pred_team1,
-                             pred_team2, pred_date, pred_time FROM bets INNER
+                             pred_team2, pred_date FROM bets INNER
                              JOIN predictions on pred_bet = bet_id WHERE
                              bet_id = ?''', (bet_id,)))
 
     for match in matches:
-        match_date = match[4]
-        match_time = match[5]
-        if match_date < date or (match_date == date and match_time < time):
+        match_date = datetime.datetime.strptime(match[4], '%Y-%m-%d %H:%M:%S')
+        if match_date < time_now:
             invalid_matches.append(match[1:])
             c.execute('''DELETE FROM predictions WHERE pred_id = ?''',
                       (match[0],))

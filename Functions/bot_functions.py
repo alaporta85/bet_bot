@@ -398,22 +398,22 @@ def insert_euros(browser, euros):
 	euros_box.send_keys(euros)
 	euros_box.send_keys(Keys.DELETE)
 
-	win_path = ('.//div[@class="row ticket-bet-infos"]//' +
-				'p[@class="amount"]/strong')
-	win_container = browser.find_element_by_xpath(win_path)
-	sf.scroll_to_element(browser, 'false', win_container)
-
-	possible_win_default = win_container.text[2:].replace(',', '.')
-
-	# Manipulate the possible win's format to avoid errors
-	if len(possible_win_default.split('.')) == 2:
-		possible_win_default = float(possible_win_default)
-	else:
-		possible_win_default = float(''.join(
-				possible_win_default.split('.')[:-1]))
-	possible_win = round(possible_win_default * (euros/2), 2)
-
-	return possible_win
+	# win_path = ('.//div[@class="row ticket-bet-infos"]//' +
+	# 			'p[@class="amount"]/strong')
+	# win_container = browser.find_element_by_xpath(win_path)
+	# sf.scroll_to_element(browser, 'false', win_container)
+	#
+	# possible_win_default = win_container.text[2:].replace(',', '.')
+	#
+	# # Manipulate the possible win's format to avoid errors
+	# if len(possible_win_default.split('.')) == 2:
+	# 	possible_win_default = float(possible_win_default)
+	# else:
+	# 	possible_win_default = float(''.join(
+	# 			possible_win_default.split('.')[:-1]))
+	# possible_win = round(possible_win_default * (euros/2), 2)
+	#
+	# return possible_win
 
 
 def matches_per_day(day):

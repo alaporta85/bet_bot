@@ -1,6 +1,7 @@
 import os
 import time
 import datetime
+import numpy as np
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
@@ -31,22 +32,51 @@ def nickname(name):
 	return nicknames[name]
 
 
-def played_bets(summary):
+def create_summary(string):
 
-	"""Return bets played until that moment."""
+	if string == 'before':
+		bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
+	elif string == 'after':
+		db, c = dbf.start_db()
+		bet_ids = list(c.execute(
+				'''SELECT bet_id FROM bets WHERE bet_status = "Placed" AND
+				   bet_result = "Unknown" '''))
+		bet_id = [element[0] for element in bet_ids][-1]
+		db.close()
+
+	db, c = dbf.start_db()
+	summary = list(c.execute(
+			'''SELECT pred_user, pred_team1, pred_team2, pred_date, pred_rawbet,
+			   pred_quote FROM bets INNER JOIN predictions on pred_bet = bet_id
+			   WHERE bet_id = ?''', (bet_id,)))
+	db.close()
+
+	if string == 'before' and not summary:
+		return 'No bets yet. Choose the first one.'
+
+	summary = sorted(summary, key=lambda x: x[3])
 
 	message = ''
 	for bet in summary:
 		user = bet[0]
 		team1 = bet[1].title()
 		team2 = bet[2].title()
-		time = str(bet[3])[:2] + ':' + str(bet[3])[2:]
+		dt = datetime.datetime.strptime(bet[3], '%Y-%m-%d %H:%M:%S')
+		hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
 		rawbet = bet[4]
 		quote = bet[5]
 		message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
-				user, team1, team2, time, rawbet, quote)
+				user, team1, team2, hhmm, rawbet, quote)
 
-	return message
+	final_quote = np.prod(np.array([el[5] for el in summary]))
+	if string == 'before':
+		message2 = '\n\nPossible win with 5 euros: <b>{:.1f}</b>'.format(
+				final_quote * 5)
+		return message + message2
+	elif string == 'after':
+		message = 'Bet placed correctly.\n\n' + message
+		message += '\nPossible win: <b>{}</b>'.format(final_quote)
+		return message
 
 
 def start(bot, update):
@@ -190,21 +220,20 @@ def get(bot, update, args):
 	if (not confirmed_matches
 	   or (team1, team2) not in confirmed_matches):
 
-		match_date, match_time = list(c.execute(
-				'''SELECT match_date, match_time FROM matches WHERE
-				   match_team1 = ? and match_team2 = ?''',
-				(team1, team2)))[0]
+		dt = list(c.execute(
+				'''SELECT match_date FROM matches WHERE match_team1 = ? and
+				   match_team2 = ?''', (team1, team2)))[0][0]
 
 		team1 = team1.replace('*', '')
 		team2 = team2.replace('*', '')
 
 		# Update table
-		c.execute('''INSERT INTO predictions (pred_user, pred_date,
-					 pred_time, pred_team1, pred_team2, pred_league,
-					 pred_field, pred_rawbet, pred_quote, pred_status)
-				     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-				  (first_name, match_date, match_time, team1, team2,
-				   league_id, field_id, nice_bet, quote, 'Not Confirmed'))
+		c.execute('''INSERT INTO predictions (pred_user, pred_date, pred_team1,
+					 pred_team2, pred_league, pred_field, pred_rawbet,
+					 pred_quote, pred_status) VALUES
+					 (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+				  (first_name, dt, team1, team2, league_id, field_id,
+				   nice_bet, quote, 'Not Confirmed'))
 
 		db.commit()
 		db.close()
@@ -410,9 +439,10 @@ def play(bot, update, args):
 		message = '{}, {} - {} was scheduled on {} at {}. Too late.'
 		for x in range(len(invalid_bets)):
 			bet = invalid_bets[x]
-			date_to_print = (str(bet[3])[6:] + '/' + str(bet[3])[4:6] + '/' +
-							 str(bet[3])[:4])
-			time_to_print = str(bet[4])[:2] + ':' + str(bet[4])[2:]
+			dt = datetime.datetime.strptime(bet[3], '%Y-%m-%d %H:%M:%S')
+			date_to_print = (str(dt.year) + '/' + str(dt.month) + '/' +
+			                 str(dt.day))
+			time_to_print = (str(dt.hour) + ':' + str(dt.minute))
 			if x < len(invalid_bets) - 1:
 				logger.info('PLAY - Too late for the following bet: ' +
 							'{} , {}, {}.'.format(bet[0], bet[1], bet[2]))
@@ -470,7 +500,8 @@ def play(bot, update, args):
 	# If this number is equal to the number of bets chosen to play
 	if matches_played == len(matches_to_play):
 
-		possible_win = bf.insert_euros(browser, euros)
+		# possible_win = bf.insert_euros(browser, euros)
+		bf.insert_euros(browser, euros)
 
 		# Make the login
 		sf.login(browser)
@@ -523,14 +554,11 @@ def play(bot, update, args):
 			if element.is_displayed():
 				print(element.text)
 				element.click()
-				logger.info('PLAY - Bet has been played. Possible win: ' +
-							'{}'.format(possible_win))
+				logger.info('PLAY - Bet has been played.')
 				db, c = dbf.start_db()
 				c.execute('''UPDATE bets SET bet_date = ?, bet_euros = ?,
-						  bet_prize = ?, bet_status = ? WHERE
-						  bet_status = "Pending" ''',
-						  (dbf.todays_date()[0], euros, possible_win,
-						   'Placed'))
+						  bet_status = ? WHERE bet_status = "Pending" ''',
+						  (datetime.datetime.now(), euros, 'Placed'))
 				db.commit()
 				logger.info('PLAY - "bets" db table updated')
 				db.close()
@@ -547,24 +575,8 @@ def play(bot, update, args):
 		if money_after == money_before - euros:
 
 			# Print the summary
-			message = 'Bet placed correctly.\n\n'
-			db, c = dbf.start_db()
-			bet_id_list = list(c.execute(
-				'''SELECT bet_id FROM bets WHERE bet_result = "Unknown" '''))
-			bet_id_list = [element[0] for element in bet_id_list]
-			bet_id = bet_id_list[-1]
-			summary = list(c.execute('''SELECT pred_user, pred_team1,
-									 pred_team2, pred_time, pred_rawbet,
-									 pred_quote, pred_date FROM bets INNER JOIN
-									 predictions on pred_bet = bet_id WHERE
-									 bet_id = ?''', (bet_id,)))
-
-			db.close()
-			summary = sorted(sorted(summary, key=lambda x: x[3]),
-			                 key=lambda x: x[6])
-			message += (played_bets(summary) +
-			            '\nPossible win: <b>{}</b>'.format(possible_win) +
-			            '\nMoney left: <b>{}</b>'.format(money_after))
+			message = create_summary('after')
+			message += '\nMoney left: <b>{}</b>'.format(money_after)
 			bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 							 text=message)
 		else:
@@ -636,31 +648,9 @@ def update_results(bot, update):
 
 def summary(bot, update):
 
-	bet_id = dbf.get_value('bet_id', 'bets', 'bet_status', 'Pending')
-	db, c = dbf.start_db()
-	summary = list(c.execute('''SELECT pred_user, pred_team1, pred_team2,
-							 pred_time, pred_rawbet, pred_quote, pred_date 
-							 FROM bets INNER JOIN predictions on
-							 pred_bet = bet_id WHERE bet_id = ?''', (bet_id,)))
-
-	db.close()
-	if summary:
-		summary = sorted(sorted(summary, key=lambda x: x[3]),
-						 key=lambda x: x[6])
-		final_quote = 1
-		all_quotes = [element[5] for element in summary]
-		for quote in all_quotes:
-			final_quote *= quote
-
-		message1 = played_bets(summary)
-		message2 = '\n\nPossible win with 5 euros: <b>{:.1f}</b>'.format(
-				final_quote*5)
-		message = message1 + message2
-	else:
-		message = 'No bets yet. Choose the first one.'
-
-	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-					 text=message)
+	message = create_summary('before')
+	return bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+	                        text=message)
 
 
 def score(bot, update):
@@ -689,11 +679,9 @@ def stats(bot, update):
 	message_bets = stf.stats_on_bets()
 	message_quotes = stf.stats_on_quotes()
 	message_combos = stf.stats_on_combos()
-	message_weekday = stf.stats_on_weekday()
 
 	fin_mess = (message_money + message_perc + message_teams +
-	            message_bets + message_quotes + message_combos +
-	            message_weekday)
+	            message_bets + message_quotes + message_combos)
 
 	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 	                 text=fin_mess)
@@ -763,7 +751,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(10, 7, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(9, 57, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
