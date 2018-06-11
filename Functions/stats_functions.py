@@ -1,11 +1,8 @@
 from Functions import db_functions as dbf
 import Classes as cl
-import datetime
 from itertools import groupby
 import matplotlib
 matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-import sqlite3
 
 db, c = dbf.start_db()
 colors_dict = list(c.execute('''SELECT color_user, color_value FROM colors'''))

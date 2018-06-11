@@ -1,249 +1,9 @@
-import time
+import datetime
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
-from selenium.common.exceptions import TimeoutException
-from selenium.common.exceptions import ElementNotInteractableException
-from selenium.webdriver.common.keys import Keys
 from Functions import logging as log
 
 logger = log.get_flogger()
-
-
-def go_to_personal_area(browser, LIMIT_1):
-
-	"""
-	Used in update_results() function to navigate until the personal area
-	after the login.
-	"""
-
-	current_url = browser.current_url
-
-	try:
-		area_pers_path1 = './/a[@class="account-link theme-button"]'
-		sf.wait_clickable(browser, 20, area_pers_path1)
-		area_pers_button1 = browser.find_element_by_xpath(area_pers_path1)
-		area_pers_button1.click()
-
-	except (TimeoutException, ElementNotInteractableException):
-
-		if LIMIT_1 < 3:
-			logger.info('Recursive go_to_personal_area')
-			browser.get(current_url)
-			time.sleep(3)
-			return go_to_personal_area(browser, LIMIT_1 + 1)
-		else:
-			raise ConnectionError('Unable to go to the section: ' +
-								  'AREA PERSONALE. Please try again.')
-
-
-def go_to_placed_bets(browser, LIMIT_2):
-
-	"""
-	Used in update_results() function to navigate until the page containing
-	all the past bets.
-	"""
-
-	FILTER = 'Ultimi 5 Mesi'
-	current_url = browser.current_url
-
-	try:
-		placed_bets_path = './/a[@id="pl-movimenti"]'
-		sf.wait_clickable(browser, 20, placed_bets_path)
-		placed_bets_button = browser.find_element_by_xpath(placed_bets_path)
-		placed_bets_button.click()
-		time.sleep(5)
-
-		date_filters_path = ('.//div[@id="movement-filters"]/' +
-							 'div[@id="games-filter"]//' +
-							 'label[@class="radio-inline"]')
-		sf.wait_visible(browser, 20, date_filters_path)
-		date_filters_list = browser.find_elements_by_xpath(date_filters_path)
-		for afilter in date_filters_list:
-			new_filter = afilter.text
-			if new_filter == FILTER:
-				sf.scroll_to_element(browser, 'false', afilter)
-				afilter.click()
-				break
-
-		mostra_path = ('.//div[@class="btn-group btn-group-justified"]' +
-					   '/a[@class="btn button-submit"]')
-		sf.wait_clickable(browser, 20, mostra_path)
-		mostra_button = browser.find_element_by_xpath(mostra_path)
-		sf.scroll_to_element(browser, 'false', mostra_button)
-		mostra_button.click()
-
-	except (TimeoutException, ElementNotInteractableException):
-
-		if LIMIT_2 < 3:
-			logger.info('Recursive go_to_placed_bets')
-			browser.get(current_url)
-			time.sleep(3)
-			return go_to_placed_bets(browser, LIMIT_2 + 1)
-		else:
-			raise ConnectionError('Unable to go to the section: MOVIMENTI E' +
-								  ' GIOCATE. Please try again.')
-
-
-def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
-
-	"""
-	Used in analyze_main_table function. It first checks if all the matches
-	inside the bet are concluded. If yes, update the column bet_result in
-	the table 'bet' and the columns 'pred_result' and pred_label in the
-	table 'predictions' of the database.
-	"""
-
-	current_url = browser.current_url
-
-	try:
-
-		prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
-					   'pull-right pull-down"]')
-		prize_element = browser.find_elements_by_xpath(prize_table +
-													   '//tr/td')[7]
-		prize_value = float(prize_element.text[1:-1].replace(',', '.'))
-
-		c.execute('''UPDATE bets SET bet_prize = ? WHERE bet_id = ?''',
-				  (prize_value, ref_id))
-
-		new_table_path = './/table[@class="bet-detail"]'
-		sf.wait_visible(browser, 20, new_table_path)
-		new_bets_list = browser.find_elements_by_xpath(
-				new_table_path + '//tr[@class="ng-scope"]')
-
-		# Count the matches inside the bet which are already concluded
-		matches_completed = 0
-		for new_bet in new_bets_list:
-			label_element = new_bet.find_element_by_xpath(
-				'.//div[contains(@class,"ng-scope")]')
-			label = label_element.get_attribute('ng-switch-when')
-			if label == 'WINNING' or label == 'LOSING':
-				matches_completed += 1
-
-		# If not all of them are concluded code stops here
-		if matches_completed != len(new_bets_list):
-			logger.info('Bet with id {} is still incomplete'.format(ref_id))
-			return 0
-
-		logger.info('Updating bet with id: {}'.format(ref_id))
-		for new_bet in new_bets_list:
-			match = new_bet.find_element_by_xpath('.//td[6]').text
-			team1 = match.split(' - ')[0]
-			team2 = match.split(' - ')[1]
-			label_element = new_bet.find_element_by_xpath(
-					'.//div[contains(@class,"ng-scope")]')
-			label = label_element.get_attribute('ng-switch-when')
-			quote = float(new_bet.find_element_by_xpath('.//td[10]').text)
-			result = new_bet.find_element_by_xpath('.//td[11]').text
-
-			c.execute('''SELECT pred_id FROM bets INNER JOIN predictions on
-					  pred_bet = bet_id WHERE bet_id = ? AND
-					  pred_team1 = ? AND pred_team2 = ?''', (ref_id, team1,
-															 team2))
-
-			match_id = c.fetchone()[0]
-
-			c.execute('''UPDATE bets SET bet_result = ? WHERE
-					  bet_id = ?''', (new_status, ref_id))
-
-			c.execute('''UPDATE predictions SET pred_quote = ?,
-					  pred_result = ?, pred_label = ? WHERE pred_id = ?''',
-					  (quote, result, label, match_id))
-
-		return 1
-
-	except (TimeoutException, ElementNotInteractableException):
-
-		if LIMIT_4 < 3:
-			logger.info('Recursive analyze_details_table')
-			browser.get(current_url)
-			time.sleep(3)
-			return analyze_details_table(browser, ref_id, c, LIMIT_4 + 1)
-		else:
-			raise ConnectionError('Unable to find past bets. ' +
-								  'Please try again.')
-
-
-def analyze_main_table(browser, ref_list, LIMIT_3):
-
-	"""
-	Used in update_results() function to drive the browser to the personal
-	area in the 'MOVIMENTI E GIOCATE' section and call the function
-	analyze_details_table for each bet not updated yet.
-	"""
-
-	current_url = browser.current_url
-	bets_updated = 0
-
-	try:
-		table_path = './/table[@id="tabellaRisultatiTransazioni"]'
-		sf.wait_visible(browser, 20, table_path)
-		bets_list = browser.find_elements_by_xpath(table_path +
-												   '//tr[@class="ng-scope"]')
-
-		db, c = dbf.start_db()
-
-		for ref_bet in ref_list:
-			ref_id = ref_bet[0]
-			ref_date = ref_bet[1]
-			year = str(ref_date)[:4]
-			month = str(ref_date)[4:6]
-			day = str(ref_date)[6:]
-			ref_date = day + '/' + month + '/' + year
-
-			for bet in bets_list:
-
-				color = bet.find_element_by_xpath(
-						'.//td[contains(@class,"state state")]')\
-					.get_attribute('class')
-
-				if 'blue' not in color:
-
-					date = bet.find_element_by_xpath(
-							'.//td[@class="ng-binding"]').text[:10]
-
-					if date == ref_date:
-
-						new_status = bet.find_element_by_xpath(
-								'.//translate-label[@key-default=' +
-								'"statement.state"]').text
-
-						if new_status == 'Vincente':
-							new_status = 'WINNING'
-						elif new_status == 'Non Vincente':
-							new_status = 'LOSING'
-
-						main_window = browser.current_window_handle
-						details = bet.find_element_by_xpath('.//a')
-						sf.scroll_to_element(browser, 'false', details)
-						details.click()
-						time.sleep(3)
-
-						new_window = browser.window_handles[-1]
-						browser.switch_to_window(new_window)
-
-						bets_updated += analyze_details_table(browser, ref_id,
-															  c, new_status, 0)
-
-						browser.close()
-
-						browser.switch_to_window(main_window)
-						break
-		db.commit()
-		db.close()
-
-		return bets_updated
-
-	except (TimeoutException, ElementNotInteractableException):
-
-		if LIMIT_3 < 3:
-			logger.info('Recursive analyze_main_table')
-			browser.get(current_url)
-			time.sleep(3)
-			return analyze_main_table(browser, ref_list, LIMIT_3 + 1)
-		else:
-			raise ConnectionError('Unable to find past bets. ' +
-								  'Please try again.')
 
 
 def check_still_to_confirm(db, c, first_name):
@@ -370,52 +130,6 @@ def create_matches_to_play(c, bet_id):
 	return matches_to_play
 
 
-def add_bet_to_basket(browser, match, count, dynamic_message):
-
-	team1 = match[0]
-	team2 = match[1]
-	field = match[2]
-	bet = match[3]
-	url = match[4]
-
-	try:
-		sf.add_bet(browser, url, field, bet)
-		time.sleep(5)
-		sf.check_single_bet(browser, count, team1, team2)
-		return dynamic_message.format(count + 1)
-
-	except ConnectionError as e:
-		raise ConnectionError(str(e))
-
-
-def insert_euros(browser, euros):
-
-	input_euros = ('.//div[contains(@class,"text-right ' +
-				   'amount-sign")]/input')
-	euros_box = browser.find_element_by_xpath(input_euros)
-	euros_box.send_keys(Keys.COMMAND, "a")
-	euros_box.send_keys(Keys.LEFT)
-	euros_box.send_keys(euros)
-	euros_box.send_keys(Keys.DELETE)
-
-	# win_path = ('.//div[@class="row ticket-bet-infos"]//' +
-	# 			'p[@class="amount"]/strong')
-	# win_container = browser.find_element_by_xpath(win_path)
-	# sf.scroll_to_element(browser, 'false', win_container)
-	#
-	# possible_win_default = win_container.text[2:].replace(',', '.')
-	#
-	# # Manipulate the possible win's format to avoid errors
-	# if len(possible_win_default.split('.')) == 2:
-	# 	possible_win_default = float(possible_win_default)
-	# else:
-	# 	possible_win_default = float(''.join(
-	# 			possible_win_default.split('.')[:-1]))
-	# possible_win = round(possible_win_default * (euros/2), 2)
-	#
-	# return possible_win
-
-
 def matches_per_day(day):
 
 	"""
@@ -433,7 +147,7 @@ def matches_per_day(day):
 			return '{:>.2f}'.format(afloat)
 
 	message = ''
-	requested_day = sf.format_day(day)
+	requested_day = format_day(day)
 
 	db, c = dbf.start_db()
 	try:
@@ -524,3 +238,168 @@ def matches_per_day(day):
 		return message
 	else:
 		return 'No matches on the selected day.'
+
+
+def format_day(input_day):
+
+	"""
+	Take the input_day in the form 'lun', 'mar', 'mer'..... and return
+	the corresponding date as an integer. If on May 16th 1985 (Thursday)
+	command format_day('sab') is sent, output will be:
+
+		19850518
+	"""
+
+	weekdays = {'lun': 0,
+				'mar': 1,
+				'mer': 2,
+				'gio': 3,
+				'ven': 4,
+				'sab': 5,
+				'dom': 6}
+
+	if input_day not in weekdays:
+
+		raise SyntaxError('Not a valid day. Options are: lun, mar, mer, ' +
+						  'gio, ven, sab, dom.')
+
+	today_date = datetime.date.today()
+	today_weekday = datetime.date.today().weekday()
+
+	days_shift = weekdays[input_day] - today_weekday
+	if days_shift < 0:
+		days_shift += 7
+	new_date = str(today_date + datetime.timedelta(days=days_shift))
+	new_date = int(new_date.replace('-', ''))
+
+	return new_date
+
+
+def all_bets_per_team(db, c, team_name, league_id):
+
+	"""
+	Return two text messages: one showing all the standard bets and the
+	other one the combo. Both of them are relative to the match of the
+	league whose id is "league_id" and team "team_name" is playing.
+	"""
+
+	fields2avoid = [i for i in range(17, 31)]
+
+	try:
+		match_id, team1, team2 = list(
+				c.execute('''SELECT match_id, match_team1, match_team2 FROM
+							 matches WHERE match_league = ? AND
+							 (match_team1 = ? OR match_team2 = ?)''',
+						 (league_id, team_name, team_name,)))[0]
+	except IndexError:
+		db.close()
+		raise ValueError('Quotes not available')
+
+	team1 = team1.replace('*', '')
+	team2 = team2.replace('*', '')
+
+	message_standard = '<b>{} - {}: STANDARD</b>\n'.format(team1, team2)
+	message_combo = '<b>{} - {}: COMBO</b>\n'.format(team1, team2)
+
+	fields = list(c.execute('''SELECT field_id, field_value FROM fields'''))
+	fields = [el for el in fields if el[0] not in fields2avoid]
+
+	fields_added = []
+	for field_id, field_value in fields:
+		field_name = list(c.execute('''SELECT field_name FROM fields WHERE
+									   field_id = ?''', (field_id,)))[0][0]
+		if field_name not in fields_added:
+			fields_added.append(field_name)
+			if '+' not in field_name:
+				COMBO = False
+				message_standard += '\n\n<i>{}</i>'.format(field_name)
+			else:
+				COMBO = True
+				message_combo += '\n\n<i>{}</i>'.format(field_name)
+		try:
+			quote = list(c.execute('''SELECT quote_value FROM quotes WHERE
+								   quote_match = ? AND quote_field = ?''',
+								   (match_id, field_id)))[0][0]
+		except IndexError:
+			if not COMBO:
+				message_standard += '\n<b>{}</b>: NOT FOUND'.format(
+																   field_value)
+			else:
+				message_combo += '\n<b>{}</b>: NOT FOUND'.format(field_value)
+			continue
+
+		if not COMBO:
+			message_standard += '\n<b>{}</b>:    @{}'.format(field_value,
+															 quote)
+		else:
+			message_combo += '\n<b>{}</b>:    @{}'.format(field_value, quote)
+
+	return message_standard, message_combo
+
+
+def look_for_quote(text):
+
+	"""
+	Take the input from the user and look into the db for the requested
+	quote. Return five variables which will be used later to update the
+	"predictions" table in the db.
+	"""
+
+	input_team, input_bet = text.split('_')
+
+	db, c = dbf.start_db()
+
+	try:
+		field_id = list(c.execute('''SELECT field_alias_field FROM fields_alias
+									 WHERE field_alias_name = ? ''',
+								  (input_bet,)))[0][0]
+		nice_bet = list(c.execute('''SELECT field_nice_value FROM fields
+									 WHERE field_id = ? ''',
+								  (field_id,)))[0][0]
+	except IndexError:
+		db.close()
+		raise SyntaxError('Bet not valid.')
+
+	try:
+		team_id = list(c.execute('''SELECT team_alias_team FROM teams_alias
+									WHERE team_alias_name = ? ''',
+								 (input_team,)))[0][0]
+	except IndexError:
+		db.close()
+		raise SyntaxError('Team not valid.')
+
+	team_name = list(c.execute('''SELECT team_name FROM teams INNER JOIN
+							   teams_alias on team_alias_team = team_id WHERE
+							   team_id = ? ''', (team_id,)))[0][0]
+
+	if '*' in input_team:
+		league_id = 8
+	else:
+		league_id = list(c.execute('''SELECT team_league FROM teams
+								   WHERE team_name = ? AND team_league != 8''',
+								   (team_name,)))[0][0]
+
+	try:
+		team1, team2 = list(c.execute('''SELECT match_team1, match_team2 FROM
+									  matches WHERE match_team1 = ? OR
+									  match_team2 = ?''', (team_name,
+									  team_name)))[0]
+	except IndexError:
+		db.close()
+		raise ValueError('Quotes not available')
+
+	match_id = list(c.execute('''SELECT match_id FROM matches
+							  WHERE match_team1 = ? AND match_team2 = ?''',
+							  (team1, team2)))[0][0]
+
+
+	try:
+		quote = list(c.execute('''SELECT quote_value FROM quotes
+							   WHERE quote_match = ? AND quote_field = ?''',
+							   (match_id, field_id)))[0][0]
+	except IndexError:
+		raise ValueError('Quote not available for this match')
+
+	db.close()
+
+	return team1, team2, field_id, league_id, nice_bet, quote

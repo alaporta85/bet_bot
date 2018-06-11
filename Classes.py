@@ -446,6 +446,6 @@ def stats_of_the_month():
 	plot(dict_win, dict_lose)
 
 
-# bets, preds = update_bets_preds()
-# players = {name: Player(name) for name in partecipants}
-# stats = Stats()
+bets, preds = update_bets_preds()
+players = {name: Player(name) for name in partecipants}
+stats = Stats()

@@ -174,7 +174,7 @@ def get(bot, update, args):
 	if '_' not in guess:
 
 		try:
-			message_standard, message_combo = sf.all_bets_per_team(
+			message_standard, message_combo = bf.all_bets_per_team(
 					db, c, team_name, league_id)
 			db.close()
 		except ValueError as e:
@@ -214,7 +214,7 @@ def get(bot, update, args):
 									   pred_status = "Confirmed"
 									   AND pred_bet = ?''', (bet_id,)))
 
-	team1, team2, field_id, league_id, nice_bet, quote = sf.look_for_quote(
+	team1, team2, field_id, league_id, nice_bet, quote = bf.look_for_quote(
 																	guess)
 
 	if (not confirmed_matches
@@ -476,7 +476,7 @@ def play(bot, update, args):
 	count = 0
 	for match in matches_to_play:
 		try:
-			basket_message = bf.add_bet_to_basket(browser, match, count,
+			basket_message = sf.add_bet_to_basket(browser, match, count,
 												  dynamic_message)
 			logger.info('PLAY - {}-{}  {} '.format(
 					match[0], match[1], match[3]) + 'added')
@@ -501,7 +501,7 @@ def play(bot, update, args):
 	if matches_played == len(matches_to_play):
 
 		# possible_win = bf.insert_euros(browser, euros)
-		bf.insert_euros(browser, euros)
+		sf.insert_euros(browser, euros)
 
 		# Make the login
 		sf.login(browser)
@@ -625,11 +625,11 @@ def update_results(bot, update):
 		pass
 
 	try:
-		bf.go_to_personal_area(browser, 0)
+		sf.go_to_personal_area(browser, 0)
 
-		bf.go_to_placed_bets(browser, 0)
+		sf.go_to_placed_bets(browser, 0)
 
-		bets_updated = bf.analyze_main_table(browser, ref_list, 0)
+		bets_updated = sf.analyze_main_table(browser, ref_list, 0)
 
 	except ConnectionError as e:
 		browser.quit()
@@ -688,10 +688,8 @@ def stats(bot, update):
 
 
 def sotm(bot, update):
-	stf.stats_of_the_month()
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('sotm.png',
 	                                                          'rb'))
-	os.remove('sotm.png')
 
 
 def match(bot, update, args):
