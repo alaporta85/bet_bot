@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import sqlite3
 
 db, c = dbf.start_db()
-colors_dict = list(c.execute('''SELECT person, color FROM colors'''))
+colors_dict = list(c.execute('''SELECT color_user, color_value FROM colors'''))
 colors_dict = {el[0]: el[1] for el in colors_dict}
 partecipants = [el for el in colors_dict]
 db.close()

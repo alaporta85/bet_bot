@@ -24,11 +24,6 @@ countries = {
              'MONDIALI': 'MONDO'
              }
 
-months = {'GENNAIO': '01', 'FEBBRAIO': '02', 'MARZO': '03', 'APRILE': '04',
-          'MAGGIO': '05', 'GIUGNO': '06', 'LUGLIO': '07', 'AGOSTO': '08',
-          'SETTEMBRE': '09', 'OTTOBRE': '10', 'NOVEMBRE': '11',
-          'DICEMBRE': '12'}
-
 conn_err_message = ('An error occurred. This might be due to some problems ' +
                     'with the internet connection. Please try again.')
 
@@ -93,7 +88,7 @@ def simulate_hover_and_click(browser, element):
 
 def click_calcio_button(browser):
 
-    calcio = './/ul[contains(@class,"sports-nav")]/li[1]/a'
+    calcio = './/div/div[@class="item-sport ng-scope"]//a'
     wait_clickable(browser, WAIT, calcio)
     calcio_button = browser.find_element_by_xpath(calcio)
 
@@ -140,11 +135,10 @@ def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
     current_url = browser.current_url
 
-    countries_container = './/ul[@id="better-table-tennis"]'
+    countries_container = './/div[@class="country-name"]'
     try:
         wait_clickable(browser, WAIT, countries_container)
-        all_countries = browser.find_elements_by_xpath(
-                countries_container + '/li')
+        all_countries = browser.find_elements_by_xpath(countries_container)
 
     except TimeoutException:
         if LIMIT_COUNTRY_BUTTON < 3:
@@ -160,8 +154,8 @@ def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):
 
     for country in all_countries:
         panel = country.find_element_by_xpath('.//a')
-        if panel.text == countries[league]:
-            scroll_to_element(browser, 'false', panel)
+        scroll_to_element(browser, 'false', panel)
+        if panel.text.upper() == countries[league]:
             panel.click()
             time.sleep(2)
             break
@@ -173,13 +167,13 @@ def click_league_button(browser, league):
     Find the button relative to the league we are interested in and click it.
     """
 
-    nat_leagues_container = './/ul[@id="better-table-tennis-ww"]'
-    all_nat_leagues = browser.find_elements_by_xpath(
-            nat_leagues_container + '/li')
+    nat_leagues_container = ('.//div[@class="item-competition competition ' +
+                             'slide-menu ng-scope"]')
+    all_nat_leagues = browser.find_elements_by_xpath(nat_leagues_container)
     for nat_league in all_nat_leagues:
         panel = nat_league.find_element_by_xpath('.//a')
-        if panel.text == league:
-            scroll_to_element(browser, 'false', panel)
+        scroll_to_element(browser, 'false', panel)
+        if panel.text.upper() == league:
             panel.click()
             break
 
@@ -191,7 +185,8 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):
     TRICOMBO, ...).
     """
 
-    all_panels_path = '//div[@new-component=""]//div[@class="row"]/div'
+    all_panels_path = ('//div[@class="item-group ng-scope"]/' +
+                       'div[contains(@class, "group-name")]')
     current_url = browser.current_url
 
     try:
@@ -211,16 +206,20 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):
     return all_panels
 
 
-def find_all_fields(browser):
+def find_all_fields_and_bets(browser):
 
     """
     Return the HTML container of the fields (ESITO FINALE 1X2, DOPPIA
     CHANCE, GOAL/NOGOAL, ...).
     """
 
-    all_fields_path = '//div[@class="panel-collapse collapse in"]/div'
+    all_fields_path = '//div[@class="market-info"]/div'
+    all_bets_path = '//div[@class="market-selections"]'
 
-    return browser.find_elements_by_xpath(all_fields_path)
+    fields = browser.find_elements_by_xpath(all_fields_path)
+    bets = browser.find_elements_by_xpath(all_bets_path)
+
+    return fields, bets
 
 
 def find_all_bets(field, new_field):
@@ -477,27 +476,25 @@ def format_day(input_day):
     return new_date
 
 
-def update_matches_table(browser, c, league_id, string_to_split):
+def update_matches_table(browser, c, league_id, d_m_y, h_m):
 
-    wait_visible(browser, 10, './/div[@class="title-single-event"]/span')
+    back = './/a[@class="back-competition ng-scope"]'
+    wait_clickable(browser, 30, back)
+    back = browser.find_element_by_xpath(back)
+    time.sleep(1)
 
-    team1, team2 = string_to_split.split(' - ')
+    main = './/div[@class="event-name ng-binding"]'
+    teams = browser.find_element_by_xpath(main).text.upper()
+
+    team1, team2 = teams.split(' - ')
     if league_id == 8:
         team1 = '*' + team1
         team2 = '*' + team2
 
-    check = False
-    while not check:
-        date_time = browser.find_element_by_xpath(
-                                   './/span[@class="ng-binding"]').text.split()
-        if len(date_time) == 7:
-            check = True
-
-    _, dd, mm, yy, _, _, hhmm = date_time
-    mm = months[mm]
+    dd, mm, yy = d_m_y.split('/')
     match_date = datetime.datetime.strptime(yy + mm + dd, '%Y%m%d')
-    match_date = match_date.replace(hour=int(hhmm.split(':')[0]),
-                                    minute=int(hhmm.split(':')[1]))
+    match_date = match_date.replace(hour=int(h_m.split(':')[0]),
+                                    minute=int(h_m.split(':')[1]))
     time.sleep(4)
     c.execute('''INSERT INTO matches (match_league, match_team1, match_team2,
                  match_date, match_url) VALUES (?, ?, ?, ?, ?)
@@ -505,7 +502,7 @@ def update_matches_table(browser, c, league_id, string_to_split):
 
     last_id = c.lastrowid
 
-    return last_id
+    return last_id, back
 
 
 def update_quotes_table(browser, db, c, all_fields, last_id):
@@ -513,53 +510,47 @@ def update_quotes_table(browser, db, c, all_fields, last_id):
     all_panels = find_all_panels(browser, 0)
 
     for panel in all_panels:
-        panel.click()
-        field_elements = find_all_fields(browser)
+        scroll_to_element(browser, 'false', panel)
+        if 'active' not in panel.get_attribute('class'):
+            panel.click()
+            time.sleep(2)
 
-        for new_field in field_elements:
-            field_name = new_field.find_element_by_xpath(
-                              './/div[@class="text-left col ng-binding"]').text
+    fields_bets = find_all_fields_and_bets(browser)
 
-            if field_name in all_fields:
-                all_bets = find_all_bets(field_name, new_field)
+    for field, bets in zip(fields_bets[0], fields_bets[1]):
+        scroll_to_element(browser, 'false', field)
+        field_name = field.text.upper()
 
-                for new_bet in all_bets:
-                    # Handle the case when the field space in the website has
-                    # empty elements
-                    try:
-                        bet_name = new_bet.find_element_by_xpath(
-                                './/div[@class="sel-ls"]/a').text
-                    except NoSuchElementException:
-                        continue
+        if field_name in all_fields:
+            all_bets = bets.find_elements_by_xpath(
+                './/div[@class="selection-name ng-binding"]')
 
-                    field_id = list(c.execute('''SELECT field_id from fields
-                                              WHERE field_name = ? AND
-                                              field_value = ?''',
-                                              (field_name, bet_name)))[0][0]
+            for i, new_bet in enumerate(all_bets):
+                scroll_to_element(browser, 'false', new_bet)
+                if field_name == 'ESITO FINALE 1X2 HANDICAP':
+                    bet_name = new_bet.text.upper().split()[0]
+                else:
+                    bet_name = new_bet.text.upper()
 
-                    # Handle the case when the bet is locked in the website
-                    try:
-                        bet_element_path = ('.//a[@ng-click="remCrt.' +
-                                            'selectionClick(selection)"]')
+                bet_quote = bets.find_elements_by_xpath(
+                                 './/div[@class="selection-price"]')[i]
+                scroll_to_element(browser, 'false', bet_quote)
+                bet_quote = bet_quote.text
 
-                        wait_clickable(browser, WAIT, bet_element_path)
-                        bet_element = new_bet.find_element_by_xpath(
-                                bet_element_path)
+                if len(bet_quote) == 1:
+                    bet_quote = '@LOCKED'
+                else:
+                    bet_quote = float(bet_quote)
 
-                        bet_quote = float(bet_element.text)
+                field_id = list(c.execute(
+                        '''SELECT field_id from fields WHERE field_name = ? AND
+                           field_value = ?''', (field_name, bet_name)))[0][0]
 
-                        c.execute('''INSERT INTO quotes (quote_match,
-                                                         quote_field,
-                                                         quote_value)
-                        VALUES (?, ?, ?)''', (last_id, field_id, bet_quote))
-                        db.commit()
-
-                    except NoSuchElementException:
-                        c.execute('''INSERT INTO quotes (quote_match,
-                                                         quote_field,
-                                                         quote_value)
-                        VALUES (?, ?, ?)''', (last_id, field_id, 'LOCKED'))
-                        db.commit()
+                c.execute(
+                        '''INSERT INTO quotes (quote_match, quote_field,
+                           quote_value) VALUES (?, ?, ?)''',
+                        (last_id, field_id, bet_quote))
+                db.commit()
 
 
 def fill_db_with_quotes():
@@ -573,8 +564,8 @@ def fill_db_with_quotes():
 
         click_country_button(browser, league, 0)
         click_league_button(browser, league)
-        click_country_button(browser, league, 0)
-        filters = './/div[@class="better-filters margin-bottom"]'
+        # click_country_button(browser, league, 0)
+        filters = './/div[@class="markets-favourites"]'
 
         return filters
 
@@ -611,27 +602,29 @@ def fill_db_with_quotes():
         if skip_league:
             continue
 
-        main_page = browser.current_url
-        matches = [m.text for m in browser.find_elements_by_xpath(
-                   './/a[@ng-click="remCrt.openEvent(eventM)"]')]
-
         c.execute('''SELECT league_id FROM leagues WHERE league_name = ? ''',
                   (league,))
         league_id = c.fetchone()[0]
 
-        for i in range(5):
+        for i in range(1):
             try:
+                buttons = './/div[@class="block-event event-description"]'
+
                 WebDriverWait(
                         browser, 30).until(EC.element_to_be_clickable(
-                                                   (By.LINK_TEXT, matches[i])))
-                match = browser.find_elements_by_xpath(
-                               './/a[@ng-click="remCrt.openEvent(eventM)"]')[i]
+                                                   (By.XPATH, buttons)))
+                match = browser.find_elements_by_xpath(buttons)[i]
+                scroll_to_element(browser, 'true', match)
                 scroll_to_element(browser, 'false', match)
+                ddmmyy, hhmm = match.find_element_by_xpath(
+                        './/div[@class="event-date ng-binding"]').\
+                    text.split(' - ')
                 match.click()
-                last_id = update_matches_table(browser, c, league_id,
-                                               matches[i])
+                last_id, back = update_matches_table(browser, c, league_id,
+                                               ddmmyy, hhmm)
                 update_quotes_table(browser, db, c, all_fields, last_id)
-                browser.get(main_page)
+                scroll_to_element(browser, 'false', back)
+                back.click()
             except IndexError:
                 end = time.time() - start
                 minutes = int(end // 60)
@@ -652,6 +645,8 @@ def all_bets_per_team(db, c, team_name, league_id):
     league whose id is "league_id" and team "team_name" is playing.
     """
 
+    fields2avoid = [i for i in range(17, 31)]
+
     try:
         match_id, team1, team2 = list(
                 c.execute('''SELECT match_id, match_team1, match_team2 FROM
@@ -669,6 +664,7 @@ def all_bets_per_team(db, c, team_name, league_id):
     message_combo = '<b>{} - {}: COMBO</b>\n'.format(team1, team2)
 
     fields = list(c.execute('''SELECT field_id, field_value FROM fields'''))
+    fields = [el for el in fields if el[0] not in fields2avoid]
 
     fields_added = []
     for field_id, field_value in fields:

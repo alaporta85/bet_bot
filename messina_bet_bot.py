@@ -751,7 +751,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(9, 57, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(19, 36, 50))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,

@@ -11,7 +11,7 @@ from itertools import groupby, count
 
 
 db, c = dbf.start_db()
-colors_dict = list(c.execute('''SELECT person, color FROM colors'''))
+colors_dict = list(c.execute('''SELECT color_user, color_value FROM colors'''))
 colors_dict = {el[0]: el[1] for el in colors_dict}
 partecipants = [el for el in colors_dict]
 db.close()
@@ -143,8 +143,6 @@ def normalize_indices():
 		maximum = max([data[name][i] for name in data])
 		for name in data:
 			players[name].indices[i] /= maximum
-
-	return
 
 
 def stats_on_teams_or_bets(string):
@@ -280,10 +278,9 @@ def cake():
 	explode = [0.04] * len(names)
 	explode[0] = 0.07
 
-	patches, text, autotext = plt.pie(euros, labels=names, explode=explode,
-									  colors=colors[:len(names)],
-									  startangle=120, radius=1.5,
-									  autopct=real_value)
+	patches, text, autotext = plt.pie(
+			euros, labels=names, explode=explode, colors=colors[:len(names)],
+			startangle=120, radius=1.5, autopct=real_value)
 
 	# Change the style of the plot
 	for patch in patches:
@@ -449,7 +446,6 @@ def stats_of_the_month():
 	plot(dict_win, dict_lose)
 
 
-
-bets, preds = update_bets_preds()
-players = {name: Player(name) for name in partecipants}
-stats = Stats()
+# bets, preds = update_bets_preds()
+# players = {name: Player(name) for name in partecipants}
+# stats = Stats()
