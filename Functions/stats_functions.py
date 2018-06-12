@@ -11,6 +11,13 @@ partecipants = [el for el in colors_dict]
 db.close()
 
 
+def abs_perc():
+
+    """Return a message showing the percentage of WINNING bets."""
+
+    return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(cl.stats.win_preds)
+
+
 def create_message(integer, list1, list2, astring):
     win_to_print = []
     lose_to_print = []
@@ -56,25 +63,6 @@ def money():
     return '<i>Money balance</i>: <b>{}</b>\n\n'.format(cl.stats.money)
 
 
-def abs_perc():
-
-    """Return a message showing the percentage of WINNING bets."""
-
-    return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(cl.stats.win_preds)
-
-
-def stats_on_teams():
-
-    """
-    Return a message showing the teams which have been guessed and failed
-    the most together with their percentages.
-    """
-    win = cl.stats.win_teams
-    lose = cl.stats.lose_teams
-
-    return create_message(2, win, lose, 'teams') + '\n\n'
-
-
 def stats_on_bets():
 
     """
@@ -85,6 +73,13 @@ def stats_on_bets():
     lose = cl.stats.lose_bets
 
     return create_message(2, win, lose, 'bets') + '\n\n'
+
+
+def stats_on_combos():
+
+    """Return a message showing the percentage of WINNING combos."""
+
+    return '<i>WINNING combos</i>: <b>{}%</b>\n\n'.format(cl.stats.win_combos)
 
 
 def stats_on_quotes():
@@ -106,8 +101,13 @@ def stats_on_quotes():
     return message1 + '\n' + message2 + '\n\n'
 
 
-def stats_on_combos():
+def stats_on_teams():
 
-    """Return a message showing the percentage of WINNING combos."""
+    """
+    Return a message showing the teams which have been guessed and failed
+    the most together with their percentages.
+    """
+    win = cl.stats.win_teams
+    lose = cl.stats.lose_teams
 
-    return '<i>WINNING combos</i>: <b>{}%</b>\n\n'.format(cl.stats.win_combos)
+    return create_message(2, win, lose, 'teams') + '\n\n'

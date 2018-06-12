@@ -1,6 +1,6 @@
 import sqlite3
 import datetime
-import re
+import pandas as pd
 
 
 def todays_date():
@@ -36,17 +36,46 @@ def start_db():
     return db, c
 
 
-def get_table_content(table_name):
+def get_table_content(table, columns_in=None, columns_out=None,
+                      where=None, dataframe=False):
 
     """Return rows' content of the table."""
 
     db, c = start_db()
 
-    content = list(c.execute('''SELECT * FROM {}'''.format(table_name)))
+    if where:
+        cursor = c.execute('''SELECT * FROM {} WHERE {}'''.format(table,
+                                                                  where))
+    else:
+        cursor = c.execute('''SELECT * FROM {}'''.format(table))
 
+    cols = [el[0] for el in cursor.description]
+
+    df = pd.DataFrame(list(cursor), columns=cols)
     db.close()
 
-    return content
+    if not len(df):
+        return 0
+
+    if columns_in:
+        cols = [el for el in cols if el in columns_in]
+        df = df[cols]
+
+    elif columns_out:
+        cols = [el for el in cols if el not in columns_out]
+        df = df[cols]
+
+    if dataframe:
+        return df
+    else:
+        if len(cols) == 1:
+            res = [df.loc[i, cols[0]] for i in range(len(df))]
+            res = sorted(set(res), key=lambda x: res.index(x))
+            return res[0] if len(res) == 1 else res
+        else:
+            res = [tuple(df.iloc[i]) for i in range(len(df))]
+            return res[0] if len(res) == 1 else res
+
 
 
 def get_value(column, table_name, WHERE_KEY, WHERE_VALUE):

@@ -1,6 +1,5 @@
 from Functions import db_functions as dbf
 import matplotlib.image as image
-import sqlite3
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -82,177 +81,6 @@ class Stats(object):
 		stats_of_the_month()
 
 
-def update_bets_preds():
-
-	db = sqlite3.connect('extended_db')
-	c = db.cursor()
-	c.execute("PRAGMA foreign_keys = ON")
-
-	query_bets = (
-		'''SELECT bet_id, bet_date, bet_euros, bet_prize, bet_result FROM bets
-		   WHERE bet_result != "Unknown"''')
-	header_bets = ['Id', 'Date', 'Euros', 'Prize', 'Result']
-
-	bets = pd.DataFrame(list(c.execute(query_bets)), columns=header_bets)
-	bets.set_index('Id', drop=True, inplace=True)
-	bets.index.name = None
-
-	query_preds = (
-		'''SELECT pred_id, pred_bet, pred_user, pred_date, pred_team1,
-		   pred_team2, pred_league, pred_field, pred_rawbet, pred_quote,
-		   pred_status, pred_result, pred_label FROM predictions WHERE
-		   pred_label != "NULL"''')
-	header_preds = ['Id', 'Bet', 'User', 'Date', 'Team1', 'Team2', 'League',
-	                'Field', 'Rawbet', 'Quote', 'Status', 'Result', 'Label']
-
-	preds = pd.DataFrame(list(c.execute(query_preds)), columns=header_preds)
-	preds.set_index('Id', drop=True, inplace=True)
-	preds.index.name = None
-
-	db.close()
-
-	return bets, preds
-
-
-def compute_indices(dataframe, name):
-
-	indices = []
-
-	for i, g in dataframe.groupby('Bet'):
-		if name not in g['User'].values and not indices:
-			indices.append(0)
-		elif name not in g['User'].values:
-			indices.append(indices[-1])
-		else:
-			df = dataframe[(dataframe['Bet'] <= i) &
-			               (dataframe['User'] == name)]
-			df_win = df[df['Label'] == 'WINNING']
-			if len(df_win):
-				indices.append(np.prod(df_win['Quote'])/len(df))
-			else:
-				indices.append(0)
-
-	return np.array(indices)
-
-
-def normalize_indices():
-
-	data = {name: players[name].indices for name in players}
-
-	for i in range(len(bets)):
-		maximum = max([data[name][i] for name in data])
-		for name in data:
-			players[name].indices[i] /= maximum
-
-
-def stats_on_teams_or_bets(string):
-
-	def for_teams(label):
-
-		res = preds[preds['Label'] == label][['Team1', 'Team2']]
-		res = pd.concat([res['Team1'], res['Team2']])
-		res = res.value_counts()
-
-		return {team: res.loc[team] for team in res.index}
-
-	def for_bets(label):
-
-		res = preds[preds['Label'] == label]['Rawbet']
-		res = res.value_counts()
-
-		return {bet: res.loc[bet] for bet in res.index}
-
-	if string == 'teams':
-		win = for_teams('WINNING')
-		lose = for_teams('LOSING')
-
-	else:
-		win = for_bets('WINNING')
-		lose = for_bets('LOSING')
-
-	total = {x: (win.get(x, 0) + lose.get(x, 0)) for x in set(win) | set(lose)}
-
-	# Teams which played x times with x<th will not be counted
-	th = 6
-	win = [(round(win[team] / total[team] * 100, 1), team) for team
-			in win if total[team] >= th]
-	win.sort(key=lambda x: x[0], reverse=True)
-
-	lose = [(round(lose[team] / total[team] * 100, 1), team) for team
-			in lose if total[team] >= th]
-	lose.sort(key=lambda x: x[0], reverse=True)
-
-	return win, lose
-
-
-def winning_preds():
-
-	return round(len(preds[preds['Label'] == 'WINNING'])/len(preds) * 100, 1)
-
-
-def winning_combos():
-
-	comb = preds[preds['Rawbet'].str.contains('+', regex=False)]
-
-	return round(len(comb[comb['Label'] == 'WINNING']) / len(comb) * 100, 1)
-
-
-def money_bal():
-
-	return bets[bets['Result'] == 'WINNING']['Prize'].sum() - bets['Euros'].sum()
-
-
-def quotes_rec():
-
-	maximum = preds[preds['Label'] == 'WINNING']['Quote'].max()
-	minimum = preds[preds['Label'] == 'LOSING']['Quote'].min()
-
-	win = (maximum,
-	       '/'.join(list(preds[preds['Quote'] == maximum]['User'].values)))
-	lose = (minimum,
-	       '/'.join(list(preds[preds['Quote'] == minimum]['User'].values)))
-
-	return win, lose
-
-
-def score():
-
-		fin_data = [(name, players[name].indices[-1]) for name in players]
-		fin_data.sort(key=lambda x: x[1], reverse=True)
-
-		names = [el[0] for el in fin_data]
-		indices = [round(el[1], 3) for el in fin_data]
-		ratio = [players[name].ratio for name in names]
-		perc = [players[name].perc for name in names]
-		mean_quote = [players[name].mean_quote for name in names]
-		colors = [colors_dict[name] for name in names]
-
-		bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
-					   linewidth=0.5, clip_on=False)
-		plt.xticks(range(5), names, fontsize=14)
-		plt.ylim(0, 1.35)
-		plt.box(on=None)
-		plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
-		plt.tick_params(axis='y', which='both', left=False, labelleft=False)
-
-		for i, bar in enumerate(bars):
-			text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], mean_quote[i])
-			plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
-					 '{}'.format(text), ha='center', va='bottom', fontsize=10,
-					 style='italic')
-		for i, bar in enumerate(bars):
-			text = '{}'.format(indices[i])
-			plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.22,
-					 '{}'.format(text), ha='center', va='bottom', fontsize=12,
-					 fontweight='bold')
-		for bar in bars:
-			if not bar.get_height():
-				bar.set_linewidth(0)
-
-		plt.savefig('score.png', dpi=120, bbox_inches='tight')
-		plt.gcf().clear()
-
-
 def cake():
 
 	"""
@@ -295,6 +123,93 @@ def cake():
 			autotext[x].set_fontsize(18)
 
 	plt.savefig('cake.png', dpi=120, bbox_inches='tight')
+	plt.gcf().clear()
+
+
+def compute_indices(dataframe, name):
+
+	indices = []
+
+	for i, g in dataframe.groupby('Bet'):
+		if name not in g['User'].values and not indices:
+			indices.append(0)
+		elif name not in g['User'].values:
+			indices.append(indices[-1])
+		else:
+			df = dataframe[(dataframe['Bet'] <= i) &
+			               (dataframe['User'] == name)]
+			df_win = df[df['Label'] == 'WINNING']
+			if len(df_win):
+				indices.append(np.prod(df_win['Quote'])/len(df))
+			else:
+				indices.append(0)
+
+	return np.array(indices)
+
+
+def money_bal():
+
+	return bets[bets['Result'] == 'WINNING']['Prize'].sum() - bets['Euros'].sum()
+
+
+def normalize_indices():
+
+	data = {name: players[name].indices for name in players}
+
+	for i in range(len(bets)):
+		maximum = max([data[name][i] for name in data])
+		for name in data:
+			players[name].indices[i] /= maximum
+
+
+def quotes_rec():
+
+	maximum = preds[preds['Label'] == 'WINNING']['Quote'].max()
+	minimum = preds[preds['Label'] == 'LOSING']['Quote'].min()
+
+	win = (maximum,
+	       '/'.join(list(preds[preds['Quote'] == maximum]['User'].values)))
+	lose = (minimum,
+	       '/'.join(list(preds[preds['Quote'] == minimum]['User'].values)))
+
+	return win, lose
+
+
+def score():
+
+	fin_data = [(name, players[name].indices[-1]) for name in players]
+	fin_data.sort(key=lambda x: x[1], reverse=True)
+
+	names = [el[0] for el in fin_data]
+	indices = [round(el[1], 3) for el in fin_data]
+	ratio = [players[name].ratio for name in names]
+	perc = [players[name].perc for name in names]
+	mean_quote = [players[name].mean_quote for name in names]
+	colors = [colors_dict[name] for name in names]
+
+	bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
+	               linewidth=0.5, clip_on=False)
+	plt.xticks(range(5), names, fontsize=14)
+	plt.ylim(0, 1.35)
+	plt.box(on=None)
+	plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
+	plt.tick_params(axis='y', which='both', left=False, labelleft=False)
+
+	for i, bar in enumerate(bars):
+		text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], mean_quote[i])
+		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
+		         '{}'.format(text), ha='center', va='bottom', fontsize=10,
+		         style='italic')
+	for i, bar in enumerate(bars):
+		text = '{}'.format(indices[i])
+		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.22,
+		         '{}'.format(text), ha='center', va='bottom', fontsize=12,
+		         fontweight='bold')
+	for bar in bars:
+		if not bar.get_height():
+			bar.set_linewidth(0)
+
+	plt.savefig('score.png', dpi=120, bbox_inches='tight')
 	plt.gcf().clear()
 
 
@@ -446,6 +361,78 @@ def stats_of_the_month():
 	plot(dict_win, dict_lose)
 
 
-bets, preds = update_bets_preds()
-players = {name: Player(name) for name in partecipants}
-stats = Stats()
+def stats_on_teams_or_bets(string):
+
+	def for_teams(label):
+
+		res = preds[preds['Label'] == label][['Team1', 'Team2']]
+		res = pd.concat([res['Team1'], res['Team2']])
+		res = res.value_counts()
+
+		return {team: res.loc[team] for team in res.index}
+
+	def for_bets(label):
+
+		res = preds[preds['Label'] == label]['Rawbet']
+		res = res.value_counts()
+
+		return {bet: res.loc[bet] for bet in res.index}
+
+	if string == 'teams':
+		win = for_teams('WINNING')
+		lose = for_teams('LOSING')
+
+	else:
+		win = for_bets('WINNING')
+		lose = for_bets('LOSING')
+
+	total = {x: (win.get(x, 0) + lose.get(x, 0)) for x in set(win) | set(lose)}
+
+	# Teams which played x times with x<th will not be counted
+	th = 6
+	win = [(round(win[team] / total[team] * 100, 1), team) for team
+			in win if total[team] >= th]
+	win.sort(key=lambda x: x[0], reverse=True)
+
+	lose = [(round(lose[team] / total[team] * 100, 1), team) for team
+			in lose if total[team] >= th]
+	lose.sort(key=lambda x: x[0], reverse=True)
+
+	return win, lose
+
+
+def update_bets_preds():
+
+	bets = dbf.get_table_content('bets', columns_out=['bet_status'],
+	                             where='bet_result != "Unknown"',
+	                             dataframe=True)
+	bets.set_index('bet_id', drop=True, inplace=True)
+	bets.index.name = None
+	bets.columns = ['Date', 'Euros', 'Prize', 'Result']
+
+	preds = dbf.get_table_content('predictions', columns_out=['pred_status'],
+	                              where='pred_result != "NULL"',
+	                              dataframe=True)
+	preds.set_index('pred_id', drop=True, inplace=True)
+	preds.index.name = None
+	preds.columns = ['Bet', 'User', 'Date', 'Team1', 'Team2', 'League',
+	                 'Field', 'Rawbet', 'Quote', 'Result', 'Label']
+
+	return bets, preds
+
+
+def winning_combos():
+
+	comb = preds[preds['Rawbet'].str.contains('+', regex=False)]
+
+	return round(len(comb[comb['Label'] == 'WINNING']) / len(comb) * 100, 1)
+
+
+def winning_preds():
+
+	return round(len(preds[preds['Label'] == 'WINNING'])/len(preds) * 100, 1)
+
+
+# bets, preds = update_bets_preds()
+# players = {name: Player(name) for name in partecipants}
+# stats = Stats()

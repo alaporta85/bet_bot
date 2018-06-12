@@ -275,7 +275,7 @@ def format_day(input_day):
 	return new_date
 
 
-def all_bets_per_team(db, c, team_name, league_id):
+def all_bets_per_team(team_name, league_id):
 
 	"""
 	Return two text messages: one showing all the standard bets and the
@@ -283,16 +283,16 @@ def all_bets_per_team(db, c, team_name, league_id):
 	league whose id is "league_id" and team "team_name" is playing.
 	"""
 
-	fields2avoid = [i for i in range(17, 31)]
+	fields2avoid = [i for i in range(4, 14)] + [i for i in range(17, 31)]
 
 	try:
-		match_id, team1, team2 = list(
-				c.execute('''SELECT match_id, match_team1, match_team2 FROM
-							 matches WHERE match_league = ? AND
-							 (match_team1 = ? OR match_team2 = ?)''',
-						 (league_id, team_name, team_name,)))[0]
+		match_id, team1, team2 = dbf.get_table_content(
+				'matches',
+				columns_in=['match_id', 'match_team1', 'match_team2'],
+				where=('match_league = {} AND ' +
+				       '(match_team1 = "{}" OR match_team2 = "{}")').
+				format(league_id, team_name, team_name))
 	except IndexError:
-		db.close()
 		raise ValueError('Quotes not available')
 
 	team1 = team1.replace('*', '')
@@ -301,13 +301,15 @@ def all_bets_per_team(db, c, team_name, league_id):
 	message_standard = '<b>{} - {}: STANDARD</b>\n'.format(team1, team2)
 	message_combo = '<b>{} - {}: COMBO</b>\n'.format(team1, team2)
 
-	fields = list(c.execute('''SELECT field_id, field_value FROM fields'''))
+	fields = dbf.get_table_content(
+			'fields', columns_in=['field_id', 'field_value'])
 	fields = [el for el in fields if el[0] not in fields2avoid]
 
 	fields_added = []
 	for field_id, field_value in fields:
-		field_name = list(c.execute('''SELECT field_name FROM fields WHERE
-									   field_id = ?''', (field_id,)))[0][0]
+		field_name = dbf.get_table_content(
+				'fields', columns_in=['field_name'],
+				where='field_id = {}'.format(field_id))
 		if field_name not in fields_added:
 			fields_added.append(field_name)
 			if '+' not in field_name:
@@ -316,17 +318,11 @@ def all_bets_per_team(db, c, team_name, league_id):
 			else:
 				COMBO = True
 				message_combo += '\n\n<i>{}</i>'.format(field_name)
-		try:
-			quote = list(c.execute('''SELECT quote_value FROM quotes WHERE
-								   quote_match = ? AND quote_field = ?''',
-								   (match_id, field_id)))[0][0]
-		except IndexError:
-			if not COMBO:
-				message_standard += '\n<b>{}</b>: NOT FOUND'.format(
-																   field_value)
-			else:
-				message_combo += '\n<b>{}</b>: NOT FOUND'.format(field_value)
-			continue
+
+		quote = dbf.get_table_content(
+				'quotes', columns_in=['quote_value'],
+				where='quote_match = {} AND quote_field = "{}"'.
+				format(match_id, field_id))
 
 		if not COMBO:
 			message_standard += '\n<b>{}</b>:    @{}'.format(field_value,
