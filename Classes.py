@@ -403,16 +403,16 @@ def stats_on_teams_or_bets(string):
 
 def update_bets_preds():
 
-	bets = dbf.get_table_content('bets', columns_out=['bet_status'],
-	                             where='bet_result != "Unknown"',
-	                             dataframe=True)
+	bets = dbf.db_select('bets', columns_out=['bet_status'],
+	                     where='bet_result != "Unknown"',
+	                     dataframe=True)
 	bets.set_index('bet_id', drop=True, inplace=True)
 	bets.index.name = None
 	bets.columns = ['Date', 'Euros', 'Prize', 'Result']
 
-	preds = dbf.get_table_content('predictions', columns_out=['pred_status'],
-	                              where='pred_result != "NULL"',
-	                              dataframe=True)
+	preds = dbf.db_select('predictions', columns_out=['pred_status'],
+	                      where='pred_result != "NULL"',
+	                      dataframe=True)
 	preds.set_index('pred_id', drop=True, inplace=True)
 	preds.index.name = None
 	preds.columns = ['Bet', 'User', 'Date', 'Team1', 'Team2', 'League',

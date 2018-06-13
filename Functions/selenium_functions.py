@@ -2,7 +2,6 @@ import os
 import time
 import datetime
 from selenium.common.exceptions import TimeoutException
-from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -388,9 +387,8 @@ def fill_db_with_quotes():  # UPDATED
 	browser = go_to_lottomatica(0)
 	dbf.empty_table('quotes')
 	dbf.empty_table('matches')
-	db, c = dbf.start_db()
 
-	all_fields = dbf.get_table_content('fields', columns_in=['field_name'])
+	all_fields = dbf.db_select('fields', columns_in=['field_name'])
 
 	for league in countries:
 		start = time.time()
@@ -417,9 +415,9 @@ def fill_db_with_quotes():  # UPDATED
 		if skip_league:
 			continue
 
-		league_id = dbf.get_table_content('leagues', columns_in=['league_id'],
-		                                  where='league_name = "{}"'.
-		                                  format(league))
+		league_id = dbf.db_select('leagues', columns_in=['league_id'],
+		                          where='league_name = "{}"'.
+		                          format(league))[0]
 		for i in range(3):
 			try:
 				buttons = './/div[@class="block-event event-description"]'
@@ -434,9 +432,9 @@ def fill_db_with_quotes():  # UPDATED
 						'.//div[@class="event-date ng-binding"]').\
 					text.split(' - ')
 				match.click()
-				last_id, back = update_matches_table(browser, c, league_id,
-											   ddmmyy, hhmm)
-				update_quotes_table(browser, db, c, all_fields, last_id)
+				last_id, back = update_matches_table(browser, league_id,
+											         ddmmyy, hhmm)
+				update_quotes_table(browser, all_fields, last_id)
 				scroll_to_element(browser, 'false', back)
 				back.click()
 			except IndexError:
@@ -447,7 +445,6 @@ def fill_db_with_quotes():  # UPDATED
 															seconds))
 				break
 
-	db.close()
 	browser.quit()
 
 
@@ -685,7 +682,7 @@ def simulate_hover_and_click(browser, element):
 		raise ConnectionError(conn_err_message)
 
 
-def update_matches_table(browser, c, league_id, d_m_y, h_m):  # UPDATED
+def update_matches_table(browser, league_id, d_m_y, h_m):  # UPDATED
 
 	back = './/a[@class="back-competition ng-scope"]'
 	wait_clickable(browser, 30, back)
@@ -705,16 +702,20 @@ def update_matches_table(browser, c, league_id, d_m_y, h_m):  # UPDATED
 	match_date = match_date.replace(hour=int(h_m.split(':')[0]),
 									minute=int(h_m.split(':')[1]))
 	time.sleep(4)
-	c.execute('''INSERT INTO matches (match_league, match_team1, match_team2,
-				 match_date, match_url) VALUES (?, ?, ?, ?, ?)
-			  ''', (league_id, team1, team2, match_date, browser.current_url))
 
-	last_id = c.lastrowid
+	last_id = dbf.db_insert(
+			'matches',
+			columns=('(match_league, match_team1, match_team2, ' +
+			         'match_date, match_url)'),
+			values='({}, "{}", "{}", "{}", "{}")'.format(
+					league_id, team1, team2, match_date,
+					browser.current_url),
+			last_row=True)
 
 	return last_id, back
 
 
-def update_quotes_table(browser, db, c, all_fields, last_id):  # UPDATED
+def update_quotes_table(browser, all_fields, last_id):  # UPDATED
 
 	fields_bets = find_all_fields_and_bets(browser)
 
@@ -738,21 +739,24 @@ def update_quotes_table(browser, db, c, all_fields, last_id):  # UPDATED
 				scroll_to_element(browser, 'false', bet_quote)
 				bet_quote = bet_quote.text
 
-				if len(bet_quote) == 1:
-					bet_quote = '@LOCKED'
-				else:
-					bet_quote = float(bet_quote)
-
-				field_id = dbf.get_table_content(
+				field_id = dbf.db_select(
 						'fields', columns_in=['field_id'],
 						where='field_name = "{}" AND field_value = "{}"'.
-						format(field_name, bet_name))
+						format(field_name, bet_name))[0]
 
-				c.execute(
-						'''INSERT INTO quotes (quote_match, quote_field,
-						   quote_value) VALUES (?, ?, ?)''',
-						(last_id, field_id, bet_quote))
-				db.commit()
+				if len(bet_quote) == 1:
+					bet_quote = 'NOT AVAILABLE'
+					values = '({}, {}, "{}")'.format(last_id, field_id,
+						                             bet_quote)
+				else:
+					bet_quote = float(bet_quote)
+					values = '({}, {}, {})'.format(last_id, field_id,
+					                               bet_quote)
+
+				dbf.db_insert(
+						'quotes',
+						columns='(quote_match, quote_field, quote_value)',
+						values=values)
 
 
 def wait_clickable(browser, seconds, element):

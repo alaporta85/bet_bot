@@ -1,26 +1,28 @@
 import datetime
+import pandas as pd
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 from Functions import logging as log
 
+
 logger = log.get_flogger()
 
 
-def check_still_to_confirm(db, c, first_name):
+def check_still_to_confirm(first_name):
 
-	# This a list of the users who have their bets in the status
-	# 'Not Confirmed'
-	users_list = list(c.execute('''SELECT pred_user FROM predictions WHERE
-								   pred_status = "Not Confirmed"'''))
-	users_list = [element[0] for element in users_list]
+	users_list = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_user'],
+			where='pred_status = "Not Confirmed"')
 
 	if first_name in users_list:
 
-		ref_list = list(c.execute(
-				'''SELECT pred_team1, pred_team2, pred_rawbet, pred_quote FROM
-				   predictions WHERE pred_status = "Not Confirmed" AND
-				   pred_user = ?''', (first_name,)))
-		db.close()
+		ref_list = dbf.db_select(
+				table='predictions',
+				columns_in=['pred_team1', 'pred_team2',
+				            'pred_rawbet', 'pred_quote'],
+				where='pred_status = "Not Confirmed" AND pred_user = "{}"'.
+				format(first_name))
 
 		team1, team2, bet, bet_quote = ref_list[0]
 
@@ -36,7 +38,7 @@ def check_still_to_confirm(db, c, first_name):
 		return False
 
 
-def update_tables_and_ref_list(db, c, first_name, bet_id):
+def update_tables_and_ref_list(first_name, bet_id):
 
 	"""
 	Called inside the command /confirm.
@@ -51,26 +53,28 @@ def update_tables_and_ref_list(db, c, first_name, bet_id):
 	if not bet_id:
 
 		# If not, we create it and update 'matches' table
-		c.execute('''INSERT INTO bets (bet_status, bet_result)
-		VALUES (?, ?)''', ('Pending', 'Unknown'))
+		bet_id = dbf.db_insert(
+				table='bets',
+				columns='(bet_status, bet_result)',
+				values='("Pending", "Unknown")',
+				last_row=True)
 
-		bet_id = c.lastrowid
+	dbf.db_update(
+			table='predictions',
+			columns='pred_bet = {}, pred_status = "Confirmed"'.format(bet_id),
+			where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
+			format(first_name))
 
-	c.execute('''UPDATE predictions SET pred_bet = ?, pred_status = "Confirmed"
-			  WHERE pred_user = ? AND pred_status = "Not Confirmed"''',
-			  (bet_id, first_name))
-
-	ref_list = list(c.execute('''SELECT pred_team1, pred_team2, pred_league
-							  FROM bets INNER JOIN predictions on
-							  pred_bet = bet_id WHERE bet_id = ? AND
-							  pred_user = ?''', (bet_id, first_name)))
-
-	db.commit()
+	ref_list = dbf.db_select(
+			table='bets INNER JOIN predictions on pred_bet = bet_id',
+			columns_in=['pred_team1', 'pred_team2', 'pred_league'],
+			where='bet_id = {} AND pred_user = "{}"'.format(bet_id,
+			                                                first_name))
 
 	return ref_list
 
 
-def check_if_duplicate(c, first_name, match, ref_list):
+def check_if_duplicate(first_name, match, ref_list):
 
 	message = ''
 
@@ -81,8 +85,10 @@ def check_if_duplicate(c, first_name, match, ref_list):
 	league = match[4]
 
 	if (team1, team2, league) in ref_list:
-		c.execute('''DELETE FROM predictions WHERE pred_id = ?''',
-				  (pred_id,))
+		dbf.db_delete(
+				table='predictions',
+				where='pred_id = {}'.format(pred_id))
+
 		message = ('{}, your bet on the match '.format(user) +
 				   '{} - {} has '.format(team1, team2) +
 				   'been canceled because ' +
@@ -91,7 +97,7 @@ def check_if_duplicate(c, first_name, match, ref_list):
 	return message
 
 
-def create_matches_to_play(c, bet_id):
+def create_matches_to_play(bet_id):
 
 	"""
 	Called inside the command /play_bet.
@@ -99,31 +105,31 @@ def create_matches_to_play(c, bet_id):
 	basket.
 	"""
 
-	some_data = list(c.execute('''SELECT pred_team1, pred_team2, pred_league,
-							   pred_field FROM bets INNER JOIN predictions on
-							   pred_bet = bet_id WHERE bet_id = ?''',
-							   (bet_id,)))
+	data = dbf.db_select(
+			table='bets INNER JOIN predictions on pred_bet = bet_id',
+			columns_in=['pred_team1', 'pred_team2',
+			            'pred_league', 'pred_field'],
+			where='bet_id = {}'.format(bet_id))
+
 	matches_to_play = []
 
-	for match in some_data:
-		team1 = match[0]
-		team2 = match[1]
-		league = match[2]
-		field_id = match[3]
+	for team1, team2, league, field_id in data:
 
 		if league == 8:
 			team1 = '*' + team1
 			team2 = '*' + team2
 
-		field_name, field_value = list(c.execute('''SELECT field_name,
-												 field_value FROM fields WHERE
-												 field_id = ?''',
-												 (field_id,)))[0]
+		field_name, field_value = dbf.db_select(
+				table='fields',
+				columns_in=['field_name', 'field_value'],
+				where='field_id = {}'.format(field_id))[0]
 
-		url = list(c.execute('''SELECT match_url FROM matches WHERE
-							 match_team1 = ? AND match_team2 = ? AND
-							 match_league = ?''', (team1, team2,
-												   league)))[0][0]
+
+		url = dbf.db_select(
+				table='matches',
+				columns_in=['match_url'],
+				where=('match_team1 = "{}" AND match_team2 = "{}" AND ' +
+				       'match_league = {}'.format(team1, team2, league))[0])
 
 		matches_to_play.append((team1, team2, field_name, field_value, url))
 
@@ -146,42 +152,82 @@ def matches_per_day(day):
 		else:
 			return '{:>.2f}'.format(afloat)
 
-	message = ''
-	requested_day = format_day(day)
+	weekdays = {'lun': 0, 'mar': 1, 'mer': 2, 'gio': 3,
+	            'ven': 4, 'sab': 5, 'dom': 6}
 
-	db, c = dbf.start_db()
+	message = ''
+	dt = datetime.date.today()
+	requested_day = weekdays[day]
+	while dt.weekday() != requested_day:
+		dt += datetime.timedelta(1)
+
 	try:
-		bet_id = list(c.execute('''SELECT bet_id FROM bets WHERE
-								bet_status = "Pending" '''))[0][0]
+		bet_id = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+				where='bet_status = "Pending"')[0]
 	except IndexError:
 		bet_id = 0
 
-	confirmed_matches = list(c.execute('''SELECT pred_league, pred_team1,
-									   pred_team2, pred_time FROM bets INNER
-									   JOIN predictions on pred_bet = bet_id
-									   WHERE bet_id = ?''', (bet_id,)))
+	all_matches = dbf.db_select(
+			table='matches',
+			columns_out=['match_id', 'match_url'],
+			dataframe=True)
+
+	all_matches['match_date'] = all_matches['match_date'].apply(
+			lambda x: datetime.datetime.strptime(
+					x, '%Y-%m-%d %H:%M:%S').date())
+	all_matches = all_matches[all_matches['match_date'] == dt]
+
+	confirmed = dbf.db_select(
+			table='bets INNER JOIN predictions on pred_bet = bet_id',
+			columns_in=['pred_date', 'pred_team1',
+			            'pred_team2', 'pred_league'],
+			where='bet_id = {}'.format(bet_id),
+			dataframe=True)
+	if len(confirmed):
+		confirmed.columns = ['match_date', 'match_team1',
+		                     'match_team2', 'match_league']
+		confirmed = confirmed[['match_league', 'match_team1',
+		                       'match_team2', 'match_date']]
+
+		all_matches = pd.concat([all_matches, confirmed]).drop_duplicates(
+			subset=['match_team1', 'match_team2'], keep=False)
 
 	for league in sf.countries:
 
-		league_id = list(c.execute('''SELECT league_id FROM leagues WHERE
-								   league_name = ?''', (league,)))[0][0]
+		league_id = dbf.db_select(
+				table='leagues',
+				columns_in=['league_id'],
+				where='league_name = "{}"'.format(league))[0]
 
-		matches_to_print = list(c.execute('''SELECT match_id, match_team1,
-										  match_team2, match_time FROM matches
-										  WHERE match_date = ? AND
-										  match_league = ?''', (requested_day,
-																league_id)))
-		for match in confirmed_matches:
+		matches_to_print = dbf.db_select(
+				table='matches',
+				columns_in=['match_id', 'match_team1',
+				            'match_team2', 'match_date'],
+				where='match_league = {}'.format(league_id),
+				dataframe=True)
+
+		matches_to_print['match_date'] = matches_to_print['match_date'].apply(
+			lambda x: datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S').date())
+
+		for dt, team1, team2, league2 in confirmed_matches:
 			try:
-				match_id = list(c.execute('''SELECT match_id FROM matches WHERE
-										  match_league = ? AND match_team1 = ?
-										  AND match_team2 = ?''',
-										  (league_id, match[1],
-										   match[2])))[0][0]
+				match_id = dbf.db_select(
+						table='matches',
+						columns_in=['match_id'],
+						where=('match_league = ? AND match_team1 = ? AND ' +
+						       'match_team2 = ?'.format(league_id, team1,
+						                                team2)))[0]
+				# match_id = list(c.execute('''SELECT match_id FROM matches WHERE
+				# 						  match_league = ? AND match_team1 = ?
+				# 						  AND match_team2 = ?''',
+				# 						  (league_id, match[1],
+				# 						   match[2])))[0][0]
 			except IndexError:
 				continue
 
-			new_tuple = (match_id, match[1], match[2], match[3])
+			new_tuple = (match_id, team1, team2, league2)
 
 			if new_tuple in matches_to_print:
 				matches_to_print.remove(new_tuple)
@@ -196,29 +242,37 @@ def matches_per_day(day):
 				match_time = match_time[:2] + ':' + match_time[2:]
 
 				try:
-					short_team1 = list(c.execute('''SELECT team_short_value
-												 FROM teams_short WHERE
-												 team_short_name = ?''',
-												 (team1,)))[0][0]
+					short_team1 = dbf.db_select(
+							table='teams_short',
+							columns_in=['team_short_value'],
+							where='team_short_name = "{}"'.format(team1))[0]
 				except IndexError:
 					short_team1 = team1[:3]
 				try:
-					short_team2 = list(c.execute('''SELECT team_short_value
-												 FROM teams_short WHERE
-												 team_short_name = ?''',
-												 (team2,)))[0][0]
+					short_team2 = dbf.db_select(
+							table='teams_short',
+							columns_in=['team_short_value'],
+							where='team_short_name = "{}"'.format(team2))[0]
 				except IndexError:
 					short_team2 = team2[:3]
 
-				quote1 = list(c.execute('''SELECT quote_value FROM quotes WHERE
-										quote_match = ? AND quote_field = 1''',
-										(match_id,)))[0][0]
-				quoteX = list(c.execute('''SELECT quote_value FROM quotes WHERE
-										quote_match = ? AND quote_field = 2''',
-										(match_id,)))[0][0]
-				quote2 = list(c.execute('''SELECT quote_value FROM quotes WHERE
-										quote_match = ? AND quote_field = 3''',
-										(match_id,)))[0][0]
+				quote1 = dbf.db_select(
+						table='quotes',
+						columns_in=['quote_value'],
+						where='quote_match = {} AND quote_field = 1'.
+						format(match_id))[0]
+
+				quoteX = dbf.db_select(
+						table='quotes',
+						columns_in=['quote_value'],
+						where='quote_match = {} AND quote_field = 2'.
+						format(match_id))[0]
+
+				quote2 = dbf.db_select(
+						table='quotes',
+						columns_in=['quote_value'],
+						where='quote_match = {} AND quote_field = 3'.
+						format(match_id))[0]
 
 				quote1 = format_quote(quote1)
 				quoteX = format_quote(quoteX)
@@ -231,8 +285,6 @@ def matches_per_day(day):
 																quote1,
 																quoteX,
 																quote2)
-
-	db.close()
 
 	if message:
 		return message
@@ -399,3 +451,27 @@ def look_for_quote(text):
 	db.close()
 
 	return team1, team2, field_id, league_id, nice_bet, quote
+
+
+def todays_date():
+
+    """
+    Return a tuple containing the date of the day and the time as integers.
+    If command is sent on May 16th, 1985 at 15:48 the output will be:
+
+        (19850516, 1548)
+    """
+
+    date_time = str(datetime.datetime.now())
+
+    date = date_time.split(' ')[0]
+    time = date_time.split(' ')[1]
+
+    date = '{}/{}/{}'.format(date.split('-')[0],
+                             date.split('-')[1],
+                             date.split('-')[2])
+
+    date = int(date.replace('/', ''))
+    time = int(time.replace(':', '')[:4])
+
+    return date, time
