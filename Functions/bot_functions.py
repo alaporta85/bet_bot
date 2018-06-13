@@ -194,23 +194,6 @@ def matches_per_day(day):
 		all_matches = pd.concat([all_matches, confirmed]).drop_duplicates(
 			subset=['match_team1', 'match_team2'], keep=False)
 
-	for league in sf.countries:
-
-		league_id = dbf.db_select(
-				table='leagues',
-				columns_in=['league_id'],
-				where='league_name = "{}"'.format(league))[0]
-
-		matches_to_print = dbf.db_select(
-				table='matches',
-				columns_in=['match_id', 'match_team1',
-				            'match_team2', 'match_date'],
-				where='match_league = {}'.format(league_id),
-				dataframe=True)
-
-		matches_to_print['match_date'] = matches_to_print['match_date'].apply(
-			lambda x: datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S').date())
-
 		for dt, team1, team2, league2 in confirmed_matches:
 			try:
 				match_id = dbf.db_select(
