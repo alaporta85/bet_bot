@@ -194,27 +194,6 @@ def matches_per_day(day):
 		all_matches = pd.concat([all_matches, confirmed]).drop_duplicates(
 			subset=['match_team1', 'match_team2'], keep=False)
 
-		for dt, team1, team2, league2 in confirmed_matches:
-			try:
-				match_id = dbf.db_select(
-						table='matches',
-						columns_in=['match_id'],
-						where=('match_league = ? AND match_team1 = ? AND ' +
-						       'match_team2 = ?'.format(league_id, team1,
-						                                team2)))[0]
-				# match_id = list(c.execute('''SELECT match_id FROM matches WHERE
-				# 						  match_league = ? AND match_team1 = ?
-				# 						  AND match_team2 = ?''',
-				# 						  (league_id, match[1],
-				# 						   match[2])))[0][0]
-			except IndexError:
-				continue
-
-			new_tuple = (match_id, team1, team2, league2)
-
-			if new_tuple in matches_to_print:
-				matches_to_print.remove(new_tuple)
-
 		if matches_to_print:
 			message += '\n\n<b>{}</b>'.format(league)
 			for match in matches_to_print:
