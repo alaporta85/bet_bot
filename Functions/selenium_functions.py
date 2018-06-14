@@ -266,33 +266,53 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
 	CLICK_CHECK = False
 
 	try:
-		fields_bets = find_all_fields_and_bets(browser)
+		all_panels = find_all_panels(browser, 0)
 
-		for field_, bets in zip(fields_bets[0], fields_bets[1]):
-			scroll_to_element(browser, 'false', field_)
-			field_name = field_.text.upper()
+		for panel in all_panels:
 
-			if field_name == field:
-				all_bets = bets.find_elements_by_xpath(
-						'.//div[@class="selection-name ng-binding"]')
+			click_panel(browser, panel)
 
-				for i, new_bet in enumerate(all_bets):
-					scroll_to_element(browser, 'false', new_bet)
-					if field_name == 'ESITO FINALE 1X2 HANDICAP':
-						bet_name = new_bet.text.upper().split()[0]
-					else:
-						bet_name = new_bet.text.upper()
+			fields_path = ('./div[contains(@class, "group-market")]//' +
+			               'div[@class="market-info"]/div')
+			bets_path = ('./div[contains(@class, "group-market")]//' +
+			             'div[@class="market-selections"]')
 
-					if bet_name == bet:
+			fields = panel.find_elements_by_xpath(fields_path)
+			bets = panel.find_elements_by_xpath(bets_path)
 
-						bet_element = bets.find_elements_by_xpath(
-						   './/div[@class="item-selection ng-scope col-3"]'
-						)[i]
+			fields_bets = (fields, bets)
 
-						scroll_to_element(browser, 'false', bet_element)
-						simulate_hover_and_click(browser, bet_element)
-						CLICK_CHECK = True
-						break
+			for field_, bets in zip(fields_bets[0], fields_bets[1]):
+				scroll_to_element(browser, 'false', field_)
+				time.sleep(.5)
+				field_name = field_.text.upper()
+
+				if field_name == field:
+
+					all_bets = bets.find_elements_by_xpath(
+							'.//div[@ng-repeat="selection in prematchSingle' +
+							'EventMarketSimple.market.sel"]')
+
+					for i, new_bet in enumerate(all_bets):
+						scroll_to_element(browser, 'false', new_bet)
+						time.sleep(.5)
+						if field_name == 'ESITO FINALE 1X2 HANDICAP':
+							bet_name = new_bet.find_element_by_xpath(
+									'.//div[@class="selection-name ' +
+									'ng-binding"]').text.upper().split()[0]
+						else:
+							bet_name = new_bet.find_element_by_xpath(
+									'.//div[@class="selection-name ' +
+									'ng-binding"]').text.upper()
+
+						if bet_name == bet:
+
+							new_bet.click()
+							CLICK_CHECK = True
+							break
+
+				if CLICK_CHECK:
+					break
 
 			if CLICK_CHECK:
 				break
@@ -370,6 +390,16 @@ def click_league_button(browser, league):  # UPDATED
 		if panel.text.upper() == league:
 			panel.click()
 			break
+
+
+def click_panel(browser, panel):
+
+	button = panel.find_element_by_xpath(
+			'.//div[contains(@class, "group-name")]')
+	scroll_to_element(browser, 'false', button)
+	if 'active' not in button.get_attribute('class'):
+		button.click()
+		time.sleep(2)
 
 
 def fill_db_with_quotes():  # UPDATED
@@ -464,10 +494,7 @@ def find_all_fields_and_bets(browser):  # UPDATED
 	all_panels = find_all_panels(browser, 0)
 
 	for panel in all_panels:
-		scroll_to_element(browser, 'false', panel)
-		if 'active' not in panel.get_attribute('class'):
-			panel.click()
-			time.sleep(2)
+		click_panel(browser, panel)
 
 	all_fields_path = '//div[@class="market-info"]/div'
 	all_bets_path = '//div[@class="market-selections"]'
@@ -485,8 +512,8 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):  # UPDATED
 	TRICOMBO, ...).
 	"""
 
-	all_panels_path = ('//div[@class="item-group ng-scope"]/' +
-					   'div[contains(@class, "group-name")]')
+	all_panels_path = '//div[@class="item-group ng-scope"]'
+					   #'div[contains(@class, "group-name")]')
 	current_url = browser.current_url
 
 	try:
