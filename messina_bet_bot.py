@@ -536,6 +536,9 @@ def play(bot, update, args):
 						  message_id=mess_id,
 						  text='Logged in')
 
+	# Money left before playing the bet
+	money_before = sf.money(browser)
+
 	try:
 		sf.find_scommetti_box(browser)
 	except ConnectionError as e:
@@ -543,46 +546,22 @@ def play(bot, update, args):
 		logger.info(str(e))
 		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
-	# Money left before playing the bet
-	money_before = sf.money(browser)
+	logger.info('PLAY - Bet has been played.')
+	dbf.db_update(
+			table='bets',
+			columns=('bet_date = "{}", bet_euros = {}, ' +
+					 'bet_status = "{}"').format(
+					datetime.datetime.now(), euros, 'Placed'),
+			where='bet_status = "Pending"')
+	logger.info('PLAY - "bets" db table updated')
 
-	try:
-		button_path = ('.//button[@class="button-default no-margin-' +
-					   'bottom ng-scope"]')
-
-		button_list = browser.find_elements_by_xpath(button_path)
-	except NoSuchElementException:
-		logger.info('PLAY - "AGGIORNA" button is visible')
-		button_path = './/button[@class="button-default"]'
-		button_list = browser.find_elements_by_xpath(button_path)
-		for element in button_list:
-			if element.is_displayed():
-				print(element.text)
-				element.click()
-				time.sleep(3)
-				break
-
-	for element in button_list:
-		if element.is_displayed():
-			print(element.text)
-			element.click()
-			logger.info('PLAY - Bet has been played.')
-			dbf.db_update(
-					table='bets',
-					columns=('bet_date = "{}", bet_euros = {}, ' +
-					         'bet_status = "{}"').format(
-							datetime.datetime.now(), euros, 'Placed'),
-					where='bet_status = "Pending"')
-			logger.info('PLAY - "bets" db table updated')
-
-			bot.edit_message_text(chat_id=update.message.chat_id,
-								  message_id=mess_id, text='Done!')
-			break
+	bot.edit_message_text(chat_id=update.message.chat_id,
+						  message_id=mess_id, text='Done!')
 
 	time.sleep(30)
 
 	# Money after playing the bet
-	money_after = sf.money(browser, money_left_path)
+	money_after = sf.money(browser)
 
 	if money_after == money_before - euros:
 

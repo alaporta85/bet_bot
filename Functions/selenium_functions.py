@@ -284,7 +284,6 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
 
 			for field_, bets in zip(fields_bets[0], fields_bets[1]):
 				scroll_to_element(browser, 'false', field_)
-				time.sleep(.5)
 				field_name = field_.text.upper()
 
 				if field_name == field:
@@ -295,7 +294,6 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
 
 					for i, new_bet in enumerate(all_bets):
 						scroll_to_element(browser, 'false', new_bet)
-						time.sleep(.5)
 						if field_name == 'ESITO FINALE 1X2 HANDICAP':
 							bet_name = new_bet.find_element_by_xpath(
 									'.//div[@class="selection-name ' +
@@ -535,14 +533,14 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):  # UPDATED
 
 def find_scommetti_box(browser):
 
-	button_location = './/div[@class="change-bet ng-scope"]'
+	button_location = './/div[@class="buttons-betslip"]'
 
 	try:
-		wait_visible(browser, 20, button_location)
+		#wait_visible(browser, 20, button_location)
 		button = browser.find_element_by_xpath(button_location)
 		scroll_to_element(browser, 'false', button)
 
-		return button
+		button.click()
 	except TimeoutException:
 		raise ConnectionError('PLAY - "SCOMMETTI" container not found.')
 
@@ -557,7 +555,7 @@ def go_to_lottomatica(LIMIT_1):  # UPDATED
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
 	browser = webdriver.Chrome(chrome_path)
 	time.sleep(3)
-	browser.set_window_size(1400, 800)
+	#browser.set_window_size(1400, 800)
 
 	try:
 		browser.get(url)
@@ -697,9 +695,9 @@ def money(browser):
 
 	"""Extract the text from the HTML element and return it as a float."""
 
-	final_money = browser.find_element_by_xpath(xpath).text
-	final_money = final_money.replace('Saldo: ', '')
-	final_money = final_money.replace(' €', '')
+	money_path = './/span[@class="user-balance ng-binding"]'
+
+	final_money = browser.find_element_by_xpath(money_path).text
 	final_money = float(final_money.replace(',', '.'))
 
 	return final_money
