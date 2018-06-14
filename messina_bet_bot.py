@@ -32,17 +32,20 @@ def cancel(bot, update):
 
 	first_name = nickname(update.message.from_user.first_name)
 
-	users_list = dbf.db_select('predictions', columns_in=['pred_user'],
-	                           where='pred_status = "Not Confirmed"')
+	users_list = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_user'],
+	        where='pred_status = "Not Confirmed"')
 
 	if first_name not in users_list:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='{}, you have no bet to cancel.'
 								.format(first_name))
 
-	dbf.db_delete('predictions',
-	              where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
-	              format(first_name))
+	dbf.db_delete(
+			table='predictions',
+	        where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
+	        format(first_name))
 
 	return bot.send_message(
 			chat_id=update.message.chat_id,
@@ -64,8 +67,10 @@ def confirm(bot, update):
 
 	# This a list of the users who have their bets in the status
 	# 'Not Confirmed'
-	users_list = dbf.db_select('predictions', columns_in=['pred_user'],
-	                           where='pred_status = "Not Confirmed"')
+	users_list = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_user'],
+	        where='pred_status = "Not Confirmed"')
 
 	if first_name not in users_list:
 		return bot.send_message(
@@ -86,7 +91,7 @@ def confirm(bot, update):
 	# Now we delete all the bets of the same match which have not been
 	# confirmed
 	not_confirmed_matches = dbf.db_select(
-			'predictions',
+			table='predictions',
 			columns_in=['pred_id', 'pred_user', 'pred_team1', 'pred_team2',
 			            'pred_league'],
 			where='pred_status = "Not Confirmed"')
@@ -104,18 +109,22 @@ def confirm(bot, update):
 def create_summary(string):
 
 	if string == 'before':
-		bet_id = dbf.db_select('bets', columns_in=['bet_id'],
-								where='bet_status = "Pending"')
+		bet_id = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+				where='bet_status = "Pending"')
 	else:
 		bet_id = dbf.db_select(
-				'bets', columns_in=['bet_id'],
+				table='bets',
+				columns_in=['bet_id'],
 				where='bet_status = "Placed" AND bet_result = "Unknown"')[-1]
 
 	if string == 'before' and not bet_id:
 		return 'No bets yet. Choose the first one.'
 
+	bet_id = bet_id if not type(bet_id) == list else bet_id[0]
 	summary = dbf.db_select(
-			'bets INNER JOIN predictions on pred_bet = bet_id',
+			table='bets INNER JOIN predictions on pred_bet = bet_id',
 			columns_in=['pred_user', 'pred_date', 'pred_team1', 'pred_team2',
 			            'pred_rawbet', 'pred_quote'],
 			where='bet_id = {}'.format(bet_id))
@@ -151,14 +160,17 @@ def delete(bot, update):
 
 	first_name = nickname(update.message.from_user.first_name)
 
-	bet_id = dbf.db_select('bets', columns_in=['bet_id'],
-	                       where='bet_status = "Pending"')[0]
+	bet_id = dbf.db_select(
+			table='bets',
+			columns_in=['bet_id'],
+	        where='bet_status = "Pending"')[0]
 	if not bet_id:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='There are no "Pending" bets.')
 
 	bet_to_delete = dbf.db_select(
-			'predictions', columns_in=['pred_id'],
+			table='predictions',
+			columns_in=['pred_id'],
 			where=('pred_bet = {} AND pred_user = "{}" AND ' +
 			       'pred_status = "Confirmed"').format(bet_id, first_name))
 
@@ -167,15 +179,19 @@ def delete(bot, update):
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=message)
 
-	dbf.db_delete('predictions', where='pred_id = {}'.format(bet_to_delete[0]))
+	dbf.db_delete(
+			table='predictions',
+			where='pred_id = {}'.format(bet_to_delete[0]))
 
 	conf_bets_left = dbf.db_select(
-			'predictions', columns_in=['pred_id'],
+			table='predictions',
+			columns_in=['pred_id'],
 			where='pred_status = "Confirmed" AND pred_bet = {}'.format(bet_id))
 
 	if not conf_bets_left:
-		dbf.db_delete('bets',
-		              where='bet_id = {}'.format(bet_id))
+		dbf.db_delete(
+				table='bets',
+		        where='bet_id = {}'.format(bet_id))
 
 	return bot.send_message(
 			chat_id=update.message.chat_id,
@@ -206,10 +222,16 @@ def get(bot, update, args):
 								text='Please insert the bet.')
 
 	guess = ' '.join(args).upper()
-	team_id = jaccard_team(guess)
-	league_id, team_name = dbf.db_select(
-			'teams', columns_in=['team_league', 'team_name'],
-			where='team_id = {}'.format(team_id))[0]
+	input_team, input_bet = guess.split('_')
+	team_name = jaccard_team(input_team)
+	if '*' in team_name:
+		league_id = 8
+	else:
+		league_id = dbf.db_select(
+				table='teams',
+				columns_in=['team_league'],
+				where='team_name = "{}" AND team_league != 8'.
+				format(team_name))[0]
 
 	if '_' not in guess:
 
@@ -234,9 +256,7 @@ def get(bot, update, args):
 	# User sending the message
 	first_name = nickname(update.message.from_user.first_name)
 
-	_, bet = guess.split('_')
-	bet = bet.replace(' ', '').replace(',', '.')
-	guess = '_'.join([team_name, bet])
+	input_bet = input_bet.replace(' ', '').replace(',', '.')
 
 	warning_message = bf.check_still_to_confirm(first_name)
 	if warning_message:
@@ -258,14 +278,15 @@ def get(bot, update, args):
 			columns_in=['pred_team1', 'pred_team2'],
 			where='pred_status = "Confirmed" AND pred_bet = {}'.format(bet_id))
 
-	team1, team2, field_id, league_id, nice_bet, quote = bf.look_for_quote(
-																	guess)
+	team1, team2, field_id, nice_bet, quote = bf.look_for_quote(team_name,
+	                                                            input_bet)
 
 	if (not confirmed_matches
 	   or (team1, team2) not in confirmed_matches):
 
 		dt = dbf.db_select(
-				'matches', columns_in=['match_date'],
+				table='matches',
+				columns_in=['match_date'],
 				where='match_team1 = "{}" AND match_team2 = "{}"'.
 				format(team1, team2))[0]
 
@@ -274,7 +295,7 @@ def get(bot, update, args):
 
 		# Update table
 		dbf.db_insert(
-				'predictions',
+				table='predictions',
 				columns=('(pred_user, pred_date, pred_team1, pred_team2, ' +
 				         'pred_league, pred_field, pred_rawbet, pred_quote, ' +
 				         'pred_status)'),
@@ -338,20 +359,27 @@ def info(bot, update):
 
 def jaccard_team(string):
 
-	teams = dbf.db_select('teams', columns_in=['team_name'])
+	teams = dbf.db_select(
+			table='teams_alias',
+			columns_in=['team_alias_team', 'team_alias_name'])
+
 	dist = 10
 	tri_guess = set(ngrams(string, 3))
-	res = ''
+	team_id = 0
 
-	for t in teams:
+	for i, t in teams:
 		trit = set(ngrams(t, 3))
 		jd = jaccard_distance(tri_guess, trit)
 		if jd < dist:
 			dist = jd
-			res = t
+			team_id = i
 
-	return dbf.db_select('teams_alias', columns_in=['team_alias_team'],
-	                     where='team_alias_name = "{}"'.format(res))[0]
+	team = dbf.db_select(
+			table='teams',
+			columns_in=['team_name'],
+			where='team_id = {}'.format(team_id))[0]
+
+	return team
 
 
 def match(bot, update, args):
@@ -416,7 +444,7 @@ def play(bot, update, args):
 								text=message)
 
 	not_conf_list = dbf.db_select(
-			'predictions',
+			table='predictions',
 			columns_in=['pred_user', 'pred_team1', 'pred_team2', 'pred_field',
 			            'pred_rawbet'],
 			where='pred_status = "Not Confirmed"')
@@ -434,8 +462,10 @@ def play(bot, update, args):
 									  'then play again.'))
 
 	# bet_id of the Pending bet
-	bet_id = dbf.db_select('bets', columns_in=['bet_id'],
-	                       where='bet_status = "Pending"')
+	bet_id = dbf.db_select(
+			table='bets',
+			columns_in=['bet_id'],
+	        where='bet_status = "Pending"')
 	if not bet_id:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='No bets to play.')
@@ -552,7 +582,7 @@ def play(bot, update, args):
 			element.click()
 			logger.info('PLAY - Bet has been played.')
 			dbf.db_update(
-					'bets',
+					table='bets',
 					columns=('bet_date = "{}", bet_euros = {}, ' +
 					         'bet_status = "{}"').format(
 							datetime.datetime.now(), euros, 'Placed'),
@@ -641,7 +671,7 @@ def update_results(bot, update):
 	"""
 
 	ref_list = dbf.db_select(
-			'bets',
+			table='bets',
 			columns_in=['bet_id', 'bet_date'],
 			where='bet_status = "Placed" AND bet_result = "Unknown"')
 	logger.info('UPDATE - Selecting Placed bets...')

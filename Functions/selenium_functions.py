@@ -74,7 +74,7 @@ def add_bet_to_basket(browser, match, count, dynamic_message):  # UPDATED
 		raise ConnectionError(str(e))
 
 
-def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
+def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 
 	"""
 	Used in analyze_main_table function. It first checks if all the matches
@@ -93,8 +93,10 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 													   '//tr/td')[7]
 		prize_value = float(prize_element.text[1:-1].replace(',', '.'))
 
-		c.execute('''UPDATE bets SET bet_prize = ? WHERE bet_id = ?''',
-				  (prize_value, ref_id))
+		dbf.db_update(
+				table='bets',
+				columns='bet_prize = {}'.format(prize_value),
+				where='bet_id = {}'.format(ref_id))
 
 		new_table_path = './/table[@class="bet-detail"]'
 		wait_visible(browser, 20, new_table_path)
@@ -126,19 +128,23 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 			quote = float(new_bet.find_element_by_xpath('.//td[10]').text)
 			result = new_bet.find_element_by_xpath('.//td[11]').text
 
-			c.execute('''SELECT pred_id FROM bets INNER JOIN predictions on
-					  pred_bet = bet_id WHERE bet_id = ? AND
-					  pred_team1 = ? AND pred_team2 = ?''', (ref_id, team1,
-															 team2))
+			match_id = dbf.db_select(
+					table='bets INNER JOIN predictions on pred_bet = bet_id',
+					columns_in=['pred_id'],
+					where=('bet_id = {} AND pred_team1 = "{}" AND ' +
+					       'pred_team2 = "{}"').
+					format(ref_id, team1, team2))[0]
 
-			match_id = c.fetchone()[0]
+			dbf.db_update(
+					table='bets',
+					columns='bet_result = {}'.format(new_status),
+					where='bet_id = {}'.format(ref_id))
 
-			c.execute('''UPDATE bets SET bet_result = ? WHERE
-					  bet_id = ?''', (new_status, ref_id))
-
-			c.execute('''UPDATE predictions SET pred_quote = ?,
-					  pred_result = ?, pred_label = ? WHERE pred_id = ?''',
-					  (quote, result, label, match_id))
+			dbf.db_update(
+					table='predictions',
+					columns=('pred_quote = {}, pred_result = "{}",'
+					         'pred_label = "{}"').format(quote, result, label),
+					where='pred_id = {}'.format(match_id))
 
 		return 1
 
@@ -148,7 +154,8 @@ def analyze_details_table(browser, ref_id, c, new_status, LIMIT_4):
 			logger.info('Recursive analyze_details_table')
 			browser.get(current_url)
 			time.sleep(3)
-			return analyze_details_table(browser, ref_id, c, LIMIT_4 + 1)
+			return analyze_details_table(browser, ref_id,
+			                             new_status, LIMIT_4 + 1)
 		else:
 			raise ConnectionError('Unable to find past bets. ' +
 								  'Please try again.')
@@ -170,8 +177,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 		wait_visible(browser, 20, table_path)
 		bets_list = browser.find_elements_by_xpath(table_path +
 												   '//tr[@class="ng-scope"]')
-
-		db, c = dbf.start_db()
 
 		for ref_bet in ref_list:
 			ref_id = ref_bet[0]
@@ -213,14 +218,12 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 						browser.switch_to_window(new_window)
 
 						bets_updated += analyze_details_table(browser, ref_id,
-															  c, new_status, 0)
+															  new_status, 0)
 
 						browser.close()
 
 						browser.switch_to_window(main_window)
 						break
-		db.commit()
-		db.close()
 
 		return bets_updated
 
@@ -415,10 +418,12 @@ def fill_db_with_quotes():  # UPDATED
 		if skip_league:
 			continue
 
-		league_id = dbf.db_select('leagues', columns_in=['league_id'],
-		                          where='league_name = "{}"'.
-		                          format(league))[0]
-		for i in range(3):
+		league_id = dbf.db_select(
+				table='leagues',
+				columns_in=['league_id'],
+		        where='league_name = "{}"'.format(league))[0]
+
+		for i in range(4):
 			try:
 				buttons = './/div[@class="block-event event-description"]'
 
@@ -704,7 +709,7 @@ def update_matches_table(browser, league_id, d_m_y, h_m):  # UPDATED
 	time.sleep(4)
 
 	last_id = dbf.db_insert(
-			'matches',
+			table='matches',
 			columns=('(match_league, match_team1, match_team2, ' +
 			         'match_date, match_url)'),
 			values='({}, "{}", "{}", "{}", "{}")'.format(
@@ -740,7 +745,8 @@ def update_quotes_table(browser, all_fields, last_id):  # UPDATED
 				bet_quote = bet_quote.text
 
 				field_id = dbf.db_select(
-						'fields', columns_in=['field_id'],
+						table='fields',
+						columns_in=['field_id'],
 						where='field_name = "{}" AND field_value = "{}"'.
 						format(field_name, bet_name))[0]
 
@@ -754,7 +760,7 @@ def update_quotes_table(browser, all_fields, last_id):  # UPDATED
 					                               bet_quote)
 
 				dbf.db_insert(
-						'quotes',
+						table='quotes',
 						columns='(quote_match, quote_field, quote_value)',
 						values=values)
 

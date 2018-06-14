@@ -111,11 +111,13 @@ def check_before_play():
 
     time_now = datetime.datetime.now()
 
-    bet_id = db_select('bets', columns_in=['bet_id'],
-                       where='bet_status = "Pending"')[0]
+    bet_id = db_select(
+            table='bets',
+            columns_in=['bet_id'],
+            where='bet_status = "Pending"')[0]
 
     matches = db_select(
-            'bets INNER JOIN predictions on pred_bet = bet_id',
+            table='bets INNER JOIN predictions on pred_bet = bet_id',
             columns_in=['pred_id', 'pred_user', 'pred_date', 'pred_team1',
                         'pred_team2'],
             where='bet_id = {}'.format(bet_id))
@@ -124,6 +126,8 @@ def check_before_play():
         match_date = datetime.datetime.strptime(match[2], '%Y-%m-%d %H:%M:%S')
         if match_date < time_now:
             invalid_matches.append(match[1:])
-            db_delete('predictions', where='pred_id = {}'.format(match[0]))
+            db_delete(
+                    table='predictions',
+                    where='pred_id = {}'.format(match[0]))
 
     return invalid_matches

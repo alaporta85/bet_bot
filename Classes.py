@@ -57,9 +57,10 @@ class Player(object):
 		last_pred = df.index[-1]
 		cn = count()
 		data = df[df == label].index
+		# noinspection PyTypeChecker
 		series = max(
 				(list(g) for _, g in groupby(data, lambda x: x - next(cn))),
-				 key=len)
+				key=len)
 
 		return ((len(series), 'Concluded') if series[-1] != last_pred else
 				(len(series), 'Ongoing'))
@@ -433,6 +434,6 @@ def winning_preds():
 	return round(len(preds[preds['Label'] == 'WINNING'])/len(preds) * 100, 1)
 
 
-# bets, preds = update_bets_preds()
-# players = {name: Player(name) for name in partecipants}
-# stats = Stats()
+bets, preds = update_bets_preds()
+players = {name: Player(name) for name in partecipants}
+stats = Stats()

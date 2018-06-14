@@ -1,4 +1,8 @@
 selenium==3.6.0
 python-telegram-bot==8.1.1
+telegram
 matplotlib==2.1.0
 PyYAML==3.12
+pandas
+numpy
+nltk
