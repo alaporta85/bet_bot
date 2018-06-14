@@ -536,29 +536,15 @@ def play(bot, update, args):
 						  message_id=mess_id,
 						  text='Logged in')
 
-	money_left_path = ('.//div[@class="user-details-header clearfix ' +
-	                   'reduce-margin-bottom-for-collapsed-login-box"]' +
-	                   '/div[2]/div[1]')
-
-	button_location = './/div[@class="change-bet ng-scope"]'
-
 	try:
-		sf.wait_visible(browser, 20, money_left_path)
-		sf.wait_visible(browser, 20, button_location)
-	except TimeoutException:
+		sf.find_scommetti_box(browser)
+	except ConnectionError as e:
 		browser.quit()
-		logger.info('PLAY - "SCOMMETTI" container not found')
-		return bot.send_message(chat_id=update.message.chat_id,
-						 text=('Problem during placing the bet. ' +
-							   'Please check if the bet is valid or ' +
-							   'the connection and try again.'))
+		logger.info(str(e))
+		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 	# Money left before playing the bet
-	money_before = sf.money(browser, money_left_path)
-
-	sf.scroll_to_element(browser, 'true',
-						 browser.find_element_by_xpath(
-								 button_location))
+	money_before = sf.money(browser)
 
 	try:
 		button_path = ('.//button[@class="button-default no-margin-' +

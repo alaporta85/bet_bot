@@ -533,6 +533,20 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):  # UPDATED
 	return all_panels
 
 
+def find_scommetti_box(browser):
+
+	button_location = './/div[@class="change-bet ng-scope"]'
+
+	try:
+		wait_visible(browser, 20, button_location)
+		button = browser.find_element_by_xpath(button_location)
+		scroll_to_element(browser, 'false', button)
+
+		return button
+	except TimeoutException:
+		raise ConnectionError('PLAY - "SCOMMETTI" container not found.')
+
+
 def go_to_lottomatica(LIMIT_1):  # UPDATED
 
 	"""Connect to Lottomatica webpage and click "CALCIO" button."""
@@ -679,7 +693,7 @@ def login(browser):  # UPDATED
 	accedi.click()
 
 
-def money(browser, xpath):
+def money(browser):
 
 	"""Extract the text from the HTML element and return it as a float."""
 
