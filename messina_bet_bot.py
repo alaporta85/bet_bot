@@ -465,13 +465,13 @@ def play(bot, update, args):
 	bet_id = dbf.db_select(
 			table='bets',
 			columns_in=['bet_id'],
-	        where='bet_status = "Pending"')
+	        where='bet_status = "Pending"')[0]
 	if not bet_id:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='No bets to play.')
 
 	# Check whether there are matches already started
-	invalid_bets = dbf.check_before_play()
+	invalid_bets = dbf.check_before_play(bet_id)
 	if invalid_bets:
 		message = '{}, {} - {} was scheduled on {} at {}. Too late.'
 		for x in range(len(invalid_bets)):

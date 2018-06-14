@@ -127,8 +127,9 @@ def create_matches_to_play(bet_id):
 		url = dbf.db_select(
 				table='matches',
 				columns_in=['match_url'],
-				where=('match_team1 = "{}" AND match_team2 = "{}" AND ' +
-					   'match_league = {}'.format(team1, team2, league))[0])
+				where=('match_team1 = "{}" AND '.format(team1) +
+					   'match_team2 = "{}" AND '.format(team2) +
+					   'match_league = {}'.format(league)))[0]
 
 		matches_to_play.append((team1, team2, field_name, field_value, url))
 

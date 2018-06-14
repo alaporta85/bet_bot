@@ -100,7 +100,7 @@ def empty_table(table_name):
     db.close()
 
 
-def check_before_play():
+def check_before_play(bet_id):
 
     """
     Return all the matches in the 'Pending' bet which have been played
@@ -110,11 +110,6 @@ def check_before_play():
     invalid_matches = []
 
     time_now = datetime.datetime.now()
-
-    bet_id = db_select(
-            table='bets',
-            columns_in=['bet_id'],
-            where='bet_status = "Pending"')[0]
 
     matches = db_select(
             table='bets INNER JOIN predictions on pred_bet = bet_id',
