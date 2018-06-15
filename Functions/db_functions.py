@@ -17,7 +17,26 @@ def start_db():
 def db_select(table, columns_in=None, columns_out=None,
               where=None, dataframe=False):
 
-    """Return rows' content of the table."""
+    """
+    Return content from a specific table of the database.
+
+    :param table: str, name of the table
+
+    :param columns_in: list, each element of the list is a column of the table.
+                       Ex: ['pred_id', 'pred_user', 'pred_quote']. Each column
+                       in the list will be loaded.
+
+    :param columns_out: list, each element of the list is a column of the
+                        table. Ex: ['pred_label']. Each column in the list will
+                        not be loaded.
+
+    :param where: str, condition. Ex: 'pred_label == WINNING'
+
+    :param dataframe: bool
+
+
+    :return: Dataframe if dataframe=True else list of tuples.
+    """
 
     db, c = start_db()
 
@@ -57,9 +76,32 @@ def db_select(table, columns_in=None, columns_out=None,
 
 def db_insert(table, columns, values, last_row=False):
 
+    """
+    Insert a new row in the table assigning the specifies values to the
+    specified columns. If last_row=True, return the id of the inserted row.
+
+    :param table: str, name of the table
+
+    :param columns: list, each element of the list is a column of the table.
+                    Ex: ['pred_id', 'pred_user', 'pred_quote']. Each column
+                    in the list will be loaded.
+
+    :param values: list, values of the corresponding columns
+
+    :param last_row: bool
+
+
+    :return: int if last_row=True else nothing.
+    """
+
     db, c = start_db()
 
-    c.execute('''INSERT INTO {} {} VALUES {}'''.format(table, columns, values))
+    placeholders = ['"{}"' if (type(v) == str or type(v) == datetime.datetime)
+                    else '{}' for v in values]
+    vals = [el[0].format(el[1]) for el in zip(placeholders, values)]
+
+    c.execute('''INSERT INTO {} ({}) VALUES ({})'''.
+              format(table, ','.join(columns), ','.join(vals)))
     last_id = c.lastrowid
     db.commit()
     db.close()
@@ -78,11 +120,35 @@ def db_delete(table, where):
     db.close()
 
 
-def db_update(table, columns, where):
+def db_update(table, columns, values, where):
+
+    """
+    Update values in the table assigning the specifies values to the
+    specified columns.
+
+    :param table: str, name of the table
+
+    :param columns: list, each element of the list is a column of the table.
+                    Ex: ['pred_id', 'pred_user', 'pred_quote']. Each column
+                    in the list will be loaded.
+
+    :param values: list, values of the corresponding columns
+
+    :param where: str, condition
+
+
+    :return: Nothing
+    """
 
     db, c = start_db()
 
-    c.execute('''UPDATE {} SET {} WHERE {}'''.format(table, columns, where))
+    placeholders = ['"{}"' if (type(v) == str or type(v) == datetime.datetime)
+                    else '{}' for v in values]
+    vals = [el[0].format(el[1]) for el in zip(placeholders, values)]
+    vals = ['{}={}'.format(el[0], el[1]) for el in zip(columns, vals)]
+
+    c.execute('''UPDATE {} SET {} WHERE {}'''.format(table, ','.join(vals),
+                                                     where))
 
     db.commit()
     db.close()

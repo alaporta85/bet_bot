@@ -93,7 +93,8 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 
 		dbf.db_update(
 				table='bets',
-				columns='bet_prize = {}'.format(prize_value),
+				columns=['bet_prize'],
+				values=[prize_value],
 				where='bet_id = {}'.format(ref_id))
 
 		new_table_path = './/table[@class="bet-detail"]'
@@ -135,13 +136,14 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 
 			dbf.db_update(
 					table='bets',
-					columns='bet_result = {}'.format(new_status),
+					columns=['bet_result'],
+					values=[new_status],
 					where='bet_id = {}'.format(ref_id))
 
 			dbf.db_update(
 					table='predictions',
-					columns=('pred_quote = {}, pred_result = "{}",'
-					         'pred_label = "{}"').format(quote, result, label),
+					columns=['pred_quote', 'pred_result', 'pred_label'],
+					values=[quote, result, label],
 					where='pred_id = {}'.format(match_id))
 
 		return 1
@@ -489,6 +491,7 @@ def find_all_fields_and_bets(browser):  # UPDATED
 
 	for panel in all_panels:
 		click_panel(browser, panel)
+		time.sleep(.5)
 
 	all_fields_path = '//div[@class="market-info"]/div'
 	all_bets_path = '//div[@class="market-selections"]'
@@ -745,11 +748,9 @@ def update_matches_table(browser, league_id, d_m_y, h_m):  # UPDATED
 
 	last_id = dbf.db_insert(
 			table='matches',
-			columns=('(match_league, match_team1, match_team2, ' +
-			         'match_date, match_url)'),
-			values='({}, "{}", "{}", "{}", "{}")'.format(
-					league_id, team1, team2, match_date,
-					browser.current_url),
+			columns=['match_league', 'match_team1', 'match_team2',
+			         'match_date', 'match_url'],
+			values=[league_id, team1, team2, match_date, browser.current_url],
 			last_row=True)
 
 	return last_id, back
@@ -787,17 +788,13 @@ def update_quotes_table(browser, all_fields, last_id):  # UPDATED
 
 				if len(bet_quote) == 1:
 					bet_quote = 'NOT AVAILABLE'
-					values = '({}, {}, "{}")'.format(last_id, field_id,
-						                             bet_quote)
 				else:
 					bet_quote = float(bet_quote)
-					values = '({}, {}, {})'.format(last_id, field_id,
-					                               bet_quote)
 
 				dbf.db_insert(
 						table='quotes',
-						columns='(quote_match, quote_field, quote_value)',
-						values=values)
+						columns=['quote_match', 'quote_field', 'quote_value'],
+						values=[last_id, field_id, bet_quote])
 
 
 def wait_clickable(browser, seconds, element):

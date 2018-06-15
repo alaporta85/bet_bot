@@ -86,8 +86,8 @@ def confirm(bot, update):
 	except IndexError:
 		bet_id = dbf.db_insert(
 				table='bets',
-				columns='(bet_status, bet_result)',
-				values='("Pending", "Unknown")',
+				columns=['bet_status', 'bet_result'],
+				values=['Pending', 'Unknown'],
 				last_row=True)
 
 	details = bf.update_pred_table_after_confirm(first_name, bet_id)
@@ -290,15 +290,13 @@ def get(bot, update, args):
 		team1 = team1.replace('*', '')
 		team2 = team2.replace('*', '')
 
-		# Update table
 		dbf.db_insert(
 				table='predictions',
-				columns=('(pred_user, pred_date, pred_team1, pred_team2, ' +
-				         'pred_league, pred_field, pred_rawbet, pred_quote, ' +
-				         'pred_status)'),
-				values='("{}", "{}", "{}", "{}", {}, {}, "{}", {}, "{}")'.
-				format(first_name, dt, team1, team2, league_id, field_id,
-				       nice_bet, quote, 'Not Confirmed'))
+				columns=['pred_user', 'pred_date', 'pred_team1', 'pred_team2',
+				         'pred_league', 'pred_field', 'pred_rawbet',
+				         'pred_quote', 'pred_status'],
+				values=[first_name, dt, team1, team2, league_id, field_id,
+				        nice_bet, quote, 'Not Confirmed'])
 
 		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet,
 											  quote)
@@ -546,9 +544,8 @@ def play(bot, update, args):
 	logger.info('PLAY - Bet has been played.')
 	dbf.db_update(
 			table='bets',
-			columns=('bet_date = "{}", bet_euros = {}, ' +
-					 'bet_status = "{}"').format(
-					datetime.datetime.now(), euros, 'Placed'),
+			columns=['bet_date', 'bet_euros', 'bet_status'],
+			values=[datetime.datetime.now(), euros, 'Placed'],
 			where='bet_status = "Pending"')
 	logger.info('PLAY - "bets" db table updated')
 

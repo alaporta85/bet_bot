@@ -60,7 +60,8 @@ def update_pred_table_after_confirm(first_name, bet_id):
 
 	dbf.db_update(
 			table='predictions',
-			columns='pred_bet = {}, pred_status = "Confirmed"'.format(bet_id),
+			columns=['pred_bet', 'pred_status'],
+			values=[bet_id, 'Confirmed'],
 			where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
 			format(first_name))
 
@@ -195,8 +196,8 @@ def matches_per_day(day):
 		df.columns = ['match_date', 'match_team1',
 					  'match_team2', 'match_league']
 		df['match_id'] = 0
-		df = df[['match_id', 'match_league', 'match_team1',
-				 'match_team2', 'match_date']]
+		df = df.loc[:, ['match_id', 'match_league', 'match_team1',
+				        'match_team2', 'match_date']]
 
 		df['hm'] = df['match_date'].apply(
 				lambda x: datetime.datetime.strptime(
