@@ -3,7 +3,7 @@ import datetime
 import numpy as np
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 from Functions import bot_functions as bf
@@ -75,7 +75,7 @@ def confirm(bot, update):
 	if first_name not in users_list:
 		return bot.send_message(
 				chat_id=update.message.chat_id,
-				text='{}, you have no bet to confirm.'.format(first_name))
+				text='{}, no bet to confirm.'.format(first_name))
 
 	# Check if there is any bet with status 'Pending' in the 'bets' table
 	try:
@@ -84,22 +84,17 @@ def confirm(bot, update):
 				columns_in=['bet_id'],
 		        where='bet_status = "Pending"')[0]
 	except IndexError:
-		bet_id = 0
+		bet_id = dbf.db_insert(
+				table='bets',
+				columns='(bet_status, bet_result)',
+				values='("Pending", "Unknown")',
+				last_row=True)
 
-	ref_list = bf.update_tables_and_ref_list(first_name, bet_id)
+	details = bf.update_pred_table_after_confirm(first_name, bet_id)
 
-	# Now we delete all the bets of the same match which have not been
-	# confirmed
-	not_confirmed_matches = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_id', 'pred_user', 'pred_team1', 'pred_team2',
-			            'pred_league'],
-			where='pred_status = "Not Confirmed"')
-
-	for match in not_confirmed_matches:
-		dupl_message = bf.check_if_duplicate(first_name, match, ref_list)
-		if dupl_message:
-			bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
+	dupl_message = bf.check_if_duplicate(first_name, details)
+	if dupl_message:
+		bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
 
 	return bot.send_message(chat_id=update.message.chat_id,
 					        text='{}, your bet has been placed correctly.'
@@ -132,14 +127,11 @@ def create_summary(string):
 	summary = sorted(summary, key=lambda x: x[1])
 
 	message = ''
-	for bet in summary:
-		user = bet[0]
-		dt = datetime.datetime.strptime(bet[1], '%Y-%m-%d %H:%M:%S')
+	for user, dt, team1, team2, rawbet, quote in summary:
+
+		dt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
 		hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
-		team1 = bet[2].title()
-		team2 = bet[3].title()
-		rawbet = bet[4]
-		quote = bet[5]
+
 		message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
 				user, team1, team2, hhmm, rawbet, quote)
 
@@ -150,7 +142,7 @@ def create_summary(string):
 		return message + message2
 	elif string == 'after':
 		message = 'Bet placed correctly.\n\n' + message
-		message += '\nPossible win: <b>{}</b>'.format(final_quote * 5)
+		message += '\nPossible win: <b>{:.1f}</b>'.format(final_quote * 5)
 		return message
 
 
@@ -163,10 +155,12 @@ def delete(bot, update):
 	bet_id = dbf.db_select(
 			table='bets',
 			columns_in=['bet_id'],
-	        where='bet_status = "Pending"')[0]
+	        where='bet_status = "Pending"')
 	if not bet_id:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='There are no "Pending" bets.')
+
+	bet_id = bet_id[0]
 
 	bet_to_delete = dbf.db_select(
 			table='predictions',
@@ -222,7 +216,17 @@ def get(bot, update, args):
 								text='Please insert the bet.')
 
 	guess = ' '.join(args).upper()
-	input_team, input_bet = guess.split('_')
+
+	if guess[0] == '_' or guess[-1] == '_':
+		return bot.send_message(chat_id=update.message.chat_id,
+								text='Wrong format.')
+
+	try:
+		input_team, input_bet = guess.split('_')
+		input_bet = input_bet.replace(' ', '').replace(',', '.')
+	except ValueError:
+		input_team, input_bet = (guess, '')
+
 	team_name = jaccard_team(input_team)
 	if '*' in team_name:
 		league_id = 8
@@ -233,8 +237,7 @@ def get(bot, update, args):
 				where='team_name = "{}" AND team_league != 8'.
 				format(team_name))[0]
 
-	if '_' not in guess:
-
+	if not input_bet:
 		try:
 			message_standard, message_combo = bf.all_bets_per_team(team_name,
 			                                                       league_id)
@@ -249,14 +252,8 @@ def get(bot, update, args):
 								chat_id=update.message.chat_id,
 								text=message_combo)
 
-	elif guess[0] == '_' or guess[-1] == '_':
-		return bot.send_message(chat_id=update.message.chat_id,
-								text='Wrong format.')
-
 	# User sending the message
 	first_name = nickname(update.message.from_user.first_name)
-
-	input_bet = input_bet.replace(' ', '').replace(',', '.')
 
 	warning_message = bf.check_still_to_confirm(first_name)
 	if warning_message:
@@ -311,7 +308,7 @@ def get(bot, update, args):
 							   'to finalize your bet.').format(
 								                              printed_bet))
 	else:
-		message = 'Match already chosen. Please change your bet.'
+		message = 'Match already chosen.'
 		return bot.send_message(chat_id=update.message.chat_id,
 		                        text=message)
 
@@ -703,7 +700,7 @@ log_handler = CommandHandler('log', send_log)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(19, 36, 50))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,

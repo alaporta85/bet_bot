@@ -83,8 +83,6 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 	table 'predictions' of the database.
 	"""
 
-	current_url = browser.current_url
-
 	try:
 
 		prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
@@ -152,7 +150,7 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 
 		if LIMIT_4 < 3:
 			logger.info('Recursive analyze_details_table')
-			browser.get(current_url)
+			browser.refresh()
 			time.sleep(3)
 			return analyze_details_table(browser, ref_id,
 			                             new_status, LIMIT_4 + 1)
@@ -169,7 +167,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 	analyze_details_table for each bet not updated yet.
 	"""
 
-	current_url = browser.current_url
 	bets_updated = 0
 
 	try:
@@ -231,7 +228,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 		if LIMIT_3 < 3:
 			logger.info('Recursive analyze_main_table')
-			browser.get(current_url)
+			browser.refresh()
 			time.sleep(3)
 			return analyze_main_table(browser, ref_list, LIMIT_3 + 1)
 		else:
@@ -262,7 +259,6 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
 	it.
 	"""
 
-	current_url = browser.current_url
 	CLICK_CHECK = False
 
 	try:
@@ -319,7 +315,7 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
 
 		if LIMIT_GET_QUOTE < 3:
 			logger.info('Recursive click_bet')
-			browser.get(current_url)
+			browser.refresh()
 			time.sleep(3)
 			click_bet(browser, field, bet, LIMIT_GET_QUOTE + 1)
 		else:
@@ -345,8 +341,6 @@ def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):  # UPDATED
 	Find the button relative to the country we are interested in and click it.
 	"""
 
-	current_url = browser.current_url
-
 	countries_container = './/div[@class="country-name"]'
 	try:
 		wait_clickable(browser, WAIT, countries_container)
@@ -355,7 +349,7 @@ def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):  # UPDATED
 	except TimeoutException:
 		if LIMIT_COUNTRY_BUTTON < 3:
 			logger.info('Recursive click_country_button')
-			browser.get(current_url)
+			browser.refresh()
 			time.sleep(3)
 			click_calcio_button(browser)
 			return click_country_button(browser, league,
@@ -419,7 +413,9 @@ def fill_db_with_quotes():  # UPDATED
 	dbf.empty_table('quotes')
 	dbf.empty_table('matches')
 
-	all_fields = dbf.db_select('fields', columns_in=['field_name'])
+	all_fields = dbf.db_select(
+			table='fields',
+			columns_in=['field_name'])
 
 	for league in countries:
 		start = time.time()
@@ -511,8 +507,6 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):  # UPDATED
 	"""
 
 	all_panels_path = '//div[@class="item-group ng-scope"]'
-					   #'div[contains(@class, "group-name")]')
-	current_url = browser.current_url
 
 	try:
 		wait_visible(browser, WAIT, all_panels_path)
@@ -521,7 +515,7 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):  # UPDATED
 	except TimeoutException:
 		if LIMIT_ALL_PANELS < 3:
 			logger.info('Recursive find_all_panels')
-			browser.get(current_url)
+			browser.refresh()
 			time.sleep(3)
 			return find_all_panels(browser, LIMIT_ALL_PANELS + 1)
 		else:
@@ -536,7 +530,7 @@ def find_scommetti_box(browser):
 	button_location = './/div[@class="buttons-betslip"]'
 
 	try:
-		#wait_visible(browser, 20, button_location)
+		# wait_visible(browser, 20, button_location)
 		button = browser.find_element_by_xpath(button_location)
 		scroll_to_element(browser, 'false', button)
 
@@ -555,7 +549,7 @@ def go_to_lottomatica(LIMIT_1):  # UPDATED
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
 	browser = webdriver.Chrome(chrome_path)
 	time.sleep(3)
-	#browser.set_window_size(1400, 800)
+	# browser.set_window_size(1400, 800)
 
 	try:
 		browser.get(url)
@@ -566,12 +560,14 @@ def go_to_lottomatica(LIMIT_1):  # UPDATED
 	except TimeoutException:
 
 		if LIMIT_1 < 3:
-			logger.info('Recursive go_to_lottomatica')
+			logger.info('GO TO LOTTOMATICA - CALCIO button not found: '
+			            'trial {}'.format(LIMIT_1 + 1))
 			browser.quit()
 			return go_to_lottomatica(LIMIT_1 + 1)
 		else:
-			raise ConnectionError('Unable to reach Lottomatica webpage. ' +
-								  'Please try again.')
+			raise ConnectionError(
+					'GO TO LOTTOMATICA - CALCIO button not found: '
+					'trial {}'.format(LIMIT_1 + 1))
 
 
 def go_to_personal_area(browser, LIMIT_1):
@@ -580,8 +576,6 @@ def go_to_personal_area(browser, LIMIT_1):
 	Used in update_results() function to navigate until the personal area
 	after the login.
 	"""
-
-	current_url = browser.current_url
 
 	try:
 		area_pers_path1 = './/a[@class="account-link theme-button"]'
@@ -592,13 +586,14 @@ def go_to_personal_area(browser, LIMIT_1):
 	except (TimeoutException, ElementNotInteractableException):
 
 		if LIMIT_1 < 3:
-			logger.info('Recursive go_to_personal_area')
-			browser.get(current_url)
+			logger.info('GO TO PERSONAL AREA - Unable to go to '
+						'section: AREA PERSONALE.')
+			browser.refresh()
 			time.sleep(3)
 			return go_to_personal_area(browser, LIMIT_1 + 1)
 		else:
-			raise ConnectionError('Unable to go to the section: ' +
-								  'AREA PERSONALE. Please try again.')
+			raise ConnectionError('GO TO PERSONAL AREA - Unable to go to '
+								  'section: AREA PERSONALE.')
 
 
 def go_to_placed_bets(browser, LIMIT_2):
@@ -609,7 +604,6 @@ def go_to_placed_bets(browser, LIMIT_2):
 	"""
 
 	FILTER = 'Ultimi 5 Mesi'
-	current_url = browser.current_url
 
 	try:
 		placed_bets_path = './/a[@id="pl-movimenti"]'
@@ -640,13 +634,14 @@ def go_to_placed_bets(browser, LIMIT_2):
 	except (TimeoutException, ElementNotInteractableException):
 
 		if LIMIT_2 < 3:
-			logger.info('Recursive go_to_placed_bets')
-			browser.get(current_url)
+			logger.info('GO TO PLACED BETS - Unable to go to '
+						'section: MOVIMENTI E GIOCATE.')
+			browser.refresh()
 			time.sleep(3)
 			return go_to_placed_bets(browser, LIMIT_2 + 1)
 		else:
-			raise ConnectionError('Unable to go to the section: MOVIMENTI E' +
-								  ' GIOCATE. Please try again.')
+			raise ConnectionError('GO TO PLACED BETS - Unable to go to '
+								  'section: MOVIMENTI E GIOCATE.')
 
 
 def insert_euros(browser, euros):  # UPDATED
@@ -730,6 +725,7 @@ def update_matches_table(browser, league_id, d_m_y, h_m):  # UPDATED
 
 	back = './/a[@class="back-competition ng-scope"]'
 	wait_clickable(browser, 30, back)
+
 	back = browser.find_element_by_xpath(back)
 	time.sleep(1)
 
