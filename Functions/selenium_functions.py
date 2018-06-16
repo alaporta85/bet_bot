@@ -180,10 +180,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 		for ref_bet in ref_list:
 			ref_id = ref_bet[0]
 			ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
-#			year = str(ref_date)[:4]
-#			month = str(ref_date)[4:6]
-#			day = str(ref_date)[6:]
-#			ref_date = day + '/' + month + '/' + year
 
 			for bet in bets_list:
 
@@ -195,7 +191,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 					date = bet.find_element_by_xpath(
 							'.//td[@class="ng-binding"]').text[:10]
-					#date = str(datetime.datetime.strptime(date, '%d/%m/%Y'))
 
 					if date == ref_date:
 
@@ -450,7 +445,7 @@ def fill_db_with_quotes():  # UPDATED
 				columns_in=['league_id'],
 		        where='league_name = "{}"'.format(league))[0]
 
-		for i in range(4):
+		for i in range(1, 5):
 			try:
 				buttons = './/div[@class="block-event event-description"]'
 
