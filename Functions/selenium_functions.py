@@ -179,11 +179,11 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 		for ref_bet in ref_list:
 			ref_id = ref_bet[0]
-			ref_date = ref_bet[1]
-			year = str(ref_date)[:4]
-			month = str(ref_date)[4:6]
-			day = str(ref_date)[6:]
-			ref_date = day + '/' + month + '/' + year
+			ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
+#			year = str(ref_date)[:4]
+#			month = str(ref_date)[4:6]
+#			day = str(ref_date)[6:]
+#			ref_date = day + '/' + month + '/' + year
 
 			for bet in bets_list:
 
@@ -195,6 +195,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 					date = bet.find_element_by_xpath(
 							'.//td[@class="ng-binding"]').text[:10]
+					#date = str(datetime.datetime.strptime(date, '%d/%m/%Y'))
 
 					if date == ref_date:
 
@@ -581,7 +582,7 @@ def go_to_personal_area(browser, LIMIT_1):
 	"""
 
 	try:
-		area_pers_path1 = './/a[@class="account-link theme-button"]'
+		area_pers_path1 = './/a[@title="Profilo"]'
 		wait_clickable(browser, 20, area_pers_path1)
 		area_pers_button1 = browser.find_element_by_xpath(area_pers_path1)
 		area_pers_button1.click()
@@ -606,10 +607,10 @@ def go_to_placed_bets(browser, LIMIT_2):
 	all the past bets.
 	"""
 
-	FILTER = 'Ultimi 5 Mesi'
+	FILTER = 'Ultimi 7 giorni'
 
 	try:
-		placed_bets_path = './/a[@id="pl-movimenti"]'
+		placed_bets_path = './/a[@title="Movimenti e giocate"]'
 		wait_clickable(browser, 20, placed_bets_path)
 		placed_bets_button = browser.find_element_by_xpath(placed_bets_path)
 		placed_bets_button.click()
