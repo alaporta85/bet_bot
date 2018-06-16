@@ -49,6 +49,7 @@ def update_pred_table_after_confirm(first_name, bet_id):
 	Update the columns pred_bet and pred_status of the table 'predictions'.
 
 	:param first_name: str, name of the user
+
 	:param bet_id: int
 
 
@@ -81,6 +82,7 @@ def check_if_duplicate(first_name, details):
 	confirmed. If any, they will be deleted.
 
 	:param first_name: str
+
 	:param details: tuple, (team1, team2, league_id). Output of the function
 					update_pred_table_after_confirm.
 
@@ -124,6 +126,7 @@ def create_matches_to_play(bet_id):
 	Called inside the command /play_bet.
 
 	:param bet_id: int
+
 	:return: list of tuples representing the matches to be added in the basket
 	"""
 
@@ -166,6 +169,7 @@ def matches_per_day(day):
 	Return a message containing all the matches scheduled for that day.
 
 	:param day: str, one of [lun, mar, mer, gio, ven, sab, dom]
+
 
 	:return: str
 	"""
@@ -332,7 +336,9 @@ def all_bets_per_team(team_name, league_id):
 	other one the combo.
 
 	:param team_name: str
+
 	:param league_id: int
+
 
 	:return: (str, str)
 	"""
@@ -405,7 +411,9 @@ def look_for_quote(team_name, input_bet):
 	quote.
 
 	:param team_name: str
+
 	:param input_bet: str
+
 
 	:return: (str, str, int, str, float)
 	"""

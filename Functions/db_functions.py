@@ -112,6 +112,17 @@ def db_insert(table, columns, values, last_row=False):
 
 def db_delete(table, where):
 
+    """
+    Delete row from table.
+
+    :param table: str
+
+    :param where: str
+
+
+    :return: Nothing
+    """
+
     db, c = start_db()
 
     c.execute('''DELETE FROM {} WHERE {}'''.format(table, where))
@@ -154,13 +165,20 @@ def db_update(table, columns, values, where):
     db.close()
 
 
-def empty_table(table_name):
+def empty_table(table):
 
-    """Delete the bet from the temporary folder."""
+    """
+    Called inside fill_db_with_quotes.
+
+    :param table: str
+
+
+    :return: Nothing
+    """
 
     db, c = start_db()
 
-    c.execute('''DELETE FROM {}'''.format(table_name))
+    c.execute('''DELETE FROM {}'''.format(table))
 
     db.commit()
     db.close()
@@ -171,6 +189,11 @@ def check_before_play(bet_id):
     """
     Return all the matches in the 'Pending' bet which have been played
     already or started.
+
+    :param bet_id: int
+
+
+    :return: list of tuples, (user, datetime, team1, team2)
     """
 
     invalid_matches = []
