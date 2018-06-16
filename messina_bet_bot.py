@@ -252,7 +252,6 @@ def get(bot, update, args):
 								chat_id=update.message.chat_id,
 								text=message_combo)
 
-	# User sending the message
 	first_name = nickname(update.message.from_user.first_name)
 
 	warning_message = bf.check_still_to_confirm(first_name)
@@ -267,13 +266,14 @@ def get(bot, update, args):
 				table='bets',
 				columns_in=['bet_id'],
 				where='bet_status = "Pending"')[0]
-	except IndexError:
-		bet_id = 0
 
-	confirmed_matches = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_team1', 'pred_team2'],
-			where='pred_status = "Confirmed" AND pred_bet = {}'.format(bet_id))
+		confirmed_matches = dbf.db_select(
+				table='predictions',
+				columns_in=['pred_team1', 'pred_team2'],
+				where=('pred_status = "Confirmed" AND pred_bet = {}'.
+				format(bet_id)))
+	except IndexError:
+		confirmed_matches = []
 
 	team1, team2, field_id, nice_bet, quote = bf.look_for_quote(team_name,
 	                                                            input_bet)
@@ -352,14 +352,23 @@ def info(bot, update):
 	bot.send_message(chat_id=update.message.chat_id, text=message)
 
 
-def jaccard_team(string):
+def jaccard_team(input_team):
+
+	"""
+	Find the most similar team in the db in case it is misspelled by the user.
+
+	:param input_team: str
+
+
+	:return: str
+	"""
 
 	teams = dbf.db_select(
 			table='teams_alias',
 			columns_in=['team_alias_team', 'team_alias_name'])
 
 	dist = 10
-	tri_guess = set(ngrams(string, 3))
+	tri_guess = set(ngrams(input_team, 3))
 	team_id = 0
 
 	for i, t in teams:
@@ -447,10 +456,10 @@ def play(bot, update, args):
 	if not_conf_list:
 		bot.send_message(chat_id=update.message.chat_id,
 						 text='There are still Not Confirmed bets:')
-		for match in not_conf_list:
+		for user, team1, team2, field, bet in not_conf_list:
 			bot.send_message(chat_id=update.message.chat_id,
-							 text=('{}\n{} - {}\n{}\n{}'.format(match[0],
-								   match[1], match[2], match[3], match[4])))
+							 text=('{}\n{} - {}\n{}\n{}'.
+								   format(user, team1, team2, field, bet)))
 
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=('/confirm or /cancel each of them and ' +
@@ -460,10 +469,12 @@ def play(bot, update, args):
 	bet_id = dbf.db_select(
 			table='bets',
 			columns_in=['bet_id'],
-	        where='bet_status = "Pending"')[0]
+	        where='bet_status = "Pending"')
 	if not bet_id:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='No bets to play.')
+
+	bet_id = bet_id[0]
 
 	# Check whether there are matches already started
 	invalid_bets = dbf.check_before_play(bet_id)
