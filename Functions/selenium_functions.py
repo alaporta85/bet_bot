@@ -695,10 +695,18 @@ def money(browser):
 
 	money_path = './/span[@class="user-balance ng-binding"]'
 
+	wait_visible(browser, 30, money_path)
 	final_money = browser.find_element_by_xpath(money_path).text
 	final_money = float(final_money.replace(',', '.'))
 
 	return final_money
+
+
+def refresh_money(browser):
+
+	refresh = browser.find_element_by_xpath('.//user-balance-refresh-btn')
+	scroll_to_element(browser, 'false', refresh)
+	refresh.click()
 
 
 def scroll_to_element(browser, true_false, element):

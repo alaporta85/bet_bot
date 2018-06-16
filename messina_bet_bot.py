@@ -564,6 +564,7 @@ def play(bot, update, args):
 						  message_id=mess_id, text='Done!')
 
 	time.sleep(30)
+	sf.refresh_money(browser)
 
 	# Money after playing the bet
 	money_after = sf.money(browser)
