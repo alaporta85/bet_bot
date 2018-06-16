@@ -658,12 +658,12 @@ def update_results(bot, update):
 	sf.login(browser)
 	time.sleep(3)
 
-	# Close popup
-	try:
-		cancel = './/a[@id="id-popup-quote-stellari-btnAnnulla"]'
-		browser.find_element_by_xpath(cancel).click()
-	except NoSuchElementException:
-		pass
+	# Close possibile popup
+		#	try:
+		#		cancel = './/a[@id="id-popup-quote-stellari-btnAnnulla"]'
+		#		browser.find_element_by_xpath(cancel).click()
+		#	except NoSuchElementException:
+		#		pass
 
 	try:
 		sf.go_to_personal_area(browser, 0)
