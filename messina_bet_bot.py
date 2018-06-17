@@ -210,6 +210,7 @@ def get(bot, update, args):
 	Update the table "predictions" in the db with the data relative to the
 	chosen match. pred_status will be set to "Not Confirmed".
 	"""
+	logger.info('Get Request Received')
 
 	if not args:
 		return bot.send_message(chat_id=update.message.chat_id,
