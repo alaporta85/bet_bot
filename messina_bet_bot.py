@@ -276,8 +276,11 @@ def get(bot, update, args):
 	except IndexError:
 		confirmed_matches = []
 
-	team1, team2, field_id, nice_bet, quote = bf.look_for_quote(team_name,
-	                                                            input_bet)
+	try:
+		team1, team2, field_id, nice_bet, quote = bf.look_for_quote(team_name,
+		                                                            input_bet)
+	except ValueError as e:
+		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 	if (not confirmed_matches
 	   or (team1, team2) not in confirmed_matches):
@@ -564,8 +567,8 @@ def play(bot, update, args):
 	bot.edit_message_text(chat_id=update.message.chat_id,
 						  message_id=mess_id, text='Done!')
 
-	time.sleep(30)
 	sf.refresh_money(browser)
+	time.sleep(30)
 
 	# Money after playing the bet
 	money_after = sf.money(browser)

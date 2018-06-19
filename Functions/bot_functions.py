@@ -422,7 +422,7 @@ def look_for_quote(team_name, input_bet):
 		field_id = dbf.db_select(
 				table='fields_alias',
 				columns_in=['field_alias_field'],
-				where='field_alias_name = "{}"'.format(input_bet))[0]
+				where='field_alias_name = "{}"'.format(input_bet))[-1]
 
 		nice_bet = dbf.db_select(
 				table='fields',
@@ -430,7 +430,7 @@ def look_for_quote(team_name, input_bet):
 				where='field_id = {}'.format(field_id))[0]
 
 	except IndexError:
-		raise SyntaxError('Bet not valid.')
+		raise ValueError('Bet not valid.')
 
 	try:
 		match_id, team1, team2 = dbf.db_select(
@@ -439,7 +439,7 @@ def look_for_quote(team_name, input_bet):
 				where='match_team1 = "{}" OR match_team2 = "{}"'.
 				format(team_name, team_name))[0]
 	except IndexError:
-		raise ValueError('Quotes not available')
+		raise ValueError('Quotes not available for {}'.format(team_name))
 
 	try:
 		quote = dbf.db_select(
