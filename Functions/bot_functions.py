@@ -7,72 +7,79 @@ from Functions import logging as log
 logger = log.get_flogger()
 
 
-def check_still_to_confirm(first_name):
+def all_bets_per_team(team_name, league_id):
 
 	"""
 	Called inside the command /get.
-	Check if the user has other matches which are not confirmed.
+	Return two text messages: one showing all the standard bets and the
+	other one the combo.
 
-	:param first_name: str, name of the user
+	:param team_name: str
+
+	:param league_id: int
 
 
-	:return: str, previous match not confirmed if any, else False
+	:return: (str, str)
 	"""
 
-	not_conf = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_team1', 'pred_team2',
-			            'pred_rawbet', 'pred_quote'],
-			where='pred_status = "Not Confirmed" AND pred_user = "{}"'.
-			format(first_name))
+	fields2avoid = ([str(i) for i in range(4, 14)] +
+	                [str(i) for i in range(17, 31)] +
+	                [str(i) for i in range(152, 157)])
 
-	if not_conf:
+	try:
+		match_id, team1, team2 = dbf.db_select(
+				table='matches',
+				columns_in=['match_id', 'match_team1', 'match_team2'],
+				where=('match_league = {} AND ' +
+					   '(match_team1 = "{}" OR match_team2 = "{}")').
+				format(league_id, team_name, team_name))[0]
+	except IndexError:
+		raise ValueError('Quotes not available')
 
-		team1, team2, bet, bet_quote = not_conf[0]
+	team1 = team1.replace('*', '')
+	team2 = team2.replace('*', '')
 
-		printed_bet = '{} - {} {} @{}'.format(team1, team2, bet, bet_quote)
+	message_standard = '<b>{} - {}: STANDARD</b>\n'.format(team1, team2)
+	message_combo = '<b>{} - {}: COMBO</b>\n'.format(team1, team2)
 
-		message = ('{}, you still have one bet to confirm.\n'.format(
-				   first_name) + ('{}\n' + 'Use /confirm or /cancel to ' +
-				   'finalize your bet.').format(printed_bet))
+	fields = dbf.db_select(
+			table='fields',
+			columns_in=['field_id', 'field_value'],
+			where='field_id NOT IN ({})'.format(','.join(fields2avoid)))
 
-		return message
+	fields_added = []
+	COMBO = False
+	for field_id, field_value in fields:
+		field_name = dbf.db_select(
+				table='fields',
+				columns_in=['field_name'],
+				where='field_id = {}'.format(field_id))[0]
 
-	else:
-		return False
+		if field_name not in fields_added:
+			fields_added.append(field_name)
+			if '+' not in field_name:
+				COMBO = False
+				message_standard += '\n\n<i>{}</i>'.format(field_name)
+			else:
+				COMBO = True
+				message_combo += '\n\n<i>{}</i>'.format(field_name)
 
+		quote = dbf.db_select(
+				table='quotes',
+				columns_in=['quote_value'],
+				where='quote_match = {} AND quote_field = "{}"'.
+				format(match_id, field_id))[0]
 
-def update_pred_table_after_confirm(first_name, bet_id):
+		if type(quote) != str:
+			quote = '@' + str(quote)
 
-	"""
-	Called inside the command /confirm.
-	Update the columns pred_bet and pred_status of the table 'predictions'.
+		if not COMBO:
+			message_standard += '\n<b>{}</b>:    {}'.format(field_value,
+															quote)
+		else:
+			message_combo += '\n<b>{}</b>:    {}'.format(field_value, quote)
 
-	:param first_name: str, name of the user
-
-	:param bet_id: int
-
-
-	:return: tuple, (team1, team2, league_id) relative to the bet which is
-			 beign confirmed. It will be used inside the function
-			 check_if_duplicate to delete all the Not Confirmed bets relative
-			 to same match, if any.
-	"""
-
-	dbf.db_update(
-			table='predictions',
-			columns=['pred_bet', 'pred_status'],
-			values=[bet_id, 'Confirmed'],
-			where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
-			format(first_name))
-
-	details = dbf.db_select(
-			table='bets INNER JOIN predictions on pred_bet = bet_id',
-			columns_in=['pred_team1', 'pred_team2', 'pred_league'],
-			where='bet_id = {} AND pred_user = "{}"'.format(bet_id,
-															first_name))[0]
-
-	return details
+	return message_standard, message_combo
 
 
 def check_if_duplicate(first_name, details):
@@ -120,6 +127,41 @@ def check_if_duplicate(first_name, details):
 	return message
 
 
+def check_still_to_confirm(first_name):
+
+	"""
+	Called inside the command /get.
+	Check if the user has other matches which are not confirmed.
+
+	:param first_name: str, name of the user
+
+
+	:return: str, previous match not confirmed if any, else False
+	"""
+
+	not_conf = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_team1', 'pred_team2',
+			            'pred_rawbet', 'pred_quote'],
+			where='pred_status = "Not Confirmed" AND pred_user = "{}"'.
+			format(first_name))
+
+	if not_conf:
+
+		team1, team2, bet, bet_quote = not_conf[0]
+
+		printed_bet = '{} - {} {} @{}'.format(team1, team2, bet, bet_quote)
+
+		message = ('{}, you still have one bet to confirm.\n'.format(
+				   first_name) + ('{}\n' + 'Use /confirm or /cancel to ' +
+				   'finalize your bet.').format(printed_bet))
+
+		return message
+
+	else:
+		return False
+
+
 def create_matches_to_play(bet_id):
 
 	"""
@@ -160,6 +202,56 @@ def create_matches_to_play(bet_id):
 		matches_to_play.append((team1, team2, field_name, field_value, url))
 
 	return matches_to_play
+
+
+def look_for_quote(team_name, input_bet):
+
+	"""
+	Called inside the command /get.
+	Take the input from the user and look into the db for the requested
+	quote.
+
+	:param team_name: str
+
+	:param input_bet: str
+
+
+	:return: (str, str, int, str, float)
+	"""
+
+	try:
+		field_id = dbf.db_select(
+				table='fields_alias',
+				columns_in=['field_alias_field'],
+				where='field_alias_name = "{}"'.format(input_bet))[-1]
+
+		nice_bet = dbf.db_select(
+				table='fields',
+				columns_in=['field_nice_value'],
+				where='field_id = {}'.format(field_id))[0]
+
+	except IndexError:
+		raise ValueError('Bet not valid.')
+
+	try:
+		match_id, team1, team2 = dbf.db_select(
+				table='matches',
+				columns_in=['match_id', 'match_team1', 'match_team2'],
+				where='match_team1 = "{}" OR match_team2 = "{}"'.
+				format(team_name, team_name))[0]
+	except IndexError:
+		raise ValueError('Quotes not available for {}'.format(team_name))
+
+	try:
+		quote = dbf.db_select(
+				table='quotes',
+				columns_in=['quote_value'],
+				where='quote_match = {} AND quote_field = {}'.
+				format(match_id, field_id))[0]
+	except IndexError:
+		raise ValueError('Quote not available for this match')
+
+	return team1, team2, field_id, nice_bet, quote
 
 
 def matches_per_day(day):
@@ -302,8 +394,11 @@ def matches_per_day(day):
 	if len(confirmed):
 		confirmed = prep_confirmed(confirmed)
 
-		all_matches = pd.concat([all_matches, confirmed]).drop_duplicates(
-			subset=['match_team1', 'match_team2'], keep=False)
+		all_matches = (pd.concat([all_matches, confirmed, confirmed]).
+			drop_duplicates(subset=['match_team1', 'match_team2'],
+		                keep=False))
+		if not len(all_matches):
+			return 'All matches are chosen.'
 
 	leagues = all_matches['match_league'].unique()
 	for i in leagues:
@@ -328,126 +423,34 @@ def matches_per_day(day):
 		return message
 
 
-def all_bets_per_team(team_name, league_id):
+def update_pred_table_after_confirm(first_name, bet_id):
 
 	"""
-	Called inside the command /get.
-	Return two text messages: one showing all the standard bets and the
-	other one the combo.
+	Called inside the command /confirm.
+	Update the columns pred_bet and pred_status of the table 'predictions'.
 
-	:param team_name: str
+	:param first_name: str, name of the user
 
-	:param league_id: int
+	:param bet_id: int
 
 
-	:return: (str, str)
+	:return: tuple, (team1, team2, league_id) relative to the bet which is
+			 beign confirmed. It will be used inside the function
+			 check_if_duplicate to delete all the Not Confirmed bets relative
+			 to same match, if any.
 	"""
 
-	fields2avoid = ([str(i) for i in range(4, 14)] +
-	                [str(i) for i in range(17, 31)] +
-	                [str(i) for i in range(152, 157)])
+	dbf.db_update(
+			table='predictions',
+			columns=['pred_bet', 'pred_status'],
+			values=[bet_id, 'Confirmed'],
+			where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
+			format(first_name))
 
-	try:
-		match_id, team1, team2 = dbf.db_select(
-				table='matches',
-				columns_in=['match_id', 'match_team1', 'match_team2'],
-				where=('match_league = {} AND ' +
-					   '(match_team1 = "{}" OR match_team2 = "{}")').
-				format(league_id, team_name, team_name))[0]
-	except IndexError:
-		raise ValueError('Quotes not available')
+	details = dbf.db_select(
+			table='bets INNER JOIN predictions on pred_bet = bet_id',
+			columns_in=['pred_team1', 'pred_team2', 'pred_league'],
+			where='bet_id = {} AND pred_user = "{}"'.format(bet_id,
+															first_name))[0]
 
-	team1 = team1.replace('*', '')
-	team2 = team2.replace('*', '')
-
-	message_standard = '<b>{} - {}: STANDARD</b>\n'.format(team1, team2)
-	message_combo = '<b>{} - {}: COMBO</b>\n'.format(team1, team2)
-
-	fields = dbf.db_select(
-			table='fields',
-			columns_in=['field_id', 'field_value'],
-			where='field_id NOT IN ({})'.format(','.join(fields2avoid)))
-
-	fields_added = []
-	COMBO = False
-	for field_id, field_value in fields:
-		field_name = dbf.db_select(
-				table='fields',
-				columns_in=['field_name'],
-				where='field_id = {}'.format(field_id))[0]
-
-		if field_name not in fields_added:
-			fields_added.append(field_name)
-			if '+' not in field_name:
-				COMBO = False
-				message_standard += '\n\n<i>{}</i>'.format(field_name)
-			else:
-				COMBO = True
-				message_combo += '\n\n<i>{}</i>'.format(field_name)
-
-		quote = dbf.db_select(
-				table='quotes',
-				columns_in=['quote_value'],
-				where='quote_match = {} AND quote_field = "{}"'.
-				format(match_id, field_id))[0]
-
-		if type(quote) != str:
-			quote = '@' + str(quote)
-
-		if not COMBO:
-			message_standard += '\n<b>{}</b>:    {}'.format(field_value,
-															quote)
-		else:
-			message_combo += '\n<b>{}</b>:    {}'.format(field_value, quote)
-
-	return message_standard, message_combo
-
-
-def look_for_quote(team_name, input_bet):
-
-	"""
-	Called inside the command /get.
-	Take the input from the user and look into the db for the requested
-	quote.
-
-	:param team_name: str
-
-	:param input_bet: str
-
-
-	:return: (str, str, int, str, float)
-	"""
-
-	try:
-		field_id = dbf.db_select(
-				table='fields_alias',
-				columns_in=['field_alias_field'],
-				where='field_alias_name = "{}"'.format(input_bet))[-1]
-
-		nice_bet = dbf.db_select(
-				table='fields',
-				columns_in=['field_nice_value'],
-				where='field_id = {}'.format(field_id))[0]
-
-	except IndexError:
-		raise ValueError('Bet not valid.')
-
-	try:
-		match_id, team1, team2 = dbf.db_select(
-				table='matches',
-				columns_in=['match_id', 'match_team1', 'match_team2'],
-				where='match_team1 = "{}" OR match_team2 = "{}"'.
-				format(team_name, team_name))[0]
-	except IndexError:
-		raise ValueError('Quotes not available for {}'.format(team_name))
-
-	try:
-		quote = dbf.db_select(
-				table='quotes',
-				columns_in=['quote_value'],
-				where='quote_match = {} AND quote_field = {}'.
-				format(match_id, field_id))[0]
-	except IndexError:
-		raise ValueError('Quote not available for this match')
-
-	return team1, team2, field_id, nice_bet, quote
+	return details
