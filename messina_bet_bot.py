@@ -108,34 +108,30 @@ def create_summary(string):
 				table='bets',
 				columns_in=['bet_id'],
 				where='bet_status = "Pending"')
-	else:
+	elif string == 'after':
 		bet_id = dbf.db_select(
 				table='bets',
 				columns_in=['bet_id'],
 				where='bet_status = "Placed" AND bet_result = "Unknown"')[-1]
+	else:
+		message = 'Following bets are still incomplete:\n\n'
+
+		unknown_bets = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+				where=('bet_status = "Placed" AND bet_result = "Unknown" AND' +
+				       ' bet_id != 58'))
+		for bet_id in unknown_bets:
+			message += create_summary_message(bet_id)[0]
+
+		return message
 
 	if string == 'before' and not bet_id:
 		return 'No bets yet. Choose the first one.'
 
-	bet_id = bet_id if not type(bet_id) == list else bet_id[0]
-	summary = dbf.db_select(
-			table='bets INNER JOIN predictions on pred_bet = bet_id',
-			columns_in=['pred_user', 'pred_date', 'pred_team1', 'pred_team2',
-			            'pred_rawbet', 'pred_quote'],
-			where='bet_id = {}'.format(bet_id))
+	bet_id = bet_id if not type(bet_id) == list else bet_id[-1]
+	message, final_quote = create_summary_message(bet_id)
 
-	summary = sorted(summary, key=lambda x: x[1])
-
-	message = ''
-	for user, dt, team1, team2, rawbet, quote in summary:
-
-		dt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
-		hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
-
-		message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
-				user, team1, team2, hhmm, rawbet, quote)
-
-	final_quote = np.prod(np.array([el[5] for el in summary]))
 	if string == 'before':
 		message2 = '\n\nPossible win with 5 euros: <b>{:.1f}</b>'.format(
 				final_quote * 5)
@@ -144,6 +140,28 @@ def create_summary(string):
 		message = 'Bet placed correctly.\n\n' + message
 		message += '\nPossible win: <b>{:.1f}</b>'.format(final_quote * 5)
 		return message
+
+
+def create_summary_message(bet_id):
+
+	message = ''
+
+	summary = dbf.db_select(
+			table='bets INNER JOIN predictions on pred_bet = bet_id',
+			columns_in=['pred_user', 'pred_date', 'pred_team1',
+			            'pred_team2',
+			            'pred_rawbet', 'pred_quote'],
+			where='bet_id = {}'.format(bet_id))
+	summary = sorted(summary, key=lambda x: x[1])
+	final_quote = np.prod(np.array([el[5] for el in summary]))
+	for user, dt, team1, team2, rawbet, quote in summary:
+		dt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
+		hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
+
+		message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
+				user, team1, team2, hhmm, rawbet, quote)
+
+	return message, final_quote
 
 
 def delete(bot, update):
@@ -588,6 +606,14 @@ def play(bot, update, args):
 	browser.quit()
 
 
+def remind(bot, update):
+
+	message = create_summary('resume')
+
+	return bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+	                        text=message)
+
+
 def score(bot, update):
 
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('score.png',
@@ -707,6 +733,7 @@ cake_handler = CommandHandler('cake', cake)
 series_handler = CommandHandler('series', series)
 stats_handler = CommandHandler('stats', stats)
 sotm_handler = CommandHandler('sotm', sotm)
+remind_handler = CommandHandler('remind', remind)
 match_handler = CommandHandler('match', match, pass_args=True)
 new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 log_handler = CommandHandler('log', send_log)
@@ -738,6 +765,7 @@ dispatcher.add_handler(sotm_handler)
 dispatcher.add_handler(match_handler)
 dispatcher.add_handler(new_quotes_handler)
 dispatcher.add_handler(log_handler)
+dispatcher.add_handler(remind_handler)
 
 logger = log.set_logging()
 updater.start_polling()

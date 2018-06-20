@@ -95,8 +95,25 @@ def cake():
 
 		return round(val/100*sum(euros), 1)
 
-	data = [(name, players[name].cake) for name in partecipants if
-			players[name].cake]
+	euros_lost = {name: players[name].cake for name in partecipants if
+	              players[name].cake}
+
+	bets_won = dbf.db_select(
+			table='bets',
+			columns_in=['bet_id', 'bet_euros', 'bet_prize'],
+			where='bet_result = "WINNING"')
+	for bet_id, money, prize in bets_won:
+		quotes_won = dbf.db_select(
+				table='predictions',
+				columns_in=['pred_user', 'pred_quote'],
+				where='pred_bet = {}'.format(bet_id))
+		prize_frac = prize / len(quotes_won)
+		aver_quote = np.array([el[1] for el in quotes_won]).mean()
+		for name, quote in quotes_won:
+			if name in euros_lost:
+				euros_lost[name] -= prize_frac * (quote / aver_quote)
+
+	data = list(euros_lost.items())
 	data.sort(key=lambda x: x[1], reverse=True)
 
 	names = [el[0] for el in data]
@@ -434,6 +451,6 @@ def winning_preds():
 	return round(len(preds[preds['Label'] == 'WINNING'])/len(preds) * 100, 1)
 
 
-bets, preds = update_bets_preds()
-players = {name: Player(name) for name in partecipants}
-stats = Stats()
+# bets, preds = update_bets_preds()
+# players = {name: Player(name) for name in partecipants}
+# stats = Stats()
