@@ -700,6 +700,7 @@ def money(browser):
 
 def refresh_money(browser):
 
+	time.sleep(2)
 	refresh = browser.find_element_by_xpath('.//user-balance-refresh-btn')
 	scroll_to_element(browser, 'false', refresh)
 	refresh.click()
