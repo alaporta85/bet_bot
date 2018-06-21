@@ -122,7 +122,9 @@ def create_summary(string):
 				where=('bet_status = "Placed" AND bet_result = "Unknown" AND' +
 				       ' bet_id != 58'))
 		for bet_id in unknown_bets:
-			message += create_summary_message(bet_id)[0]
+			message, final_quote = create_summary_message(bet_id)
+			message += ('{}\nPossible win: <b>{:.1f}</b>\n\n'.
+			            format(message, final_quote * 5))
 
 		return message
 
