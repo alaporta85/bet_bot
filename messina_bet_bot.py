@@ -3,7 +3,6 @@ import datetime
 import numpy as np
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
-from selenium.common.exceptions import NoSuchElementException
 from Functions import db_functions as dbf
 from Functions import selenium_functions as sf
 from Functions import bot_functions as bf
@@ -244,7 +243,11 @@ def get(bot, update, args):
 
 	try:
 		input_team, input_bet = guess.split('_')
-		input_bet = input_bet.replace(' ', '').replace(',', '.')
+		input_bet = input_bet.replace(',', '.').replace('TEMPO', 'T')
+		vals2replace = [' ', '*']
+		for val in vals2replace:
+			input_bet = input_bet.replace(val, '')
+		input_bet = input_bet.replace('1T', 'PT').replace('2T', 'ST')
 	except ValueError:
 		input_team, input_bet = (guess, '')
 
