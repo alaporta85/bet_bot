@@ -285,6 +285,9 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
 					all_bets = bets.find_elements_by_xpath(
 							'.//div[@ng-repeat="selection in prematchSingle' +
 							'EventMarketSimple.market.sel"]')
+					if not all_bets:
+						all_bets = bets.find_elements_by_xpath(
+								'.//div[@ng-repeat="selection in market.sel"]')
 
 					for i, new_bet in enumerate(all_bets):
 						scroll_to_element(browser, 'false', new_bet)
