@@ -95,6 +95,16 @@ def confirm(bot, update):
 	if dupl_message:
 		bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
 
+	auto_play = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_id'],
+			where='pred_bet = {}'.format(bet_id))
+	if len(auto_play) == 4:
+		bot.send_message(chat_id=update.message.chat_id,
+		                 text='{}, your bet has been placed correctly.'
+		                 .format(first_name))
+		return play(bot, update, ['5'])
+
 	return bot.send_message(chat_id=update.message.chat_id,
 					        text='{}, your bet has been placed correctly.'
 					        .format(first_name))
@@ -399,11 +409,12 @@ def jaccard_team(input_team):
 	team_id = 0
 
 	for i, t in teams:
-		trit = set(ngrams(t, 3))
-		jd = jaccard_distance(tri_guess, trit)
-		if jd < dist:
-			dist = jd
-			team_id = i
+		if t[0] == input_team[0]:
+			trit = set(ngrams(t, 3))
+			jd = jaccard_distance(tri_guess, trit)
+			if jd < dist:
+				dist = jd
+				team_id = i
 
 	team = dbf.db_select(
 			table='teams',

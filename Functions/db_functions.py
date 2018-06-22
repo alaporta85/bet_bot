@@ -5,13 +5,94 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 
-def start_db():
+def check_before_play(bet_id):
 
-    db = sqlite3.connect('extended_db')
-    c = db.cursor()
-    c.execute("PRAGMA foreign_keys = ON")
+    """
+    Return all the matches in the 'Pending' bet which have been played
+    already or started.
 
-    return db, c
+    :param bet_id: int
+
+
+    :return: list of tuples, (user, datetime, team1, team2)
+    """
+
+    invalid_matches = []
+
+    time_now = datetime.datetime.now()
+
+    matches = db_select(
+            table='bets INNER JOIN predictions on pred_bet = bet_id',
+            columns_in=['pred_id', 'pred_user', 'pred_date', 'pred_team1',
+                        'pred_team2'],
+            where='bet_id = {}'.format(bet_id))
+
+    for match in matches:
+        match_date = datetime.datetime.strptime(match[2], '%Y-%m-%d %H:%M:%S')
+        if match_date < time_now:
+            invalid_matches.append(match[1:])
+            db_delete(
+                    table='predictions',
+                    where='pred_id = {}'.format(match[0]))
+
+    return invalid_matches
+
+
+def db_delete(table, where):
+
+    """
+    Delete row from table.
+
+    :param table: str
+
+    :param where: str
+
+
+    :return: Nothing
+    """
+
+    db, c = start_db()
+
+    c.execute('''DELETE FROM {} WHERE {}'''.format(table, where))
+
+    db.commit()
+    db.close()
+
+
+def db_insert(table, columns, values, last_row=False):
+
+    """
+    Insert a new row in the table assigning the specifies values to the
+    specified columns. If last_row=True, return the id of the inserted row.
+
+    :param table: str, name of the table
+
+    :param columns: list, each element of the list is a column of the table.
+                    Ex: ['pred_id', 'pred_user', 'pred_quote']. Each column
+                    in the list will be loaded.
+
+    :param values: list, values of the corresponding columns
+
+    :param last_row: bool
+
+
+    :return: int if last_row=True else nothing.
+    """
+
+    db, c = start_db()
+
+    placeholders = ['"{}"' if (type(v) == str or type(v) == datetime.datetime)
+                    else '{}' for v in values]
+    vals = [el[0].format(el[1]) for el in zip(placeholders, values)]
+
+    c.execute('''INSERT INTO {} ({}) VALUES ({})'''.
+              format(table, ','.join(columns), ','.join(vals)))
+    last_id = c.lastrowid
+    db.commit()
+    db.close()
+
+    if last_row:
+        return last_id
 
 
 def db_select(table, columns_in=None, columns_out=None,
@@ -74,63 +155,6 @@ def db_select(table, columns_in=None, columns_out=None,
             return res
 
 
-def db_insert(table, columns, values, last_row=False):
-
-    """
-    Insert a new row in the table assigning the specifies values to the
-    specified columns. If last_row=True, return the id of the inserted row.
-
-    :param table: str, name of the table
-
-    :param columns: list, each element of the list is a column of the table.
-                    Ex: ['pred_id', 'pred_user', 'pred_quote']. Each column
-                    in the list will be loaded.
-
-    :param values: list, values of the corresponding columns
-
-    :param last_row: bool
-
-
-    :return: int if last_row=True else nothing.
-    """
-
-    db, c = start_db()
-
-    placeholders = ['"{}"' if (type(v) == str or type(v) == datetime.datetime)
-                    else '{}' for v in values]
-    vals = [el[0].format(el[1]) for el in zip(placeholders, values)]
-
-    c.execute('''INSERT INTO {} ({}) VALUES ({})'''.
-              format(table, ','.join(columns), ','.join(vals)))
-    last_id = c.lastrowid
-    db.commit()
-    db.close()
-
-    if last_row:
-        return last_id
-
-
-def db_delete(table, where):
-
-    """
-    Delete row from table.
-
-    :param table: str
-
-    :param where: str
-
-
-    :return: Nothing
-    """
-
-    db, c = start_db()
-
-    c.execute('''DELETE FROM {} WHERE {}'''.format(table, where))
-
-    db.commit()
-    db.close()
-
-
 def db_update(table, columns, values, where):
 
     """
@@ -184,34 +208,10 @@ def empty_table(table):
     db.close()
 
 
-def check_before_play(bet_id):
+def start_db():
 
-    """
-    Return all the matches in the 'Pending' bet which have been played
-    already or started.
+    db = sqlite3.connect('extended_db')
+    c = db.cursor()
+    c.execute("PRAGMA foreign_keys = ON")
 
-    :param bet_id: int
-
-
-    :return: list of tuples, (user, datetime, team1, team2)
-    """
-
-    invalid_matches = []
-
-    time_now = datetime.datetime.now()
-
-    matches = db_select(
-            table='bets INNER JOIN predictions on pred_bet = bet_id',
-            columns_in=['pred_id', 'pred_user', 'pred_date', 'pred_team1',
-                        'pred_team2'],
-            where='bet_id = {}'.format(bet_id))
-
-    for match in matches:
-        match_date = datetime.datetime.strptime(match[2], '%Y-%m-%d %H:%M:%S')
-        if match_date < time_now:
-            invalid_matches.append(match[1:])
-            db_delete(
-                    table='predictions',
-                    where='pred_id = {}'.format(match[0]))
-
-    return invalid_matches
+    return db, c
