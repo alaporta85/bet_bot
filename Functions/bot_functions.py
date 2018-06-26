@@ -64,11 +64,14 @@ def all_bets_per_team(team_name, league_id):
 				COMBO = True
 				message_combo += '\n\n<i>{}</i>'.format(field_name)
 
-		quote = dbf.db_select(
-				table='quotes',
-				columns_in=['quote_value'],
-				where='quote_match = {} AND quote_field = "{}"'.
-				format(match_id, field_id))[0]
+		try:
+			quote = dbf.db_select(
+					table='quotes',
+					columns_in=['quote_value'],
+					where='quote_match = {} AND quote_field = "{}"'.
+					format(match_id, field_id))[0]
+		except IndexError:
+			continue
 
 		if type(quote) != str:
 			quote = '@' + str(quote)

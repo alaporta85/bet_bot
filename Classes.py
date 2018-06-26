@@ -28,6 +28,7 @@ class Player(object):
 		self.index = self.indices[-1]
 		self.best_series = self.set_series('WINNING')
 		self.worst_series = self.set_series('LOSING')
+		self.current_series = self.set_series('CURRENT')
 		self.cake = self.set_cake_value()
 
 	def quotes_win_lose(self):
@@ -56,14 +57,26 @@ class Player(object):
 		df = preds[preds['User'] == self.name]['Label'].reset_index(drop=True)
 		last_pred = df.index[-1]
 		cn = count()
-		data = df[df == label].index
-		# noinspection PyTypeChecker
-		series = max(
-				(list(g) for _, g in groupby(data, lambda x: x - next(cn))),
-				key=len)
 
-		return ((len(series), 'Concluded') if series[-1] != last_pred else
-				(len(series), 'Ongoing'))
+		if label == 'CURRENT':
+			labels = ['WINNING', 'LOSING']
+			for l in labels:
+				data = df[df == l].index
+				all_series = (list(g) for _, g in groupby(
+						data, lambda x: x - next(cn)))
+				last = list(all_series)[-1]
+				if last_pred in last:
+					return len(last), l
+
+		data = df[df == label].index
+
+		all_series = (list(g) for _, g in groupby(data,
+		                                          lambda x: x - next(cn)))
+
+		record = max(reversed(list(all_series)), key=len)
+
+		return ((len(record), 'Concluded') if record[-1] != last_pred else
+				(len(record), 'Ongoing'))
 
 
 class Stats(object):
@@ -233,14 +246,49 @@ def score():
 
 def series():
 
+	def insert_arrows():
+		for i, e in enumerate(names):
+			if i in green_arrows:
+				from_w = i - bar_width
+				to_w = i
+				from_h = series_pos[i] + abs_max / 200
+				to_h = series_pos[i] + abs_max / 10
+				ax.imshow(im1, aspect='auto',
+				          extent=(from_w, to_w, from_h, to_h),
+				          zorder=-1)
+
+			elif i in red_arrows:
+				from_w = i
+				to_w = i + bar_width
+				from_h = series_neg[i] + abs_max / 200
+				to_h = series_neg[i] + abs_max / 10
+				ax.imshow(im2, aspect='auto',
+				          extent=(from_w, to_w, from_h, to_h),
+				          zorder=-1)
+
+	def insert_lines():
+		current_series = [players[nm].current_series for nm in names]
+		for i, g in enumerate(current_series):
+			if i not in green_arrows + red_arrows:
+				value, label = g
+				if label == 'WINNING':
+					xmin = i - bar_width
+					xmax = i
+				else:
+					xmin = i
+					xmax = i + bar_width
+
+				ax.hlines(y=value, xmin=xmin, xmax=xmax,
+				          linewidth=3, color='black')
+
 	series_pos = sorted([(name, players[name].best_series) for name in
 						 partecipants], key=lambda x: x[1][0], reverse=True)
-	green_arrows = [g for i, g in enumerate(series_pos) if g[1] == 'Ongoing']
+	green_arrows = [i for i, g in enumerate(series_pos) if g[1][1] == 'Ongoing']
 	names = [el[0] for el in series_pos]
 	series_pos = [el[1][0] for el in series_pos]
 
 	series_neg = [players[name].worst_series for name in names]
-	red_arrows = [i for i, g in enumerate(series_neg) if g[1] == 'Ongoing']
+	red_arrows = [i for i, g in enumerate(series_neg) if g[1][1] == 'Ongoing']
 	series_neg = [el[0] for el in series_neg]
 	abs_max = max((max(series_pos), max(series_neg)))
 
@@ -250,23 +298,8 @@ def series():
 	im1 = image.imread('Images/green_arrow.png')
 	im2 = image.imread('Images/red_arrow.png')
 
-	# Inserting arrows in the plot
-	for i, e in enumerate(names):
-		if i in green_arrows:
-			from_w = i - bar_width
-			to_w = i
-			from_h = series_pos[i] + abs_max / 200
-			to_h = series_pos[i] + abs_max / 10
-			ax.imshow(im1, aspect='auto', extent=(from_w, to_w, from_h, to_h),
-					  zorder=-1)
-
-		elif i in red_arrows:
-			from_w = i
-			to_w = i + bar_width
-			from_h = series_neg[i] + abs_max / 200
-			to_h = series_neg[i] + abs_max / 10
-			ax.imshow(im2, aspect='auto', extent=(from_w, to_w, from_h, to_h),
-					  zorder=-1)
+	insert_arrows()
+	insert_lines()
 
 	plt.bar([x - bar_width / 2 for x in range(5)], series_pos, bar_width,
 			color='g')

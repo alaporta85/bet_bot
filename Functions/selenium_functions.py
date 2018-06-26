@@ -448,7 +448,7 @@ def fill_db_with_quotes():  # UPDATED
 				columns_in=['league_id'],
 		        where='league_name = "{}"'.format(league))[0]
 
-		for i in range(12):
+		for i in range(8):
 			try:
 				buttons = './/div[@class="block-event event-description"]'
 
