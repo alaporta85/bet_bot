@@ -11,6 +11,9 @@ from Functions import logging as log
 import Classes as cl
 from nltk.metrics.distance import jaccard_distance
 from nltk.util import ngrams
+import matplotlib
+matplotlib.use('TkAgg')
+# import matplotlib.pyplot as plt
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -95,15 +98,15 @@ def confirm(bot, update):
 	if dupl_message:
 		bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
 
-	auto_play = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_id'],
-			where='pred_bet = {}'.format(bet_id))
-	if len(auto_play) == 4:
-		bot.send_message(chat_id=update.message.chat_id,
-		                 text='{}, your bet has been placed correctly.'
-		                 .format(first_name))
-		return play(bot, update, ['5'])
+	# auto_play = dbf.db_select(
+	# 		table='predictions',
+	# 		columns_in=['pred_id'],
+	# 		where='pred_bet = {}'.format(bet_id))
+	# if len(auto_play) == 4:
+	# 	bot.send_message(chat_id=update.message.chat_id,
+	# 	                 text='{}, your bet has been placed correctly.'
+	# 	                 .format(first_name))
+	# 	return play(bot, update, ['5'])
 
 	return bot.send_message(chat_id=update.message.chat_id,
 					        text='{}, your bet has been placed correctly.'
