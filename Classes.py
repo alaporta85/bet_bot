@@ -3,8 +3,6 @@ import matplotlib.image as image
 from datetime import datetime
 import numpy as np
 import pandas as pd
-import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from itertools import groupby, count
 
@@ -218,6 +216,8 @@ def score():
 	mean_quote = [players[name].mean_quote for name in names]
 	colors = [colors_dict[name] for name in names]
 
+	fig, ax = plt.subplots()
+	fig.set_size_inches(9, 7)
 	bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
 	               linewidth=0.5, clip_on=False)
 	plt.xticks(range(5), names, fontsize=14)
@@ -233,7 +233,7 @@ def score():
 		         style='italic')
 	for i, bar in enumerate(bars):
 		text = '{}'.format(indices[i])
-		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.22,
+		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.16,
 		         '{}'.format(text), ha='center', va='bottom', fontsize=12,
 		         fontweight='bold')
 	for bar in bars:
@@ -487,3 +487,4 @@ def winning_preds():
 bets, preds = update_bets_preds()
 players = {name: Player(name) for name in partecipants}
 stats = Stats()
+

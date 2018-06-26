@@ -1,8 +1,8 @@
 from Functions import db_functions as dbf
-import Classes as cl
 from itertools import groupby
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Agg')
+import Classes as cl
 
 db, c = dbf.start_db()
 colors_dict = list(c.execute('''SELECT color_user, color_value FROM colors'''))
