@@ -22,10 +22,6 @@ def all_bets_per_team(team_name, league_id):
 	:return: (str, str)
 	"""
 
-	fields2avoid = ([str(i) for i in range(4, 14)] +
-	                [str(i) for i in range(17, 31)] +
-	                [str(i) for i in range(152, 157)])
-
 	try:
 		match_id, team1, team2 = dbf.db_select(
 				table='matches',
@@ -44,8 +40,7 @@ def all_bets_per_team(team_name, league_id):
 
 	fields = dbf.db_select(
 			table='fields',
-			columns_in=['field_id', 'field_value'],
-			where='field_id NOT IN ({})'.format(','.join(fields2avoid)))
+			columns_in=['field_id', 'field_value'])
 
 	fields_added = []
 	COMBO = False
