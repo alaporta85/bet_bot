@@ -254,7 +254,7 @@ def get(bot, update, args):
 	try:
 		input_team, input_bet = guess.split('_')
 		input_bet = input_bet.replace(',', '.').replace('TEMPO', 'T')
-		vals2replace = [' ', '*']
+		vals2replace = [' ', '*', '+']
 		for val in vals2replace:
 			input_bet = input_bet.replace(val, '')
 		input_bet = input_bet.replace('1T', 'PT').replace('2T', 'ST')
@@ -602,7 +602,7 @@ def play(bot, update, args):
 						  message_id=mess_id, text='Done!')
 
 	sf.refresh_money(browser)
-	time.sleep(30)
+	time.sleep(15)
 
 	# Money after playing the bet
 	money_after = sf.money(browser)
