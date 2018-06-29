@@ -71,6 +71,7 @@ class Player(object):
 		all_series = (list(g) for _, g in groupby(data,
 		                                          lambda x: x - next(cn)))
 
+		# noinspection PyTypeChecker
 		record = max(reversed(list(all_series)), key=len)
 
 		return ((len(record), 'Concluded') if record[-1] != last_pred else
@@ -487,4 +488,3 @@ def winning_preds():
 bets, preds = update_bets_preds()
 players = {name: Player(name) for name in partecipants}
 stats = Stats()
-

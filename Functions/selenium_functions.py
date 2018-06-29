@@ -38,25 +38,10 @@ chrome_path = absolute_path + '/chromedriver'
 logger = log.get_flogger()
 
 WAIT = 60
+recurs_lim = 3
 
 
-def add_bet(browser, current_url, field, bet):  # UPDATED
-
-	"""
-	Add the quote to the basket by taking directly the url of the bet.
-	It is used inside the play_bet function.
-	"""
-
-	browser.get(current_url)
-	time.sleep(3)
-
-	try:
-		click_bet(browser, field, bet, 0)
-	except ConnectionError as e:
-		raise ConnectionError(str(e))
-
-
-def add_bet_to_basket(browser, match, count, dynamic_message):  # UPDATED
+def add_bet_to_basket(browser, match, count, dynamic_message):
 
 	team1 = match[0]
 	team2 = match[1]
@@ -65,7 +50,8 @@ def add_bet_to_basket(browser, match, count, dynamic_message):  # UPDATED
 	url = match[4]
 
 	try:
-		add_bet(browser, url, field, bet)
+		browser.get(url)
+		click_bet(browser, field, bet)
 		time.sleep(5)
 		check_single_bet(browser, count, team1, team2)
 		return dynamic_message.format(count + 1)
@@ -234,23 +220,23 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 								  'Please try again.')
 
 
-def check_single_bet(browser, anumber, team1, team2):  # UPDATED
+def check_single_bet(browser, anumber, team1, team2):
 
 	"""Check whether the bet is inserted correctly."""
 
-	message = ('Problems with the match {} - {}. '.format(team1, team2) +
-			   'Possible reason: bad internet connection. Please try again.')
+	message = 'Problems with {} - {}. Try again.'.format(team1, team2)
 
 	singola = browser.find_elements_by_xpath('.//div[@class="item-ticket"]')
 	multipla = browser.find_elements_by_xpath(
 									   './/div[@class="item-ticket ng-scope"]')
 
 	if not singola and len(multipla) != anumber + 1:
+		logger.info('CHECK SINGLE BET - ' + message)
 		browser.quit()
 		raise ConnectionError(message)
 
 
-def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
+def click_bet(browser, field, bet):
 
 	"""
 	Find the button relative to the bet we are interested in and click
@@ -259,116 +245,114 @@ def click_bet(browser, field, bet, LIMIT_GET_QUOTE):  # UPDATED
 
 	CLICK_CHECK = False
 
-	try:
-		all_panels = find_all_panels(browser, 0)
+	all_panels = find_all_panels(browser)
 
-		for panel in all_panels:
+	for i, panel in enumerate(all_panels):
 
-			click_panel(browser, panel)
+		click_panel(browser, i, panel)
 
-			fields_path = ('./div[contains(@class, "group-market")]//' +
-			               'div[@class="market-info"]/div')
-			bets_path = ('./div[contains(@class, "group-market")]//' +
-			             'div[@class="market-selections"]')
+		fields_path = ('./div[contains(@class, "group-market")]//' +
+		               'div[@class="market-info"]/div')
+		bets_path = ('./div[contains(@class, "group-market")]//' +
+		             'div[@class="market-selections"]')
 
-			fields = panel.find_elements_by_xpath(fields_path)
-			bets = panel.find_elements_by_xpath(bets_path)
+		fields = panel.find_elements_by_xpath(fields_path)
+		bets = panel.find_elements_by_xpath(bets_path)
 
-			fields_bets = (fields, bets)
+		fields_bets = (fields, bets)
 
-			for field_, bets in zip(fields_bets[0], fields_bets[1]):
-				scroll_to_element(browser, 'false', field_)
-				field_name = field_.text.upper()
+		for field_, bets in zip(fields_bets[0], fields_bets[1]):
+			scroll_to_element(browser, 'false', field_)
+			field_name = field_.text.upper()
 
-				if field_name == field:
+			if field_name == field:
 
+				all_bets = bets.find_elements_by_xpath(
+						'.//div[@ng-repeat="selection in prematchSingle' +
+						'EventMarketSimple.market.sel"]')
+				if not all_bets:
 					all_bets = bets.find_elements_by_xpath(
-							'.//div[@ng-repeat="selection in prematchSingle' +
-							'EventMarketSimple.market.sel"]')
-					if not all_bets:
-						all_bets = bets.find_elements_by_xpath(
-								'.//div[@ng-repeat="selection in market.sel"]')
+							'.//div[@ng-repeat="selection in market.sel"]')
 
-					for i, new_bet in enumerate(all_bets):
-						scroll_to_element(browser, 'false', new_bet)
-						if field_name == 'ESITO FINALE 1X2 HANDICAP':
-							bet_name = new_bet.find_element_by_xpath(
-									'.//div[@class="selection-name ' +
-									'ng-binding"]').text.upper().split()[0]
-						else:
-							bet_name = new_bet.find_element_by_xpath(
-									'.//div[@class="selection-name ' +
-									'ng-binding"]').text.upper()
+				for new_bet in all_bets:
+					scroll_to_element(browser, 'false', new_bet)
+					if field_name == 'ESITO FINALE 1X2 HANDICAP':
+						bet_name = new_bet.find_element_by_xpath(
+								'.//div[@class="selection-name ' +
+								'ng-binding"]').text.upper().split()[0]
+					else:
+						bet_name = new_bet.find_element_by_xpath(
+								'.//div[@class="selection-name ' +
+								'ng-binding"]').text.upper()
 
-						if bet_name == bet:
+					if bet_name == bet:
 
-							new_bet.click()
-							CLICK_CHECK = True
-							break
-
-				if CLICK_CHECK:
-					break
+						new_bet.click()
+						CLICK_CHECK = True
+						break
 
 			if CLICK_CHECK:
 				break
 
-	except TimeoutException:
-
-		if LIMIT_GET_QUOTE < 3:
-			logger.info('Recursive click_bet')
-			browser.refresh()
-			time.sleep(3)
-			click_bet(browser, field, bet, LIMIT_GET_QUOTE + 1)
-		else:
-			browser.quit()
-			raise ConnectionError(conn_err_message)
+		if CLICK_CHECK:
+			break
 
 
-def click_calcio_button(browser):  # UPDATED
+def click_calcio_button(browser):
 
 	calcio = './/div/div[@class="item-sport ng-scope"]//a'
-	wait_clickable(browser, WAIT, calcio)
-	calcio_button = browser.find_element_by_xpath(calcio)
 
+	for i in range(recurs_lim):
+		try:
+			wait_clickable(browser, WAIT, calcio)
+
+		except TimeoutException:
+			logger.info('CLICK CALCIO BUTTON - CALCIO button not found: ' +
+			            'trial {}'.format(i + 1))
+			if i < 2:
+				browser.refresh()
+				continue
+			else:
+				browser.quit()
+
+	calcio_button = browser.find_element_by_xpath(calcio)
 	scroll_to_element(browser, 'true', calcio_button)
 	scroll_to_element(browser, 'false', calcio_button)
-
 	calcio_button.click()
 
 
-def click_country_button(browser, league, LIMIT_COUNTRY_BUTTON):  # UPDATED
+def click_country_button(browser, league):
 
 	"""
 	Find the button relative to the country we are interested in and click it.
 	"""
 
 	countries_container = './/div[@class="country-name"]'
-	try:
-		wait_clickable(browser, WAIT, countries_container)
-		all_countries = browser.find_elements_by_xpath(countries_container)
 
-	except TimeoutException:
-		if LIMIT_COUNTRY_BUTTON < 3:
-			logger.info('Recursive click_country_button')
-			browser.refresh()
-			time.sleep(3)
-			click_calcio_button(browser)
-			return click_country_button(browser, league,
-										LIMIT_COUNTRY_BUTTON + 1)
-		else:
-			browser.quit()
-			raise ConnectionError(conn_err_message)
+	for i in range(recurs_lim):
+		try:
+			wait_clickable(browser, WAIT, countries_container)
 
+		except TimeoutException:
+			logger.info('CLICK COUNTRY BUTTON - ALL COUNTRIES container not ' +
+			            'found: trial {}'.format(i + 1))
+			if i < 2:
+				browser.refresh()
+				click_calcio_button(browser)
+				continue
+			else:
+				browser.quit()
+
+	all_countries = browser.find_elements_by_xpath(countries_container)
 	for country in all_countries:
 		panel = country.find_element_by_xpath('.//a')
 		scroll_to_element(browser, 'false', panel)
 		if panel.text.upper() == countries[league]:
 			panel.click()
-			time.sleep(2)
 			break
 
 
-def click_league_button(browser, league):  # UPDATED
+def click_league_button(browser, league):
 
 	"""
 	Find the button relative to the league we are interested in and click it.
@@ -376,6 +360,20 @@ def click_league_button(browser, league):  # UPDATED
 
 	nat_leagues_container = ('.//div[@class="item-competition competition ' +
 							 'slide-menu ng-scope"]')
+	for i in range(recurs_lim):
+		try:
+			wait_visible(browser, WAIT, nat_leagues_container)
+		except TimeoutException:
+			logger.info('CLICK LEAGUE BUTTON - ALL LEAGUES container not ' +
+			            'found: trial {}'.format(i + 1))
+			if i < 2:
+				browser.refresh()
+				click_calcio_button(browser)
+				click_country_button(browser, league)
+				continue
+			else:
+				browser.quit()
+
 	all_nat_leagues = browser.find_elements_by_xpath(nat_leagues_container)
 	for nat_league in all_nat_leagues:
 		panel = nat_league.find_element_by_xpath('.//a')
@@ -385,32 +383,43 @@ def click_league_button(browser, league):  # UPDATED
 			break
 
 
-def click_panel(browser, panel):
+def click_panel(browser, index, panel):
 
-	button = panel.find_element_by_xpath(
-			'.//div[contains(@class, "group-name")]')
+	button = panel.find_elements_by_xpath(
+			'//div[contains(@class, "group-name")]')[index]
 	scroll_to_element(browser, 'false', button)
+	txt = button.text
+
+	try:
+		WebDriverWait(
+				browser, WAIT).until(EC.element_to_be_clickable(
+					(By.LINK_TEXT, txt)))
+	except TimeoutException:
+		logger.info('CLICK PANEL - Not possible to click on ' +
+		            '{} panel'.format(txt))
+		raise ConnectionError
+
 	if 'active' not in button.get_attribute('class'):
 		button.click()
-		time.sleep(2)
+		time.sleep(.5)
 
 
-def fill_db_with_quotes():  # UPDATED
+def fill_db_with_quotes():
 
 	"""
 	Call the function 'scan_league()' for all the leagues present in the
 	dict "countries" to fully update the db.
 	"""
 
-	def three_buttons(browser, league):
+	def two_buttons(browser, league):
 
-		click_country_button(browser, league, 0)
+		click_country_button(browser, league)
 		click_league_button(browser, league)
 		filters = './/div[@class="markets-favourites"]'
 
 		return filters
 
-	browser = go_to_lottomatica(0)
+	browser = go_to_lottomatica()
 	dbf.empty_table('quotes')
 	dbf.empty_table('matches')
 
@@ -420,24 +429,20 @@ def fill_db_with_quotes():  # UPDATED
 
 	for league in countries:
 		start = time.time()
-		filters = three_buttons(browser, league)
-		league_url = browser.current_url
-		time.sleep(3)
+		filters = two_buttons(browser, league)
 		skip_league = False
 
-		for i in range(3):
+		for i in range(recurs_lim):
 			try:
 				wait_visible(browser, WAIT, filters)
 				break
 			except TimeoutException:
+				logger.info('FILL DB WITH QUOTES - FILTERS for ' +
+				            '{} not found: trial {}.'.format(league, i + 1))
 				if i < 2:
-					logger.info('Recursive {}'.format(league))
-					browser.get(league_url)
-					time.sleep(3)
+					browser.refresh()
 					continue
 				else:
-					logger.info('Failing to update quotes from {}'.format(
-																	   league))
 					skip_league = True
 
 		if skip_league:
@@ -448,13 +453,26 @@ def fill_db_with_quotes():  # UPDATED
 				columns_in=['league_id'],
 		        where='league_name = "{}"'.format(league))[0]
 
-		for i in range(8):
+		for i in range(200):
 			try:
 				buttons = './/div[@class="block-event event-description"]'
+				for j in range(recurs_lim):
+					try:
+						wait_clickable(browser, WAIT, buttons)
+						break
+					except TimeoutException:
+						logger.info('FILL DB WITH QUOTES - MATCHES for ' +
+						            '{} not found: trial {}.'.format(league,
+						                                             j + 1))
+						if j < 2:
+							browser.refresh()
+							continue
+						else:
+							skip_league = True
 
-				WebDriverWait(
-						browser, 30).until(EC.element_to_be_clickable(
-												   (By.XPATH, buttons)))
+				if skip_league:
+					break
+
 				match = browser.find_elements_by_xpath(buttons)[i]
 				scroll_to_element(browser, 'true', match)
 				scroll_to_element(browser, 'false', match)
@@ -471,26 +489,30 @@ def fill_db_with_quotes():  # UPDATED
 				end = time.time() - start
 				minutes = int(end // 60)
 				seconds = round(end % 60)
-				logger.info('Updating {} took {}:{}'.format(league, minutes,
-															seconds))
+				logger.info('FILL DB WITH QUOTES - Updating {} took {}:{}'.
+				            format(league, minutes, seconds))
 				break
+
+		if skip_league:
+			continue
 
 	browser.quit()
 
 
-def find_all_fields_and_bets(browser):  # UPDATED
+def find_all_fields_and_bets(browser):
 
 	"""
 	Return the HTML container of the fields (ESITO FINALE 1X2, DOPPIA
 	CHANCE, GOAL/NOGOAL, ...).
 	"""
 
+	all_panels = find_all_panels(browser)
 
-	all_panels = find_all_panels(browser, 0)
-
-	for panel in all_panels:
-		click_panel(browser, panel)
-		time.sleep(.5)
+	for i, panel in enumerate(all_panels):
+		try:
+			click_panel(browser, i, panel)
+		except ConnectionError:
+			continue
 
 	all_fields_path = '//div[@class="market-info"]/div'
 	all_bets_path = '//div[@class="market-selections"]'
@@ -501,7 +523,7 @@ def find_all_fields_and_bets(browser):  # UPDATED
 	return fields, bets
 
 
-def find_all_panels(browser, LIMIT_ALL_PANELS):  # UPDATED
+def find_all_panels(browser):
 
 	"""
 	Return the HTML container of the panels (PIU' GIOCATE, CHANCE MIX,
@@ -510,38 +532,31 @@ def find_all_panels(browser, LIMIT_ALL_PANELS):  # UPDATED
 
 	all_panels_path = '//div[@class="item-group ng-scope"]'
 
-	try:
-		wait_visible(browser, WAIT, all_panels_path)
-		all_panels = browser.find_elements_by_xpath(all_panels_path)
+	for i in range(recurs_lim):
+		try:
+			wait_visible(browser, WAIT, all_panels_path)
+			all_panels = browser.find_elements_by_xpath(all_panels_path)
+			return all_panels
 
-	except TimeoutException:
-		if LIMIT_ALL_PANELS < 3:
-			logger.info('Recursive find_all_panels')
-			browser.refresh()
-			time.sleep(3)
-			return find_all_panels(browser, LIMIT_ALL_PANELS + 1)
-		else:
-			browser.quit()
-			raise ConnectionError(conn_err_message)
-
-	return all_panels
+		except TimeoutException:
+			logger.info('FIND ALL PANELS - PANELS container not found: ' +
+			            'trial {}.'.format(i + 1))
+			if i < 2:
+				browser.refresh()
+				return find_all_panels(browser)
+			else:
+				browser.quit()
 
 
 def find_scommetti_box(browser):
 
 	button_location = './/div[@class="buttons-betslip"]'
-
-	try:
-		# wait_visible(browser, 20, button_location)
-		button = browser.find_element_by_xpath(button_location)
-		scroll_to_element(browser, 'false', button)
-
-		button.click()
-	except TimeoutException:
-		raise ConnectionError('PLAY - "SCOMMETTI" container not found.')
+	button = browser.find_element_by_xpath(button_location)
+	scroll_to_element(browser, 'false', button)
+	button.click()
 
 
-def go_to_lottomatica(LIMIT_1):  # UPDATED
+def go_to_lottomatica():
 
 	"""Connect to Lottomatica webpage and click "CALCIO" button."""
 
@@ -553,23 +568,10 @@ def go_to_lottomatica(LIMIT_1):  # UPDATED
 	time.sleep(3)
 	# browser.set_window_size(1400, 800)
 
-	try:
-		browser.get(url)
-		click_calcio_button(browser)
+	browser.get(url)
+	click_calcio_button(browser)
 
-		return browser
-
-	except TimeoutException:
-
-		if LIMIT_1 < 3:
-			logger.info('GO TO LOTTOMATICA - CALCIO button not found: '
-			            'trial {}'.format(LIMIT_1 + 1))
-			browser.quit()
-			return go_to_lottomatica(LIMIT_1 + 1)
-		else:
-			raise ConnectionError(
-					'GO TO LOTTOMATICA - CALCIO button not found: '
-					'trial {}'.format(LIMIT_1 + 1))
+	return browser
 
 
 def go_to_personal_area(browser, LIMIT_1):
@@ -646,7 +648,7 @@ def go_to_placed_bets(browser, LIMIT_2):
 								  'section: MOVIMENTI E GIOCATE.')
 
 
-def insert_euros(browser, euros):  # UPDATED
+def insert_euros(browser, euros):
 
 	input_euros = ('.//div[@class="value-item-summary"]//' +
 	               'input[@ng-model="amountSelect.amount"]')
@@ -658,7 +660,7 @@ def insert_euros(browser, euros):  # UPDATED
 	euros_box.send_keys(Keys.DELETE)
 
 
-def login(browser):  # UPDATED
+def login(browser):
 
 	f = open('login.txt', 'r')
 	credentials = f.readlines()
@@ -667,25 +669,29 @@ def login(browser):  # UPDATED
 	username = credentials[0][10:-1]
 	password = credentials[1][10:]
 
-	button = browser.find_element_by_xpath(
-			'.//button[@class="btn btn-default btn-accedi"]')
-	scroll_to_element(browser, 'false', button)
-	button.click()
+	try:
+		button = './/button[@class="btn btn-default btn-accedi"]'
+		wait_clickable(browser, WAIT, button)
+		button = browser.find_element_by_xpath(button)
+		scroll_to_element(browser, 'false', button)
+		button.click()
 
-	user_path = './/input[@autocomplete="username"]'
-	pass_path = './/input[@autocomplete="current-password"]'
-	accedi_path = './/button[@id="signin-button"]'
+		user_path = './/input[@autocomplete="username"]'
+		pass_path = './/input[@autocomplete="current-password"]'
+		accedi_path = './/button[@id="signin-button"]'
+		wait_visible(browser, WAIT, user_path)
+		wait_visible(browser, WAIT, pass_path)
+		user = browser.find_element_by_xpath(user_path)
+		passw = browser.find_element_by_xpath(pass_path)
 
-	user = browser.find_element_by_xpath(user_path)
-	passw = browser.find_element_by_xpath(pass_path)
-	accedi = browser.find_element_by_xpath(accedi_path)
-
-	user.send_keys(username)
-
-	passw.send_keys(password)
-
-	scroll_to_element(browser, 'false', accedi)
-	accedi.click()
+		user.send_keys(username)
+		passw.send_keys(password)
+		wait_clickable(browser, WAIT, accedi_path)
+		accedi = browser.find_element_by_xpath(accedi_path)
+		accedi.click()
+	except TimeoutException:
+		browser.refresh()
+		return login(browser)
 
 
 def money(browser):
@@ -694,17 +700,41 @@ def money(browser):
 
 	money_path = './/span[@class="user-balance ng-binding"]'
 
-	wait_visible(browser, 30, money_path)
-	final_money = browser.find_element_by_xpath(money_path).text
-	final_money = float(final_money.replace(',', '.'))
 
-	return final_money
+	for i in range(recurs_lim):
+		try:
+			wait_visible(browser, WAIT, money_path)
+		except TimeoutException:
+			logger.info('MONEY - Money container not found')
+			if i < 2:
+				browser.refresh()
+				continue
+			else:
+				browser.quit()
+
+	money = browser.find_element_by_xpath(money_path).text
+	money = float(money.replace(',', '.'))
+
+	return money
 
 
 def refresh_money(browser):
 
 	time.sleep(2)
-	refresh = browser.find_element_by_xpath('.//user-balance-refresh-btn')
+	refresh_path = './/user-balance-refresh-btn'
+
+	for i in range(recurs_lim):
+		try:
+			wait_clickable(browser, WAIT, refresh_path)
+		except TimeoutException:
+			logger.info('REFRESH MONEY - Refresh money button not found')
+			if i < 2:
+				browser.refresh()
+				continue
+			else:
+				browser.quit()
+
+	refresh = browser.find_element_by_xpath(refresh_path)
 	scroll_to_element(browser, 'false', refresh)
 	refresh.click()
 
@@ -732,11 +762,10 @@ def simulate_hover_and_click(browser, element):
 		raise ConnectionError(conn_err_message)
 
 
-def update_matches_table(browser, league_id, d_m_y, h_m):  # UPDATED
+def update_matches_table(browser, league_id, d_m_y, h_m):
 
 	back = './/a[@class="back-competition ng-scope"]'
-	wait_clickable(browser, 30, back)
-
+	wait_clickable(browser, WAIT, back)
 	back = browser.find_element_by_xpath(back)
 	time.sleep(1)
 
@@ -752,7 +781,6 @@ def update_matches_table(browser, league_id, d_m_y, h_m):  # UPDATED
 	match_date = datetime.datetime.strptime(yy + mm + dd, '%Y%m%d')
 	match_date = match_date.replace(hour=int(h_m.split(':')[0]),
 									minute=int(h_m.split(':')[1]))
-	time.sleep(4)
 
 	last_id = dbf.db_insert(
 			table='matches',
@@ -764,7 +792,7 @@ def update_matches_table(browser, league_id, d_m_y, h_m):  # UPDATED
 	return last_id, back
 
 
-def update_quotes_table(browser, all_fields, last_id):  # UPDATED
+def update_quotes_table(browser, all_fields, last_id):
 
 	fields_bets = find_all_fields_and_bets(browser)
 

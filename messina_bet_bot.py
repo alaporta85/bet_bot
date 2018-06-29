@@ -252,12 +252,15 @@ def get(bot, update, args):
 								text='Wrong format.')
 
 	try:
+		vals2replace = [(' ', ''), ('*', ''), ('+', ''),
+		                ('TEMPO', 'T'),
+		                ('1T', 'PT'), ('2T', 'ST'),
+		                ('GOAL', 'GG'), ('NOGOAL', 'NG'),
+		                ('HANDICAP', 'H'), ('HAND', 'H')]
+
 		input_team, input_bet = guess.split('_')
-		input_bet = input_bet.replace(',', '.').replace('TEMPO', 'T')
-		vals2replace = [' ', '*', '+']
-		for val in vals2replace:
-			input_bet = input_bet.replace(val, '')
-		input_bet = input_bet.replace('1T', 'PT').replace('2T', 'ST')
+		for old, new in vals2replace:
+			input_bet = input_bet.replace(old, new)
 	except ValueError:
 		input_team, input_bet = (guess, '')
 
@@ -549,7 +552,7 @@ def play(bot, update, args):
 
 	matches_to_play = bf.create_matches_to_play(bet_id)
 
-	browser = sf.go_to_lottomatica(0)
+	browser = sf.go_to_lottomatica()
 	logger.info('PLAY - Connected to Lottomatica')
 	count = 0
 	for match in matches_to_play:
@@ -563,12 +566,10 @@ def play(bot, update, args):
 								  message_id=mess_id, text=basket_message)
 			count += 1
 		except ConnectionError as e:
-			logger.info('PLAY - Problems adding {}'.format(match))
 			return bot.send_message(chat_id=update.message.chat_id,
 									text=str(e))
 
 	logger.info('PLAY - All matches added')
-	time.sleep(5)
 	bot.edit_message_text(chat_id=update.message.chat_id, message_id=mess_id,
 						  text='Checking everything is fine...')
 
@@ -583,12 +584,7 @@ def play(bot, update, args):
 	# Money left before playing the bet
 	money_before = sf.money(browser)
 
-	try:
-		sf.find_scommetti_box(browser)
-	except ConnectionError as e:
-		browser.quit()
-		logger.info(str(e))
-		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
+	sf.find_scommetti_box(browser)
 
 	logger.info('PLAY - Bet has been played.')
 	dbf.db_update(
@@ -698,7 +694,10 @@ def update_results(bot, update):
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='No bets to update.')
 
-	browser = sf.go_to_lottomatica(0)
+	try:
+		browser = sf.go_to_lottomatica()
+	except ConnectionError as e:
+		return bot.send_message(chat_id=update.message.chat_id, text=e)
 	time.sleep(3)
 
 	sf.login(browser)

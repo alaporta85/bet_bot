@@ -358,7 +358,11 @@ def matches_per_day(day):
 
 	message = ''
 	dt = datetime.date.today()
-	requested_day = weekdays[day]
+	try:
+		requested_day = weekdays[day]
+	except KeyError:
+		raise SyntaxError('Not a valid day')
+
 	while dt.weekday() != requested_day:
 		dt += datetime.timedelta(1)
 
