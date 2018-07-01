@@ -169,7 +169,7 @@ def create_summary_message(bet_id):
 		dt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
 		hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
 
-		message += '{}:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
+		message += '<b>{}</b>:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
 				user, team1, team2, hhmm, rawbet, quote)
 
 	return message, final_quote
