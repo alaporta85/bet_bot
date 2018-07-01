@@ -252,7 +252,7 @@ def get(bot, update, args):
 								text='Wrong format.')
 
 	try:
-		vals2replace = [(' ', ''), ('*', ''), ('+', ''),
+		vals2replace = [(' ', ''), ('*', ''), ('+', ''), (',', '.'),
 		                ('TEMPO', 'T'),
 		                ('1T', 'PT'), ('2T', 'ST'),
 		                ('GOAL', 'GG'), ('NOGOAL', 'NG'),
