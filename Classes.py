@@ -31,7 +31,8 @@ class Player(object):
 
 	def quotes_win_lose(self):
 
-		df = preds[preds['User'] == self.name]
+		df = preds[preds['User'] == self.name].copy()
+		df.sort_values('Quote', inplace=True)
 
 		quotes_win = df[df['Label'] == 'WINNING']['Quote'].values
 		quotes_lose = df[df['Label'] == 'LOSING']['Quote'].values
