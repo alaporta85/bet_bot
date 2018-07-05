@@ -191,6 +191,8 @@ def normalize_indices():
 		maximum = max([data[name][i] for name in data])
 		for name in data:
 			players[name].indices[i] /= maximum
+			if players[name].indices[i] < 1e-3:
+				players[name].indices[i] = 0
 
 
 def quotes_rec():

@@ -38,8 +38,7 @@ def cancel(bot, update):
 
 	if first_name not in users_list:
 		return bot.send_message(chat_id=update.message.chat_id,
-								text='{}, you have no bet to cancel.'
-								.format(first_name))
+								text='{}, no bet to cancel.'.format(first_name))
 
 	dbf.db_delete(
 			table='predictions',
@@ -48,7 +47,7 @@ def cancel(bot, update):
 
 	return bot.send_message(
 			chat_id=update.message.chat_id,
-			text='{}, your bet has been canceled.'.format(first_name))
+			text='{}, bet canceled.'.format(first_name))
 
 
 def confirm(bot, update):
@@ -95,19 +94,15 @@ def confirm(bot, update):
 	if dupl_message:
 		bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
 
+	bot.send_message(chat_id=update.message.chat_id,
+	                 text='{}, bet placed correctly.'.format(first_name))
+
 	auto_play = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_id'],
 			where='pred_bet = {}'.format(bet_id))
 	if len(auto_play) == 4:
-		bot.send_message(chat_id=update.message.chat_id,
-		                 text='{}, your bet has been placed correctly.'
-		                 .format(first_name))
 		return play(bot, update, ['5'])
-
-	return bot.send_message(chat_id=update.message.chat_id,
-					        text='{}, your bet has been placed correctly.'
-					        .format(first_name))
 
 
 def create_summary(string):
@@ -128,8 +123,7 @@ def create_summary(string):
 		unknown_bets = dbf.db_select(
 				table='bets',
 				columns_in=['bet_id'],
-				where=('bet_status = "Placed" AND bet_result = "Unknown" AND' +
-				       ' bet_id != 58'))
+				where='bet_status = "Placed" AND bet_result = "Unknown"')
 		for bet_id in unknown_bets:
 			message2, final_quote = create_summary_message(bet_id)
 			message += ('{}\nPossible win: <b>{:.1f}</b>\n\n\n'.
@@ -187,7 +181,7 @@ def delete(bot, update):
 	        where='bet_status = "Pending"')
 	if not bet_id:
 		return bot.send_message(chat_id=update.message.chat_id,
-								text='There are no "Pending" bets.')
+								text='No "Pending" bets.')
 
 	bet_id = bet_id[0]
 
@@ -198,7 +192,7 @@ def delete(bot, update):
 			       'pred_status = "Confirmed"').format(bet_id, first_name))
 
 	if not bet_to_delete:
-		message = '{}, you have no bet to delete.'.format(first_name)
+		message = '{}, no bet to delete.'.format(first_name)
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=message)
 
@@ -218,7 +212,7 @@ def delete(bot, update):
 
 	return bot.send_message(
 			chat_id=update.message.chat_id,
-			text='{}, your bet has been deleted.'.format(first_name))
+			text='{}, bet deleted.'.format(first_name))
 
 
 def format_text(content):
@@ -243,7 +237,7 @@ def get(bot, update, args):
 
 	if not args:
 		return bot.send_message(chat_id=update.message.chat_id,
-								text='Please insert the bet.')
+								text='Insert the bet.')
 
 	guess = ' '.join(args).upper()
 
@@ -338,8 +332,7 @@ def get(bot, update, args):
 				values=[first_name, dt, team1, team2, league_id, field_id,
 				        nice_bet, quote, 'Not Confirmed'])
 
-		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet,
-											  quote)
+		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet, quote)
 
 		return bot.send_message(chat_id=update.message.chat_id,
 						        text=('{}\n' + 'Use /confirm or /cancel ' +
