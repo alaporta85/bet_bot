@@ -4,11 +4,9 @@ import matplotlib
 matplotlib.use('Agg')
 import Classes as cl
 
-db, c = dbf.start_db()
-colors_dict = list(c.execute('''SELECT color_user, color_value FROM colors'''))
-colors_dict = {el[0]: el[1] for el in colors_dict}
+colors = dbf.db_select(table='colors', columns_out=['color_id'])
+colors_dict = {el[0]: el[1] for el in colors}
 partecipants = [el for el in colors_dict]
-db.close()
 
 
 def abs_perc():

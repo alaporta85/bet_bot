@@ -7,11 +7,9 @@ import matplotlib.pyplot as plt
 from itertools import groupby, count
 
 
-db, c = dbf.start_db()
-colors_dict = list(c.execute('''SELECT color_user, color_value FROM colors'''))
-colors_dict = {el[0]: el[1] for el in colors_dict}
+colors = dbf.db_select(table='colors', columns_out=['color_id'])
+colors_dict = {el[0]: el[1] for el in colors}
 partecipants = [el for el in colors_dict]
-db.close()
 
 
 class Player(object):
@@ -360,7 +358,7 @@ def stats_of_the_month():
 
 		for x in range(5):
 			dict1[names[x]].reverse()
-			message = '\n'.join(dict1[names[x]])
+			message = '\n'.join(dict1[names[x]][:3])
 
 			plt.text(bars1[x].get_x() + bars1[x].get_width() / 2,
 			         bars1[x].get_height() + 0.05, message, ha='center',
@@ -368,7 +366,7 @@ def stats_of_the_month():
 
 		for x in range(5):
 			dict2[names[x]].reverse()
-			message = '\n'.join(dict2[names[x]])
+			message = '\n'.join(dict2[names[x]][:3])
 
 			plt.text(bars2[x].get_x() + bars2[x].get_width() / 2,
 			         bars2[x].get_height() + 0.05, message, ha='center',

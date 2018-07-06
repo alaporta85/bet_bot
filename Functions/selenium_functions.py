@@ -727,6 +727,7 @@ def refresh_money(browser):
 	for i in range(recurs_lim):
 		try:
 			wait_clickable(browser, WAIT, refresh_path)
+			break
 		except TimeoutException:
 			logger.info('REFRESH MONEY - Refresh money button not found')
 			if i < 2:
