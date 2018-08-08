@@ -15,14 +15,14 @@ from Functions import db_functions as dbf
 
 
 countries = {
-			 # 'SERIE A': 'ITALIA',
-			 # 'PREMIER LEAGUE': 'INGHILTERRA',
-			 # 'PRIMERA DIVISION': 'SPAGNA',
-			 # 'BUNDESLIGA': 'GERMANIA',
-			 # 'LIGUE 1': 'FRANCIA',
-			 # 'EREDIVISIE': 'OLANDA',
-			 # 'CHAMPIONS LEAGUE': 'EUROPA',
-			 'MONDIALI': 'MONDO'
+			 'SERIE A': 'ITALIA',
+			 'PREMIER LEAGUE': 'INGHILTERRA',
+			 'PRIMERA DIVISION': 'SPAGNA',
+			 'BUNDESLIGA': 'GERMANIA',
+			 'LIGUE 1': 'FRANCIA',
+			 'EREDIVISIE': 'OLANDA',
+			 'CHAMPIONS LEAGUE': 'EUROPA',
+			 # 'MONDIALI': 'MONDO'
 			 }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
@@ -769,10 +769,11 @@ def update_matches_table(browser, league_id, d_m_y, h_m):
 	back = './/a[@class="back-competition ng-scope"]'
 	wait_clickable(browser, WAIT, back)
 	back = browser.find_element_by_xpath(back)
-	time.sleep(1)
 
-	main = './/div[@class="event-name ng-binding"]'
-	teams = browser.find_element_by_xpath(main).text.upper()
+	teams_cont = './/div[@class="event-name ng-binding"]'
+	teams = ''
+	while not teams:
+		teams = browser.find_element_by_xpath(teams_cont).text.upper()
 
 	team1, team2 = teams.split(' - ')
 	if league_id == 8:
