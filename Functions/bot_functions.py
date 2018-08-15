@@ -422,7 +422,7 @@ def matches_per_day(day):
 						format(hhmm, short_team1, short_team2,
 						quote1, quoteX, quote2))
 
-		return message
+	return message
 
 
 def update_pred_table_after_confirm(first_name, bet_id):

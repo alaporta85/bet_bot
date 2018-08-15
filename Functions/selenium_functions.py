@@ -21,7 +21,7 @@ countries = {
 			 'BUNDESLIGA': 'GERMANIA',
 			 'LIGUE 1': 'FRANCIA',
 			 'EREDIVISIE': 'OLANDA',
-			 'CHAMPIONS LEAGUE': 'EUROPA',
+			 # 'CHAMPIONS LEAGUE': 'EUROPA',
 			 # 'MONDIALI': 'MONDO'
 			 }
 
@@ -333,6 +333,7 @@ def click_country_button(browser, league):
 	for i in range(recurs_lim):
 		try:
 			wait_clickable(browser, WAIT, countries_container)
+			break
 
 		except TimeoutException:
 			logger.info('CLICK COUNTRY BUTTON - ALL COUNTRIES container not ' +
@@ -345,12 +346,15 @@ def click_country_button(browser, league):
 				browser.quit()
 
 	all_countries = browser.find_elements_by_xpath(countries_container)
+	first_container = all_countries[0]
 	for country in all_countries:
 		panel = country.find_element_by_xpath('.//a')
 		scroll_to_element(browser, 'false', panel)
 		if panel.text.upper() == countries[league]:
+			scroll_to_element(browser, 'true', panel)
 			panel.click()
-			break
+
+			return panel, first_container
 
 
 def click_league_button(browser, league):
@@ -364,6 +368,7 @@ def click_league_button(browser, league):
 	for i in range(recurs_lim):
 		try:
 			wait_visible(browser, WAIT, nat_leagues_container)
+			break
 		except TimeoutException:
 			logger.info('CLICK LEAGUE BUTTON - ALL LEAGUES container not ' +
 			            'found: trial {}'.format(i + 1))
@@ -380,6 +385,7 @@ def click_league_button(browser, league):
 		panel = nat_league.find_element_by_xpath('.//a')
 		scroll_to_element(browser, 'false', panel)
 		if panel.text.upper() == league:
+			scroll_to_element(browser, 'true', panel)
 			panel.click()
 			break
 
@@ -414,11 +420,14 @@ def fill_db_with_quotes():
 
 	def two_buttons(browser, league):
 
-		click_country_button(browser, league)
+		country, first_container = click_country_button(browser, league)
 		click_league_button(browser, league)
 		filters = './/div[@class="markets-favourites"]'
+		scroll_to_element(browser, 'true', country)
+		time.sleep(1)
+		country.click()
 
-		return filters
+		return filters, first_container
 
 	browser = go_to_lottomatica()
 	dbf.empty_table('quotes')
@@ -430,7 +439,7 @@ def fill_db_with_quotes():
 
 	for league in countries:
 		start = time.time()
-		filters = two_buttons(browser, league)
+		filters, first_container = two_buttons(browser, league)
 		skip_league = False
 
 		for i in range(recurs_lim):
@@ -492,6 +501,7 @@ def fill_db_with_quotes():
 				seconds = round(end % 60)
 				logger.info('FILL DB WITH QUOTES - Updating {} took {}:{}'.
 				            format(league, minutes, seconds))
+				scroll_to_element(browser, 'false', first_container)
 				break
 
 		if skip_league:
