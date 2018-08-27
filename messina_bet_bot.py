@@ -101,7 +101,7 @@ def confirm(bot, update):
 			table='predictions',
 			columns_in=['pred_id'],
 			where='pred_bet = {}'.format(bet_id))
-	if len(auto_play) == 4:
+	if len(auto_play) == 6:
 		return play(bot, update, ['5'])
 
 
@@ -335,9 +335,9 @@ def get(bot, update, args):
 		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet, quote)
 
 		return bot.send_message(chat_id=update.message.chat_id,
-						        text=('{}\n' + 'Use /confirm or /cancel ' +
-							   'to finalize your bet.').format(
-								                              printed_bet))
+						        text=('{}\n\n' +
+						              '/confirm                /cancel').
+						              format(printed_bet))
 	else:
 		message = 'Match already chosen.'
 		return bot.send_message(chat_id=update.message.chat_id,

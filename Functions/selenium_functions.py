@@ -567,6 +567,29 @@ def find_scommetti_box(browser):
 	button.click()
 
 
+def fix_url(match_url):
+
+	"""
+	Fix the url to make it work later in the /play command.
+
+	:param match_url: str, url to fix
+
+	:return: str, url fixed
+	"""
+
+	codes = {'seriea': 'idivisionev3',
+	         'premierleague': 'premierleague1',
+	         'primeradivision': 'primeradivision1',
+	         'bundesliga': 'bundesliga1',
+	         'ligue1': 'ligue11',
+	         'eredivisie': 'eredivisie1',
+	         'championsleague': 'championsleague1'}
+
+	for code in codes:
+		if code in match_url:
+			return match_url.replace(code, codes[code])
+
+
 def go_to_lottomatica():
 
 	"""Connect to Lottomatica webpage and click "CALCIO" button."""
@@ -580,6 +603,7 @@ def go_to_lottomatica():
 	# browser.set_window_size(1400, 800)
 
 	browser.get(url)
+	browser.refresh()  # To close the popup
 	click_calcio_button(browser)
 
 	return browser
@@ -661,7 +685,7 @@ def go_to_placed_bets(browser, LIMIT_2):
 
 def insert_euros(browser, euros):
 
-	input_euros = ('.//div[@class="value-item-summary"]//' +
+	input_euros = ('.//div[@class="price-container-input"]/' +
 	               'input[@ng-model="amountSelect.amount"]')
 	euros_box = browser.find_element_by_xpath(input_euros)
 	scroll_to_element(browser, 'false', euros_box)
@@ -794,12 +818,13 @@ def update_matches_table(browser, league_id, d_m_y, h_m):
 	match_date = datetime.datetime.strptime(yy + mm + dd, '%Y%m%d')
 	match_date = match_date.replace(hour=int(h_m.split(':')[0]),
 									minute=int(h_m.split(':')[1]))
+	url = fix_url(browser.current_url)
 
 	last_id = dbf.db_insert(
 			table='matches',
 			columns=['match_league', 'match_team1', 'match_team2',
 			         'match_date', 'match_url'],
-			values=[league_id, team1, team2, match_date, browser.current_url],
+			values=[league_id, team1, team2, match_date, url],
 			last_row=True)
 
 	return last_id, back

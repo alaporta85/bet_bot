@@ -151,8 +151,9 @@ def check_still_to_confirm(first_name):
 		printed_bet = '{} - {} {} @{}'.format(team1, team2, bet, bet_quote)
 
 		message = ('{}, you still have one bet to confirm.\n'.format(
-				   first_name) + ('{}\n' + 'Use /confirm or /cancel to ' +
-				   'finalize your bet.').format(printed_bet))
+				   first_name) +
+		           ('{}\n\n' + '/confirm                /cancel').format(
+				   printed_bet))
 
 		return message
 
