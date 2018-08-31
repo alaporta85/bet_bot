@@ -14,15 +14,24 @@ from Functions import logging as log
 from Functions import db_functions as dbf
 
 
+# countries = {
+# 			 'SERIE A': 'ITALIA',
+# 			 'PREMIER LEAGUE': 'INGHILTERRA',
+# 			 'PRIMERA DIVISION': 'SPAGNA',
+# 			 'BUNDESLIGA': 'GERMANIA',
+# 			 'LIGUE 1': 'FRANCIA',
+# 			 'EREDIVISIE': 'OLANDA',
+# 			 # 'CHAMPIONS LEAGUE': 'EUROPA',
+# 			 }
+
 countries = {
-			 'SERIE A': 'ITALIA',
-			 'PREMIER LEAGUE': 'INGHILTERRA',
-			 'PRIMERA DIVISION': 'SPAGNA',
-			 'BUNDESLIGA': 'GERMANIA',
-			 'LIGUE 1': 'FRANCIA',
-			 'EREDIVISIE': 'OLANDA',
-			 # 'CHAMPIONS LEAGUE': 'EUROPA',
-			 # 'MONDIALI': 'MONDO'
+			 'SERIE A': 'italia/idivisionev3.html',
+			 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
+			 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
+			 'BUNDESLIGA': 'germania/bundesliga1.html',
+			 'LIGUE 1': 'francia/ligue11.html',
+			 'EREDIVISIE': 'olanda/eredivisie1.html',
+			 # 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
 			 }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
@@ -429,7 +438,10 @@ def fill_db_with_quotes():
 
 		return filters, first_container
 
-	browser = go_to_lottomatica()
+	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
+
+	# browser = go_to_lottomatica()
+	browser = webdriver.Chrome(chrome_path)
 	dbf.empty_table('quotes')
 	dbf.empty_table('matches')
 
@@ -437,9 +449,14 @@ def fill_db_with_quotes():
 			table='fields',
 			columns_in=['field_name'])
 
+	filters = './/div[@class="markets-favourites"]'
+
 	for league in countries:
+		url = head + countries[league]
 		start = time.time()
-		filters, first_container = two_buttons(browser, league)
+		browser.get(url)
+		if league == 'SERIE A':
+			browser.refresh()  # To close the popup
 		skip_league = False
 
 		for i in range(recurs_lim):
@@ -463,7 +480,7 @@ def fill_db_with_quotes():
 				columns_in=['league_id'],
 		        where='league_name = "{}"'.format(league))[0]
 
-		for i in range(200):
+		for i in range(10):
 			try:
 				buttons = './/div[@class="block-event event-description"]'
 				for j in range(recurs_lim):
@@ -501,7 +518,6 @@ def fill_db_with_quotes():
 				seconds = round(end % 60)
 				logger.info('FILL DB WITH QUOTES - Updating {} took {}:{}'.
 				            format(league, minutes, seconds))
-				scroll_to_element(browser, 'false', first_container)
 				break
 
 		if skip_league:
