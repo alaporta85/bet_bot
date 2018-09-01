@@ -619,10 +619,21 @@ def remind(bot, update):
 	                        text=message)
 
 
-def score(bot, update):
+def score(bot, update, args):
 
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('score.png',
-															  'rb'))
+	if not args:
+		bot.send_photo(chat_id=update.message.chat_id,
+		               photo=open('score_2018-2019.png', 'rb'))
+	elif args[0] == 'general':
+		bot.send_photo(chat_id=update.message.chat_id,
+		               photo=open('score_GENERAL.png', 'rb'))
+	else:
+		try:
+			bot.send_photo(chat_id=update.message.chat_id,
+			               photo=open('score_{}.png'.format(args[0]), 'rb'))
+		except FileNotFoundError:
+			bot.send_message(chat_id=update.message.chat_id,
+			                 text='Wrong format. Ex: 2017-2018')
 
 
 def send_log(bot, update):
@@ -718,26 +729,26 @@ def update_results(bot, update):
 		logger.info('No completed bets were found.')
 
 
-start_handler = CommandHandler('start', start)
+cake_handler = CommandHandler('cake', cake)
+cancel_handler = CommandHandler('cancel', cancel)
+confirm_handler = CommandHandler('confirm', confirm)
+delete_handler = CommandHandler('delete', delete)
+get_handler = CommandHandler('get', get, pass_args=True)
 help_quote_handler = CommandHandler('help_quote', help_quote)
 help_stats_handler = CommandHandler('help_stats', help_stats)
 info_handler = CommandHandler('info', info)
-get_handler = CommandHandler('get', get, pass_args=True)
-confirm_handler = CommandHandler('confirm', confirm)
-cancel_handler = CommandHandler('cancel', cancel)
-delete_handler = CommandHandler('delete', delete)
-play_handler = CommandHandler('play', play, pass_args=True)
-update_handler = CommandHandler('update', update_results)
-summary_handler = CommandHandler('summary', summary)
-score_handler = CommandHandler('score', score)
-cake_handler = CommandHandler('cake', cake)
-series_handler = CommandHandler('series', series)
-stats_handler = CommandHandler('stats', stats)
-sotm_handler = CommandHandler('sotm', sotm)
-remind_handler = CommandHandler('remind', remind)
+log_handler = CommandHandler('log', send_log)
 match_handler = CommandHandler('match', match, pass_args=True)
 new_quotes_handler = CommandHandler('new_quotes', new_quotes)
-log_handler = CommandHandler('log', send_log)
+play_handler = CommandHandler('play', play, pass_args=True)
+remind_handler = CommandHandler('remind', remind)
+score_handler = CommandHandler('score', score, pass_args=True)
+series_handler = CommandHandler('series', series)
+sotm_handler = CommandHandler('sotm', sotm)
+start_handler = CommandHandler('start', start)
+stats_handler = CommandHandler('stats', stats)
+summary_handler = CommandHandler('summary', summary)
+update_handler = CommandHandler('update', update_results)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue

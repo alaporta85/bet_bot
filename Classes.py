@@ -87,7 +87,8 @@ class Stats(object):
 		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
 		normalize_indices()
-		score()
+		for i in ['GENERAL', '2017-2018', '2018-2019']:
+			score2(i)
 		cake()
 		series()
 		stats_of_the_month()
@@ -243,6 +244,74 @@ def score():
 			bar.set_linewidth(0)
 
 	plt.savefig('score.png', dpi=120, bbox_inches='tight')
+	plt.gcf().clear()
+
+
+def score2(which):
+
+	if which == 'GENERAL':
+		year1, year2 = 2017, 2030
+	else:
+		year1, year2 = which.split('-')
+
+	from_ = datetime.strptime('{}-08-01 00:00:00'.format(year1),
+	                          '%Y-%m-%d %H:%M:%S')
+	to_ = datetime.strptime('{}-07-31 00:00:00'.format(year2),
+	                        '%Y-%m-%d %H:%M:%S')
+	dates = pd.to_datetime(preds.reset_index()['Date'])
+	mask = dates[(from_ <= dates) & (dates <= to_)].index
+
+	preds2 = preds.reset_index().iloc[mask]
+
+	fin_data = [(name, compute_indices(preds2, name)[-1]) for
+	            name in players]
+	mxm = max([el[1] for el in fin_data])
+
+	fin_data = [(el[0], el[1] / mxm) for el in fin_data]
+	fin_data.sort(key=lambda x: x[1], reverse=True)
+
+	names = [el[0] for el in fin_data]
+	indices = [round(el[1], 3) for el in fin_data]
+	ratio = ['{}/{}'.format(len(preds2[(preds2['User'] == name) &
+	                                   (preds2['Label'] == 'WINNING')]),
+	                        len(preds2[preds2['User'] == name])) for name
+	         in names]
+	perc = [round(len(preds2[(preds2['User'] == name) &
+	                         (preds2['Label'] == 'WINNING')]) /
+	              len(preds2[preds2['User'] == name]) * 100, 1) for name
+	        in names]
+	mean_quote = [round(preds2[(preds2['User'] == name) &
+	                     (preds2['Label'] == 'WINNING')].
+		          sort_values(by='Quote')['Quote'].values[1:-1].mean(), 2)
+	              for name in names]
+	colors = [colors_dict[name] for name in names]
+
+	fig, ax = plt.subplots()
+	fig.set_size_inches(9, 7)
+	bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
+	               linewidth=0.5, clip_on=False)
+	plt.xticks(range(5), names, fontsize=14)
+	plt.ylim(0, 1.35)
+	plt.box(on=None)
+	plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
+	plt.tick_params(axis='y', which='both', left=False, labelleft=False)
+	plt.title(which, fontsize=16, fontweight='bold', style='italic')
+
+	for i, bar in enumerate(bars):
+		text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], '-')#mean_quote[i])
+		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
+		         '{}'.format(text), ha='center', va='bottom', fontsize=10,
+		         style='italic')
+	for i, bar in enumerate(bars):
+		text = '{}'.format(indices[i])
+		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.16,
+		         '{}'.format(text), ha='center', va='bottom', fontsize=12,
+		         fontweight='bold')
+	for bar in bars:
+		if not bar.get_height():
+			bar.set_linewidth(0)
+
+	plt.savefig('score_{}.png'.format(which), dpi=120, bbox_inches='tight')
 	plt.gcf().clear()
 
 
