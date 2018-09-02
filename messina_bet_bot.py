@@ -633,7 +633,7 @@ def score(bot, update, args):
 			               photo=open('score_{}.png'.format(args[0]), 'rb'))
 		except FileNotFoundError:
 			bot.send_message(chat_id=update.message.chat_id,
-			                 text='Wrong format. Ex: 2017-2018')
+			                 text='Wrong format. Ex: 2017-2018 or "general"')
 
 
 def send_log(bot, update):

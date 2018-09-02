@@ -117,10 +117,10 @@ def check_if_duplicate(first_name, details):
 					where='pred_id = {}'.format(pred_id))
 			users2del.append(user)
 
-		message = ('{}, your bet on the match '.format('/'.join(users2del)) +
-				   '{} - {} has '.format(team1, team2) +
-				   'been canceled because ' +
-				   '{} confirmed first.'.format(first_name))
+			message = ('{}, your bet on the match '.format('/'.join(users2del)) +
+					   '{} - {} has '.format(team1, team2) +
+					   'been canceled because ' +
+					   '{} confirmed first.'.format(first_name))
 
 	return message
 
@@ -454,6 +454,6 @@ def update_pred_table_after_confirm(first_name, bet_id):
 			table='bets INNER JOIN predictions on pred_bet = bet_id',
 			columns_in=['pred_team1', 'pred_team2', 'pred_league'],
 			where='bet_id = {} AND pred_user = "{}"'.format(bet_id,
-															first_name))[0]
+															first_name))[-1]
 
 	return details
