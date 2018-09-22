@@ -21,8 +21,9 @@ dispatcher = updater.dispatcher
 
 def cake(bot, update):
 
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png',
-	                                                          'rb'))
+	#bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png','rb'))
+	bot.send_message(chat_id=update.message.chat_id,
+					 text=(' Ghiavatela nel culo la torta coglione!'))
 
 
 def cancel(bot, update):
@@ -452,7 +453,7 @@ def new_quotes(bot, update):
 def nickname(name):
 
 	nicknames = {'Andrea': 'Testazza',
-				 'Fabrizio': 'Nonno',
+				 'Fabrizio C': 'Nonno',
 				 'Damiano': 'Pacco',
 				 'Francesco': 'Zoppo',
 				 'Gabriele': 'Nano'}
