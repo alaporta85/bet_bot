@@ -21,9 +21,8 @@ dispatcher = updater.dispatcher
 
 def cake(bot, update):
 
-	#bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png','rb'))
-	bot.send_message(chat_id=update.message.chat_id,
-					 text=(' Ghiavatela nel culo la torta coglione!'))
+	bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png',
+	                                                          'rb'))
 
 
 def cancel(bot, update):
