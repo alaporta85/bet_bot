@@ -435,6 +435,12 @@ def match(bot, update, args):
 		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 
+def matiz(bot, update):
+
+	bot.send_photo(chat_id=update.message.chat_id,
+	               photo=open('matiz.png', 'rb'))
+
+
 def new_quotes(bot, update):
 
 	"""Fill the db with the new quotes."""
@@ -739,6 +745,7 @@ help_stats_handler = CommandHandler('help_stats', help_stats)
 info_handler = CommandHandler('info', info)
 log_handler = CommandHandler('log', send_log)
 match_handler = CommandHandler('match', match, pass_args=True)
+matiz_handler = CommandHandler('matiz', matiz)
 new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 play_handler = CommandHandler('play', play, pass_args=True)
 remind_handler = CommandHandler('remind', remind)
@@ -778,6 +785,7 @@ dispatcher.add_handler(match_handler)
 dispatcher.add_handler(new_quotes_handler)
 dispatcher.add_handler(log_handler)
 dispatcher.add_handler(remind_handler)
+dispatcher.add_handler(matiz_handler)
 
 logger = log.set_logging()
 updater.start_polling()
