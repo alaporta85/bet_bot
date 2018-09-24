@@ -101,7 +101,7 @@ def confirm(bot, update):
 			table='predictions',
 			columns_in=['pred_id'],
 			where='pred_bet = {}'.format(bet_id))
-	if len(auto_play) == 6:
+	if len(auto_play) == 5:
 		return play(bot, update, ['5'])
 
 
