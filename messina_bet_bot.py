@@ -1,6 +1,7 @@
 import time
 import datetime
 import numpy as np
+from itertools import count
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
 from Functions import db_functions as dbf
@@ -9,8 +10,6 @@ from Functions import bot_functions as bf
 from Functions import stats_functions as stf
 from Functions import logging as log
 import Classes as cl
-from nltk.metrics.distance import jaccard_distance
-from nltk.util import ngrams
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -258,8 +257,15 @@ def get(bot, update, args):
 	except ValueError:
 		input_team, input_bet = (guess, '')
 
-	team_name = jaccard_team(input_team)
-	if '*' in team_name:
+	# team_name = jaccard_team(input_team)
+	team_name = dbf.jaccard_result(input_team,
+	                               dbf.db_select(
+			                               table='teams',
+			                               columns_in=['team_name']), 3)
+	if not team_name:
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='Squadra non trovata')
+	elif '*' in team_name:
 		league_id = 8
 	else:
 		league_id = dbf.db_select(
@@ -383,41 +389,6 @@ def info(bot, update):
 		message += row
 
 	bot.send_message(chat_id=update.message.chat_id, text=message)
-
-
-def jaccard_team(input_team):
-
-	"""
-	Find the most similar team in the db in case it is misspelled by the user.
-
-	:param input_team: str
-
-
-	:return: str
-	"""
-
-	teams = dbf.db_select(
-			table='teams_alias',
-			columns_in=['team_alias_team', 'team_alias_name'])
-
-	dist = 10
-	tri_guess = set(ngrams(input_team, 3))
-	team_id = 0
-
-	for i, t in teams:
-		if t[0] == input_team[0]:
-			trit = set(ngrams(t, 3))
-			jd = jaccard_distance(tri_guess, trit)
-			if jd < dist:
-				dist = jd
-				team_id = i
-
-	team = dbf.db_select(
-			table='teams',
-			columns_in=['team_name'],
-			where='team_id = {}'.format(team_id))[0]
-
-	return team
 
 
 def match(bot, update, args):
@@ -596,11 +567,17 @@ def play(bot, update, args):
 	bot.edit_message_text(chat_id=update.message.chat_id,
 						  message_id=mess_id, text='Done!')
 
-	sf.refresh_money(browser)
-	time.sleep(15)
-
-	# Money after playing the bet
+	time.sleep(10)
 	money_after = sf.money(browser)
+	c = count(1)
+
+	while next(c) < 10 and money_after != (money_before - euros):
+		logger.info('PLAY - Update budget after playing failed')
+		sf.refresh_money(browser)
+		time.sleep(2)
+
+		# Money after playing the bet
+		money_after = sf.money(browser)
 
 	if money_after == money_before - euros:
 

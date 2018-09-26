@@ -14,16 +14,6 @@ from Functions import logging as log
 from Functions import db_functions as dbf
 
 
-# countries = {
-# 			 'SERIE A': 'ITALIA',
-# 			 'PREMIER LEAGUE': 'INGHILTERRA',
-# 			 'PRIMERA DIVISION': 'SPAGNA',
-# 			 'BUNDESLIGA': 'GERMANIA',
-# 			 'LIGUE 1': 'FRANCIA',
-# 			 'EREDIVISIE': 'OLANDA',
-# 			 # 'CHAMPIONS LEAGUE': 'EUROPA',
-# 			 }
-
 countries = {
 			 'SERIE A': 'italia/idivisionev3.html',
 			 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
@@ -31,7 +21,7 @@ countries = {
 			 'BUNDESLIGA': 'germania/bundesliga1.html',
 			 'LIGUE 1': 'francia/ligue11.html',
 			 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 # 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
+			 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
 			 }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
@@ -427,20 +417,8 @@ def fill_db_with_quotes():
 	dict "countries" to fully update the db.
 	"""
 
-	def two_buttons(browser, league):
-
-		country, first_container = click_country_button(browser, league)
-		click_league_button(browser, league)
-		filters = './/div[@class="markets-favourites"]'
-		scroll_to_element(browser, 'true', country)
-		time.sleep(1)
-		country.click()
-
-		return filters, first_container
-
 	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
 
-	# browser = go_to_lottomatica()
 	browser = webdriver.Chrome(chrome_path)
 	dbf.empty_table('quotes')
 	dbf.empty_table('matches')
@@ -616,7 +594,6 @@ def go_to_lottomatica():
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
 	browser = webdriver.Chrome(chrome_path)
 	time.sleep(3)
-	# browser.set_window_size(1400, 800)
 
 	browser.get(url)
 	browser.refresh()  # To close the popup
@@ -826,6 +803,14 @@ def update_matches_table(browser, league_id, d_m_y, h_m):
 		teams = browser.find_element_by_xpath(teams_cont).text.upper()
 
 	team1, team2 = teams.split(' - ')
+	team1 = dbf.jaccard_result(team1,
+	                           dbf.db_select(
+			                           table='teams',
+			                           columns_in=['team_name']), 3)
+	team2 = dbf.jaccard_result(team2,
+	                           dbf.db_select(
+			                           table='teams',
+			                           columns_in=['team_name']), 3)
 	if league_id == 8:
 		team1 = '*' + team1
 		team2 = '*' + team2

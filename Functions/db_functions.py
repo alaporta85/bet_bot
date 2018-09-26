@@ -1,6 +1,8 @@
 import sqlite3
 import datetime
 import pandas as pd
+from nltk.metrics.distance import jaccard_distance
+from nltk.util import ngrams
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
@@ -208,9 +210,49 @@ def empty_table(table):
     db.close()
 
 
+def jaccard_result(input_option, all_options, ngrm):
+
+    """
+    Trova il valore esatto corrispondente a quello inserito dall'user.
+
+    :param input_option: str
+
+    :param all_options: list of str
+
+    :param ngrm: int, lunghezza degli ngrammi
+
+
+    :return jac_res: str
+
+    """
+
+    dist = 1
+    tri_guess = set(ngrams(input_option, ngrm))
+    jac_res = ''
+
+    for opt in all_options:
+        if opt[0] == input_option[0]:
+            p = opt.replace(' ', '')
+            trit = set(ngrams(p, ngrm))
+            jd = jaccard_distance(tri_guess, trit)
+            if not jd:
+                return opt
+            elif jd < dist:
+                dist = jd
+                jac_res = opt
+
+    if not jac_res and ngrm > 2:
+        return jaccard_result(input_option, all_options, ngrm - 1)
+
+    elif not jac_res and ngrm == 2:
+        return False
+
+    return jac_res
+
+
 def start_db():
 
-    db = sqlite3.connect('extended_db')
+    db = sqlite3.connect('extended_db.db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
