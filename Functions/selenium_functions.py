@@ -794,7 +794,19 @@ def simulate_hover_and_click(browser, element):
 def update_matches_table(browser, league_id, d_m_y, h_m):
 
 	back = './/a[@class="back-competition ng-scope"]'
-	wait_clickable(browser, WAIT, back)
+
+	for i in range(recurs_lim):
+		try:
+			wait_clickable(browser, WAIT, back)
+			break
+		except TimeoutException:
+			logger.info('UPDATE_MATCHES_TABLE - "Back" button not found')
+			if i < recurs_lim:
+				browser.refresh()
+				continue
+			else:
+				browser.quit()
+
 	back = browser.find_element_by_xpath(back)
 
 	teams_cont = './/div[@class="event-name ng-binding"]'
