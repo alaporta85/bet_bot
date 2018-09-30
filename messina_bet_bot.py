@@ -20,9 +20,10 @@ dispatcher = updater.dispatcher
 
 def cake(bot, update):
 
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png',
-	                                                          'rb'))
+	bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png', 'rb'))
 
+def bici(bot, update):
+	bot.send_audio(chat_id=update.message.chat_id, audio=open('bici.mp3', 'rb'))
 
 def cancel(bot, update):
 
@@ -713,6 +714,7 @@ def update_results(bot, update):
 
 
 cake_handler = CommandHandler('cake', cake)
+bici_handler = CommandHandler('bici', bici)
 cancel_handler = CommandHandler('cancel', cancel)
 confirm_handler = CommandHandler('confirm', confirm)
 delete_handler = CommandHandler('delete', delete)
@@ -755,6 +757,7 @@ dispatcher.add_handler(update_handler)
 dispatcher.add_handler(summary_handler)
 dispatcher.add_handler(score_handler)
 dispatcher.add_handler(cake_handler)
+dispatcher.add_handler(bici_handler)
 dispatcher.add_handler(series_handler)
 dispatcher.add_handler(stats_handler)
 dispatcher.add_handler(sotm_handler)
