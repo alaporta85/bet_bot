@@ -459,13 +459,11 @@ def play(bot, update, args):
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=message)
 
-	#si guarda se nel DB ci sono ancora scommesse non confermate
 	not_conf_list = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_user', 'pred_team1', 'pred_team2', 'pred_field',
 			            'pred_rawbet'],
 			where='pred_status = "Not Confirmed"')
-    #se è così lo comunico, specificando la scommesse non confermata
 	if not_conf_list:
 		bot.send_message(chat_id=update.message.chat_id,
 						 text='There are still Not Confirmed bets:')
@@ -522,7 +520,6 @@ def play(bot, update, args):
 	# mess_id will be used to update the message
 	mess_id = sent.message_id
 
-	#prende dal DB le scommesse che devono essere giocate e le mette in un tuple
 	matches_to_play = bf.create_matches_to_play(bet_id)
 
 	browser = sf.go_to_lottomatica()
@@ -530,7 +527,6 @@ def play(bot, update, args):
 	count = 0
 	for match in matches_to_play:
 		try:
-			#gioca le varie scommesse presenti in matches_to_play
 			basket_message = sf.add_bet_to_basket(browser, match, count,
 												  dynamic_message)
 			logger.info('PLAY - {}-{}  {} '.format(
@@ -573,15 +569,14 @@ def play(bot, update, args):
 
 	time.sleep(10)
 	money_after = sf.money(browser)
-	c = 1
-    #secondo me quella sotto è una cacata ma Polps non me la spiega
-#	c = count(1)
+	# c = 1
+	c = count(1)
 
 	while c < 10 and money_after != (money_before - euros):
 		logger.info('PLAY - Update budget after playing failed')
 		sf.refresh_money(browser)
 		time.sleep(2)
-		c = c+1
+		# c = c+1
 
 		# Money after playing the bet
 		money_after = sf.money(browser)
