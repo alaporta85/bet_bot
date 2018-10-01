@@ -524,17 +524,17 @@ def play(bot, update, args):
 
 	browser = sf.go_to_lottomatica()
 	logger.info('PLAY - Connected to Lottomatica')
-	count = 0
+	cnt = 0
 	for match in matches_to_play:
 		try:
-			basket_message = sf.add_bet_to_basket(browser, match, count,
+			basket_message = sf.add_bet_to_basket(browser, match, cnt,
 												  dynamic_message)
 			logger.info('PLAY - {}-{}  {} '.format(
 					match[0], match[1], match[3]) + 'added')
 
 			bot.edit_message_text(chat_id=update.message.chat_id,
 								  message_id=mess_id, text=basket_message)
-			count += 1
+			cnt += 1
 		except ConnectionError as e:
 			return bot.send_message(chat_id=update.message.chat_id,
 									text=str(e))
