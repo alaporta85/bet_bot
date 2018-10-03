@@ -22,32 +22,35 @@ def cake(bot, update):
 
 	bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png', 'rb'))
 
+
 def bici(bot, update):
+
 	bot.send_audio(chat_id=update.message.chat_id, audio=open('bici.mp3', 'rb'))
+
 
 def cancel(bot, update):
 
 	"""Delete the "Not Confirmed" bet from "predictions" table."""
 
-	first_name = nickname(update.message.from_user.first_name)
+	user, _ = nickname(update)
 
 	users_list = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_user'],
 	        where='pred_status = "Not Confirmed"')
 
-	if first_name not in users_list:
+	if user not in users_list:
 		return bot.send_message(chat_id=update.message.chat_id,
-								text='{}, no bet to cancel.'.format(first_name))
+								text='{}, no bet to cancel.'.format(user))
 
 	dbf.db_delete(
 			table='predictions',
 	        where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
-	        format(first_name))
+	        format(user))
 
 	return bot.send_message(
 			chat_id=update.message.chat_id,
-			text='{}, bet canceled.'.format(first_name))
+			text='{}, bet canceled.'.format(user))
 
 
 def confirm(bot, update):
@@ -61,7 +64,7 @@ def confirm(bot, update):
 	they will be deleted from the "predictions" table.
 	"""
 
-	first_name = nickname(update.message.from_user.first_name)
+	user, _ = nickname(update)
 
 	# This a list of the users who have their bets in the status
 	# 'Not Confirmed'
@@ -70,10 +73,10 @@ def confirm(bot, update):
 			columns_in=['pred_user'],
 	        where='pred_status = "Not Confirmed"')
 
-	if first_name not in users_list:
+	if user not in users_list:
 		return bot.send_message(
 				chat_id=update.message.chat_id,
-				text='{}, no bet to confirm.'.format(first_name))
+				text='{}, no bet to confirm.'.format(user))
 
 	# Check if there is any bet with status 'Pending' in the 'bets' table
 	try:
@@ -88,14 +91,14 @@ def confirm(bot, update):
 				values=['Pending', 'Unknown'],
 				last_row=True)
 
-	details = bf.update_pred_table_after_confirm(first_name, bet_id)
+	details = bf.update_pred_table_after_confirm(user, bet_id)
 
-	dupl_message = bf.check_if_duplicate(first_name, details)
+	dupl_message = bf.check_if_duplicate(user, details)
 	if dupl_message:
 		bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
 
 	bot.send_message(chat_id=update.message.chat_id,
-	                 text='{}, bet placed correctly.'.format(first_name))
+	                 text='{}, bet placed correctly.'.format(user))
 
 	auto_play = dbf.db_select(
 			table='predictions',
@@ -173,7 +176,7 @@ def delete(bot, update):
 
 	"""Delete the "Confirmed" bet from "predictions" table."""
 
-	first_name = nickname(update.message.from_user.first_name)
+	user, _ = nickname(update)
 
 	bet_id = dbf.db_select(
 			table='bets',
@@ -189,10 +192,10 @@ def delete(bot, update):
 			table='predictions',
 			columns_in=['pred_id'],
 			where=('pred_bet = {} AND pred_user = "{}" AND ' +
-			       'pred_status = "Confirmed"').format(bet_id, first_name))
+			       'pred_status = "Confirmed"').format(bet_id, user))
 
 	if not bet_to_delete:
-		message = '{}, no bet to delete.'.format(first_name)
+		message = '{}, no bet to delete.'.format(user)
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=message)
 
@@ -212,7 +215,7 @@ def delete(bot, update):
 
 	return bot.send_message(
 			chat_id=update.message.chat_id,
-			text='{}, bet deleted.'.format(first_name))
+			text='{}, bet deleted.'.format(user))
 
 
 def format_text(content):
@@ -290,9 +293,9 @@ def get(bot, update, args):
 								chat_id=update.message.chat_id,
 								text=message_combo)
 
-	first_name = nickname(update.message.from_user.first_name)
+	user, _ = nickname(update)
 
-	warning_message = bf.check_still_to_confirm(first_name)
+	warning_message = bf.check_still_to_confirm(user)
 	if warning_message:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=warning_message)
@@ -336,7 +339,7 @@ def get(bot, update, args):
 				columns=['pred_user', 'pred_date', 'pred_team1', 'pred_team2',
 				         'pred_league', 'pred_field', 'pred_rawbet',
 				         'pred_quote', 'pred_status'],
-				values=[first_name, dt, team1, team2, league_id, field_id,
+				values=[user, dt, team1, team2, league_id, field_id,
 				        nice_bet, quote, 'Not Confirmed'])
 
 		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet, quote)
@@ -417,25 +420,32 @@ def new_quotes(bot, update):
 
 	"""Fill the db with the new quotes."""
 
-	start = time.time()
-	logger.info('NEW_QUOTES - Nightly job: Updating quote...')
-	sf.fill_db_with_quotes()
-	end = time.time() - start
-	minutes = int(end//60)
-	seconds = round(end % 60)
-	logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
-																seconds))
+	_, role = nickname(update)
+
+	if role == 'Admin':
+		start = time.time()
+		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
+		sf.fill_db_with_quotes()
+		end = time.time() - start
+		minutes = int(end//60)
+		seconds = round(end % 60)
+		logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
+																	seconds))
+	else:
+		bot.send_message(chat_id=update.message.chat_id,
+		                 text='Fatti i cazzi tuoi')
 
 
-def nickname(name):
+def nickname(update):
 
-	nicknames = {'Andrea': 'Testazza',
-				 'Fabrizio C': 'Nonno',
-				 'Damiano': 'Pacco',
-				 'Francesco': 'Zoppo',
-				 'Gabriele': 'Nano'}
+	name = update.message.from_user.first_name
 
-	return nicknames[name]
+	user, role = dbf.db_select(
+			table='people',
+			columns_in=['people_nick', 'people_role'],
+			where='people_name = "{}"'.format(name))[0]
+
+	return user, role
 
 
 def play(bot, update, args):
@@ -572,11 +582,10 @@ def play(bot, update, args):
 	# c = 1
 	c = count(1)
 
-	while c < 10 and money_after != (money_before - euros):
+	while next(c) < 10 and money_after != (money_before - euros):
 		logger.info('PLAY - Update budget after playing failed')
 		sf.refresh_money(browser)
 		time.sleep(2)
-		# c = c+1
 
 		# Money after playing the bet
 		money_after = sf.money(browser)
@@ -739,7 +748,7 @@ update_handler = CommandHandler('update', update_results)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
+update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(10, 51, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,

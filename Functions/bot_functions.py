@@ -1,10 +1,6 @@
 import datetime
 import pandas as pd
 from Functions import db_functions as dbf
-from Functions import logging as log
-
-
-logger = log.get_flogger()
 
 
 def all_bets_per_team(team_name, league_id):

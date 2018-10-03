@@ -16,12 +16,12 @@ from Functions import db_functions as dbf
 
 countries = {
 			 'SERIE A': 'italia/idivisionev3.html',
-			 # 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
-			 # 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
-			 # 'BUNDESLIGA': 'germania/bundesliga1.html',
-			 # 'LIGUE 1': 'francia/ligue11.html',
-			 # 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 # 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
+			 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
+			 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
+			 'BUNDESLIGA': 'germania/bundesliga1.html',
+			 'LIGUE 1': 'francia/ligue11.html',
+			 'EREDIVISIE': 'olanda/eredivisie1.html',
+			 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
 			 }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
@@ -458,7 +458,7 @@ def fill_db_with_quotes():
 				columns_in=['league_id'],
 		        where='league_name = "{}"'.format(league))[0]
 
-		for i in range(1):
+		for i in range(100):
 			try:
 				buttons = './/div[@class="block-event event-description"]'
 				for j in range(recurs_lim):
@@ -558,7 +558,7 @@ def find_scommetti_box(browser):
 	button_location = './/div[@class="buttons-betslip"]'
 	button = browser.find_element_by_xpath(button_location)
 	scroll_to_element(browser, 'false', button)
-	# button.click()
+	button.click()
 
 
 def fix_url(match_url):
