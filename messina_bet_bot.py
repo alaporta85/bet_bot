@@ -261,11 +261,8 @@ def get(bot, update, args):
 	except ValueError:
 		input_team, input_bet = (guess, '')
 
-	# team_name = jaccard_team(input_team)
-	team_name = dbf.jaccard_result(input_team,
-	                               dbf.db_select(
-			                               table='teams',
-			                               columns_in=['team_name']), 3)
+	team_name = dbf.select_team(input_team)
+
 	if not team_name:
 		return bot.send_message(chat_id=update.message.chat_id,
 		                        text='Squadra non trovata')

@@ -818,11 +818,13 @@ def update_matches_table(browser, league_id, d_m_y, h_m):
 	team1 = dbf.jaccard_result(team1,
 	                           dbf.db_select(
 			                           table='teams',
-			                           columns_in=['team_name']), 3)
+			                           columns_in=['team_name'],
+			                           where='team_league != 8'), 3)
 	team2 = dbf.jaccard_result(team2,
 	                           dbf.db_select(
 			                           table='teams',
-			                           columns_in=['team_name']), 3)
+			                           columns_in=['team_name'],
+			                           where='team_league != 8'), 3)
 	if league_id == 8:
 		team1 = '*' + team1
 		team2 = '*' + team2

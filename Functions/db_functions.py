@@ -231,7 +231,6 @@ def jaccard_result(input_option, all_options, ngrm):
     jac_res = ''
 
     for opt in all_options:
-        # if opt[0] == input_option[0]:
         p = opt.replace(' ', '')
         trit = set(ngrams(p, ngrm))
         jd = jaccard_distance(tri_guess, trit)
@@ -248,6 +247,34 @@ def jaccard_result(input_option, all_options, ngrm):
         return False
 
     return jac_res
+
+
+def select_team(input_team):
+
+    try:
+        team_id = db_select(
+                table='teams_alias',
+                columns_in=['team_alias_team'],
+                where='team_alias_name = "{}"'.format(input_team))[0]
+
+        team_name = db_select(
+                table='teams',
+                columns_in=['team_name'],
+                where='team_id = {}'.format(team_id))[0]
+
+    except IndexError:
+        if '*' in input_team:
+            where = 'team_league = 8'
+        else:
+            where = 'team_league != 2 AND team_league != 8'
+
+        team_name = jaccard_result(input_team,
+                                   db_select(
+                                           table='teams',
+                                           columns_in=['team_name'],
+                                           where=where), 3)
+
+    return team_name
 
 
 def start_db():
