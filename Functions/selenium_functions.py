@@ -105,8 +105,8 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 		logger.info('Updating bet with id: {}'.format(ref_id))
 		for new_bet in new_bets_list:
 			match = new_bet.find_element_by_xpath('.//td[6]').text
-			team1 = match.split(' - ')[0]
-			team2 = match.split(' - ')[1]
+			team1 = dbf.select_team(match.split(' - ')[0])
+			team2 = dbf.select_team(match.split(' - ')[1])
 			label_element = new_bet.find_element_by_xpath(
 					'.//div[contains(@class,"ng-scope")]')
 			label = label_element.get_attribute('ng-switch-when')
