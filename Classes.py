@@ -280,17 +280,20 @@ def score2(which):
 	                         (preds2['Label'] == 'WINNING')]) /
 	              len(preds2[preds2['User'] == name]) * 100, 1) for name
 	        in names]
-	mean_quote = [round(preds2[(preds2['User'] == name) &
-	                     (preds2['Label'] == 'WINNING')].
-		          sort_values(by='Quote')['Quote'].values[1:-1].mean(), 2)
-	              for name in names]
+	mean_quoteW = [round(preds2[(preds2['User'] == name) &
+	                            (preds2['Label'] == 'WINNING')].
+	                sort_values(by='Quote')['Quote'].values[1:-1].mean(), 2)
+	               for name in names]
+	mean_quoteP = [round(preds2[preds2['User'] == name]['Quote'].values.mean(),
+	                     2)
+	               for name in names]
 	colors = [colors_dict[name] for name in names]
 
 	fig, ax = plt.subplots()
 	fig.set_size_inches(9, 7)
 	bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
-	               linewidth=0.5, clip_on=False)
-	plt.xticks(range(5), names, fontsize=14)
+	               linewidth=.8, clip_on=False)
+	plt.xticks(range(5), names, fontsize=16)
 	plt.ylim(0, 1.35)
 	plt.box(on=None)
 	plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
@@ -298,18 +301,27 @@ def score2(which):
 	plt.title(which, fontsize=16, fontweight='bold', style='italic')
 
 	for i, bar in enumerate(bars):
-		text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], '-')#mean_quote[i])
+		text = '{}\n({}%)\n{}\n{}'.format(ratio[i], perc[i], mean_quoteP[i],
+		                              mean_quoteW[i])
 		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
-		         '{}'.format(text), ha='center', va='bottom', fontsize=10,
+		         '{}'.format(text), ha='center', va='bottom', fontsize=12,
 		         style='italic')
 	for i, bar in enumerate(bars):
 		text = '{}'.format(indices[i])
-		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.16,
-		         '{}'.format(text), ha='center', va='bottom', fontsize=12,
+		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.23,
+		         '{}'.format(text), ha='center', va='bottom', fontsize=14,
 		         fontweight='bold')
 	for bar in bars:
 		if not bar.get_height():
 			bar.set_linewidth(0)
+
+	plt.text(.8, .9, 'Score', horizontalalignment='center',
+	         transform=ax.transAxes, fontweight='bold', fontsize=14)
+
+	expl = 'Win/Total\n%\nAver. Quote\nAver. Quote WIN'
+
+	plt.text(.8, .75, expl, horizontalalignment='center',
+	         transform=ax.transAxes, style='italic', fontsize=12)
 
 	plt.savefig('score_{}.png'.format(which), dpi=120, bbox_inches='tight')
 	plt.gcf().clear()
