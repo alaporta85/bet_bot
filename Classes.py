@@ -366,7 +366,7 @@ def series():
 
 	series_pos = sorted([(name, players[name].best_series) for name in
 						 partecipants], key=lambda x: x[1][0], reverse=True)
-	green_arrows = [i for i, g in enumerate(series_pos) if g[1] == 'Ongoing']
+	green_arrows = [i for i, g in enumerate(series_pos) if g[1][1] == 'Ongoing']
 	names = [el[0] for el in series_pos]
 	series_pos = [el[1][0] for el in series_pos]
 
