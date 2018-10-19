@@ -266,8 +266,9 @@ def get(bot, update, args):
 	if not team_name:
 		return bot.send_message(chat_id=update.message.chat_id,
 		                        text='Squadra non trovata')
-	elif '*' in team_name:
+	elif '*' in input_team:
 		league_id = 8
+		team_name = '*' + team_name
 	else:
 		league_id = dbf.db_select(
 				table='teams',

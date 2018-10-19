@@ -59,6 +59,22 @@ def add_bet_to_basket(browser, match, count, dynamic_message):
 		raise ConnectionError(str(e))
 
 
+def all_matches_missing(browser, all_matches, league):
+
+	for j in range(recurs_lim):
+		try:
+			wait_clickable(browser, WAIT, all_matches)
+			return False
+		except TimeoutException:
+			logger.info('FILL DB WITH QUOTES - MATCHES for ' +
+			            '{} not found: trial {}.'.format(league, j + 1))
+			if j < recurs_lim:
+				browser.refresh()
+				continue
+			else:
+				return True
+
+
 def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 
 	"""
@@ -413,83 +429,54 @@ def click_panel(browser, index, panel):
 def fill_db_with_quotes():
 
 	"""
-	Call the function 'scan_league()' for all the leagues present in the
-	dict "countries" to fully update the db.
+	Fill the tables "matches" and "quotes" in the db.
+
 	"""
 
-	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
-
-	browser = webdriver.Chrome(chrome_path)
+	# Delete old data from the two tables
 	dbf.empty_table('quotes')
 	dbf.empty_table('matches')
 
-	all_fields = dbf.db_select(
-			table='fields',
-			columns_in=['field_name'])
-
-	filters = './/div[@class="markets-favourites"]'
+	# Start the browser
+	browser = webdriver.Chrome(chrome_path)
+	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
 
 	for league in countries:
-		url = head + countries[league]
 		start = time.time()
-		browser.get(url)
+		browser.get(head + countries[league])
+
+		# To close the popup. Only the first time after connection
 		if league == 'SERIE A':
-			browser.refresh()  # To close the popup
-		skip_league = False
-
-		for i in range(recurs_lim):
-			try:
-				wait_visible(browser, WAIT, filters)
-				break
-			except TimeoutException:
-				logger.info('FILL DB WITH QUOTES - FILTERS for ' +
-				            '{} not found: trial {}.'.format(league, i + 1))
-				if i < 2:
-					browser.refresh()
-					continue
-				else:
-					skip_league = True
-
-		if skip_league:
-			continue
+			browser.refresh()
 
 		league_id = dbf.db_select(
 				table='leagues',
 				columns_in=['league_id'],
 		        where='league_name = "{}"'.format(league))[0]
 
+		# We repeat this for loop for every match of the league. Value is set
+		# to 100 to be sure to download all the matches. When no match is found
+		# for the corresponding index, IndexError is handled
 		for i in range(100):
-			try:
-				buttons = './/div[@class="block-event event-description"]'
-				for j in range(recurs_lim):
-					try:
-						wait_clickable(browser, WAIT, buttons)
-						break
-					except TimeoutException:
-						logger.info('FILL DB WITH QUOTES - MATCHES for ' +
-						            '{} not found: trial {}.'.format(league,
-						                                             j + 1))
-						if j < 2:
-							browser.refresh()
-							continue
-						else:
-							skip_league = True
 
-				if skip_league:
+			# If list of matches is not found, league is skipped
+			matches_path = './/div[@class="block-event event-description"]'
+			skip_league = all_matches_missing(browser, matches_path, league)
+			if skip_league:
+				break
+
+			# We load the matches until we are sure we have all of them with no
+			# repetitions. Sometimes we found in the db repeated matches
+			while True:
+				all_matches = browser.find_elements_by_xpath(matches_path)
+				if len(all_matches) == len(set(all_matches)):
 					break
+				else:
+					logger.info('FILL DB WITH QUOTES - Repeated matches found')
 
-				match = browser.find_elements_by_xpath(buttons)[i]
-				scroll_to_element(browser, 'true', match)
-				scroll_to_element(browser, 'false', match)
-				ddmmyy, hhmm = match.find_element_by_xpath(
-						'.//div[@class="event-date ng-binding"]').\
-					text.split(' - ')
-				match.click()
-				last_id, back = update_matches_table(browser, league_id,
-											         ddmmyy, hhmm)
-				update_quotes_table(browser, all_fields, last_id)
-				scroll_to_element(browser, 'false', back)
-				back.click()
+			# Select the match or continue to the next league if done
+			try:
+				match = all_matches[i]
 			except IndexError:
 				end = time.time() - start
 				minutes = int(end // 60)
@@ -498,10 +485,179 @@ def fill_db_with_quotes():
 				            format(league, minutes, seconds))
 				break
 
-		if skip_league:
-			continue
+			scroll_to_element(browser, 'false', match)
+
+			# Extract date and time of the match and then click it
+			ddmmyy, hhmm = match.find_element_by_xpath(
+					'.//div[@class="event-date ng-binding"]').text.split(' - ')
+			match.click()
+
+			# Fill "matches" table in the db
+			last_id, back = fill_matches_table(browser, league_id, ddmmyy, hhmm)
+
+			# Fill "quotes" table in the db
+			fill_quotes_table(browser, last_id)
+
+			# Go back at the main page of the league
+			scroll_to_element(browser, 'false', back)
+			back.click()
 
 	browser.quit()
+
+
+def fill_matches_table(browser, league_id, d_m_y, h_m):
+
+	"""
+	Insert all details relative to a single match into the 'matches' table of
+	the db.
+
+	:param browser:
+	:param league_id: int
+	:param d_m_y: str, date of the match. Ex 20/20/2018
+	:param h_m: str, time of the match. Ex 15:00
+
+	:return last_id: int, id of the match the will be used for the quotes
+	:return back: button
+
+	"""
+
+	# Look for the back button until found
+	back = './/a[@class="back-competition ng-scope"]'
+	for i in range(recurs_lim):
+		try:
+			wait_clickable(browser, WAIT, back)
+			back = browser.find_element_by_xpath(back)
+			break
+		except TimeoutException:
+			logger.info('UPDATE_MATCHES_TABLE - "Back" button not found')
+			if i < recurs_lim:
+				browser.refresh()
+				continue
+			else:
+				browser.quit()
+
+	# Extract the text with the two teams
+	teams_cont = './/div[@class="event-name ng-binding"]'
+	teams = None
+	while not teams:
+		teams = browser.find_element_by_xpath(teams_cont).text.upper()
+
+	# Split them and add an '*' to their name if it is a Champions League match
+	team1, team2 = teams.split(' - ')
+	if league_id == 8:
+		team1 = '*' + team1
+		team2 = '*' + team2
+
+	# Format datetime object and insert hours and minutes of the match
+	dd, mm, yy = d_m_y.split('/')
+	match_date = datetime.datetime.strptime(yy + mm + dd, '%Y%m%d')
+	match_date = match_date.replace(hour=int(h_m.split(':')[0]),
+									minute=int(h_m.split(':')[1]))
+
+	# Fix url to save
+	url = fix_url(browser.current_url)
+
+	last_id = dbf.db_insert(
+			table='matches',
+			columns=['match_league', 'match_team1', 'match_team2',
+			         'match_date', 'match_url'],
+			values=[league_id, team1, team2, match_date, url],
+			last_row=True)
+
+	return last_id, back
+
+
+def fill_quotes_table(browser, last_id):
+
+	# Select all fields we want scrape
+	all_fields = dbf.db_select(
+			table='fields',
+			columns_in=['field_name'])
+
+	fields_bets = find_all_fields_and_bets(browser)
+	for field, bets in zip(fields_bets[0], fields_bets[1]):
+		scroll_to_element(browser, 'false', field)
+
+		# If it is a field we have in the db we extract all the quotes
+		field_name = field.text.upper()
+		if field_name in all_fields:
+			all_bets = bets.find_elements_by_xpath(
+				'.//div[@class="selection-name ng-binding"]')
+
+			# Bet name has a different path for the field 'ESITO FINALE 1X2
+			# HANDICAP', don't know why
+			for i, new_bet in enumerate(all_bets):
+				scroll_to_element(browser, 'false', new_bet)
+				if field_name == 'ESITO FINALE 1X2 HANDICAP':
+					bet_name = new_bet.text.upper().split()[0]
+				else:
+					bet_name = new_bet.text.upper()
+
+				bet_quote = bets.find_elements_by_xpath(
+								 './/div[@class="selection-price"]')[i]
+				scroll_to_element(browser, 'false', bet_quote)
+				bet_quote = bet_quote.text
+
+				field_id = dbf.db_select(
+						table='fields',
+						columns_in=['field_id'],
+						where='field_name = "{}" AND field_value = "{}"'.
+						format(field_name, bet_name))[0]
+
+				if len(bet_quote) == 1:
+					bet_quote = 'NOT AVAILABLE'
+				else:
+					bet_quote = float(bet_quote)
+
+				dbf.db_insert(
+						table='quotes',
+						columns=['quote_match', 'quote_field', 'quote_value'],
+						values=[last_id, field_id, bet_quote])
+
+
+def fill_teams_table():
+
+	# Delete old data from "teams"
+	dbf.empty_table('teams')
+
+	# Start the browser
+	browser = webdriver.Chrome(chrome_path)
+	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
+
+	for league in countries:
+		browser.get(head + countries[league])
+
+		# To close the popup. Only the first time after connection
+		if league == 'SERIE A':
+			browser.refresh()
+
+		league_id = dbf.db_select(
+				table='leagues',
+				columns_in=['league_id'],
+				where='league_name = "{}"'.format(league))[0]
+
+		matches_path = './/div[@class="event-name ng-binding"]'
+		wait_clickable(browser, WAIT, matches_path)
+		all_matches = browser.find_elements_by_xpath(matches_path)
+		for match in all_matches:
+			scroll_to_element(browser, 'false', match)
+			teams = match.text.upper().split(' - ')
+			for team in teams:
+				dbf.db_insert(
+						table='teams',
+						columns=['team_league', 'team_name'],
+						values=[league_id, team])
+
+	browser.quit()
+
+	dbf.empty_table('teams_short')
+
+	teams = dbf.db_select(table='teams', columns_in=['team_name'])
+	for team in teams:
+		dbf.db_insert(
+				table='teams_short',
+				columns=['team_short_name', 'team_short_value'],
+				values=[team, team[:3]])
 
 
 def find_all_fields_and_bets(browser):
@@ -789,101 +945,6 @@ def simulate_hover_and_click(browser, element):
 				browser).move_to_element(element).click(element).perform()
 	except MoveTargetOutOfBoundsException:
 		raise ConnectionError(conn_err_message)
-
-
-def update_matches_table(browser, league_id, d_m_y, h_m):
-
-	back = './/a[@class="back-competition ng-scope"]'
-
-	for i in range(recurs_lim):
-		try:
-			wait_clickable(browser, WAIT, back)
-			break
-		except TimeoutException:
-			logger.info('UPDATE_MATCHES_TABLE - "Back" button not found')
-			if i < recurs_lim:
-				browser.refresh()
-				continue
-			else:
-				browser.quit()
-
-	back = browser.find_element_by_xpath(back)
-
-	teams_cont = './/div[@class="event-name ng-binding"]'
-	teams = ''
-	while not teams:
-		teams = browser.find_element_by_xpath(teams_cont).text.upper()
-
-	team1, team2 = teams.split(' - ')
-	team1 = dbf.jaccard_result(team1,
-	                           dbf.db_select(
-			                           table='teams',
-			                           columns_in=['team_name'],
-			                           where='team_league != 8'), 3)
-	team2 = dbf.jaccard_result(team2,
-	                           dbf.db_select(
-			                           table='teams',
-			                           columns_in=['team_name'],
-			                           where='team_league != 8'), 3)
-	if league_id == 8:
-		team1 = '*' + team1
-		team2 = '*' + team2
-
-	dd, mm, yy = d_m_y.split('/')
-	match_date = datetime.datetime.strptime(yy + mm + dd, '%Y%m%d')
-	match_date = match_date.replace(hour=int(h_m.split(':')[0]),
-									minute=int(h_m.split(':')[1]))
-	url = fix_url(browser.current_url)
-
-	last_id = dbf.db_insert(
-			table='matches',
-			columns=['match_league', 'match_team1', 'match_team2',
-			         'match_date', 'match_url'],
-			values=[league_id, team1, team2, match_date, url],
-			last_row=True)
-
-	return last_id, back
-
-
-def update_quotes_table(browser, all_fields, last_id):
-
-	fields_bets = find_all_fields_and_bets(browser)
-
-	for field, bets in zip(fields_bets[0], fields_bets[1]):
-		scroll_to_element(browser, 'false', field)
-		field_name = field.text.upper()
-
-		if field_name in all_fields:
-			all_bets = bets.find_elements_by_xpath(
-				'.//div[@class="selection-name ng-binding"]')
-
-			for i, new_bet in enumerate(all_bets):
-				scroll_to_element(browser, 'false', new_bet)
-				if field_name == 'ESITO FINALE 1X2 HANDICAP':
-					bet_name = new_bet.text.upper().split()[0]
-				else:
-					bet_name = new_bet.text.upper()
-
-				bet_quote = bets.find_elements_by_xpath(
-								 './/div[@class="selection-price"]')[i]
-				scroll_to_element(browser, 'false', bet_quote)
-				bet_quote = bet_quote.text
-
-				field_id = dbf.db_select(
-						table='fields',
-						columns_in=['field_id'],
-						where='field_name = "{}" AND field_value = "{}"'.
-						format(field_name, bet_name))[0]
-
-				if len(bet_quote) == 1:
-					bet_quote = 'NOT AVAILABLE'
-				else:
-					bet_quote = float(bet_quote)
-
-				dbf.db_insert(
-						table='quotes',
-						columns=['quote_match', 'quote_field', 'quote_value'],
-						values=[last_id, field_id, bet_quote])
 
 
 def wait_clickable(browser, seconds, element):

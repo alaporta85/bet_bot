@@ -251,28 +251,21 @@ def jaccard_result(input_option, all_options, ngrm):
 
 def select_team(input_team):
 
-    try:
-        team_id = db_select(
-                table='teams_alias',
-                columns_in=['team_alias_team'],
-                where='team_alias_name = "{}"'.format(input_team))[0]
+    if '*' in input_team:
+        input_team = input_team[1:]
 
+    try:
         team_name = db_select(
-                table='teams',
-                columns_in=['team_name'],
-                where='team_id = {}'.format(team_id))[0]
+                table='teams_short',
+                columns_in=['team_short_name'],
+                where='team_short_value = "{}"'.format(input_team))[0]
 
     except IndexError:
-        if '*' in input_team:
-            where = 'team_league = 8'
-        else:
-            where = 'team_league != 2 AND team_league != 8'
 
         team_name = jaccard_result(input_team,
                                    db_select(
                                            table='teams',
-                                           columns_in=['team_name'],
-                                           where=where), 3)
+                                           columns_in=['team_name']), 3)
 
     return team_name
 
