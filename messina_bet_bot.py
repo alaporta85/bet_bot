@@ -417,7 +417,10 @@ def new_quotes(bot, update):
 
 	"""Fill the db with the new quotes."""
 
-	_, role = nickname(update)
+	try:
+		_, role = nickname(update)
+	except AttributeError:
+		role = 'Admin'
 
 	if role == 'Admin':
 		start = time.time()
