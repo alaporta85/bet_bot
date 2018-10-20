@@ -426,27 +426,23 @@ def click_panel(browser, index, panel):
 		time.sleep(.5)
 
 
-def fill_db_with_quotes():
+def fill_db_with_quotes(leagues):
 
 	"""
 	Fill the tables "matches" and "quotes" in the db.
 
 	"""
 
-	# Delete old data from the two tables
-	dbf.empty_table('quotes')
-	dbf.empty_table('matches')
-
 	# Start the browser
 	browser = webdriver.Chrome(chrome_path)
 	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
 
-	for league in countries:
+	for j, league in enumerate(leagues):
 		start = time.time()
 		browser.get(head + countries[league])
 
 		# To close the popup. Only the first time after connection
-		if league == 'SERIE A':
+		if not j:
 			browser.refresh()
 
 		league_id = dbf.db_select(

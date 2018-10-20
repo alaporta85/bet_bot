@@ -414,9 +414,18 @@ def matiz(bot, update):
 	               photo=open('matiz.png', 'rb'))
 
 
-def new_quotes(bot, update):
+def new_quotes(bot, update, args):
 
-	"""Fill the db with the new quotes."""
+	"""
+	Fill the db with the new quotes for the chosen leagues.
+
+	:param bot:
+	:param update:
+	:param args: list, Ex. [serie a, bundesliga]
+
+	:return:
+
+	"""
 
 	try:
 		_, role = nickname(update)
@@ -424,17 +433,53 @@ def new_quotes(bot, update):
 		role = 'Admin'
 
 	if role == 'Admin':
+		if not args:
+			return bot.send_message(
+					chat_id=update.message.chat_id,
+					text=('Insert leagues. ' +
+					      'Ex. /new_quotes serie a, primera division'))
+
+		args = ' '.join(args).split(',')
+		args = [arg[1:] if arg[0] == ' ' else arg for arg in args]
+		args = [arg[:-1] if arg[-1] == ' ' else arg for arg in args]
+		for arg in args:
+			if arg.upper() not in sf.countries:
+				leagues = ', '.join([league for league in sf.countries])
+				return bot.send_message(
+						chat_id=update.message.chat_id,
+						text='Possible options: {}'.format(leagues))
+
+		leagues = [arg.upper() for arg in args]
+		for league in leagues:
+			league_id = dbf.db_select(
+					table='leagues',
+					columns_in=['league_id'],
+					where='league_name = "{}"'.format(league))[0]
+
+			matches = dbf.db_select(
+					table='matches',
+					columns_in=['match_id'],
+					where='match_league = {}'.format(league_id))
+
+			for match in matches:
+				dbf.db_delete(
+						table='quotes',
+						where='quote_match = {}'.format(match))
+				dbf.db_delete(
+						table='matches',
+						where='match_id = {}'.format(match))
+
 		start = time.time()
 		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
-		sf.fill_db_with_quotes()
+		sf.fill_db_with_quotes(leagues)
 		end = time.time() - start
 		minutes = int(end//60)
 		seconds = round(end % 60)
 		logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
 																	seconds))
 	else:
-		bot.send_message(chat_id=update.message.chat_id,
-		                 text='Fatti i cazzi tuoi')
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='Fatti i cazzi tuoi')
 
 
 def nickname(update):
@@ -447,6 +492,43 @@ def nickname(update):
 			where='people_name = "{}"'.format(name))[0]
 
 	return user, role
+
+
+def night_quotes(bot, update):
+
+	"""
+	Fill the db with the new quotes for all the leagues.
+
+	:param bot:
+	:param update:
+
+	:return:
+
+	"""
+
+	try:
+		_, role = nickname(update)
+	except AttributeError:
+		role = 'Admin'
+
+	if role == 'Admin':
+		leagues = [league for league in sf.countries]
+
+		# Delete old data from the two tables
+		dbf.empty_table('quotes')
+		dbf.empty_table('matches')
+
+		start = time.time()
+		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
+		sf.fill_db_with_quotes(leagues)
+		end = time.time() - start
+		minutes = int(end // 60)
+		seconds = round(end % 60)
+		logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
+		                                                            seconds))
+	else:
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='Fatti i cazzi tuoi')
 
 
 def play(bot, update, args):
@@ -736,7 +818,7 @@ info_handler = CommandHandler('info', info)
 log_handler = CommandHandler('log', send_log)
 match_handler = CommandHandler('match', match, pass_args=True)
 matiz_handler = CommandHandler('matiz', matiz)
-new_quotes_handler = CommandHandler('new_quotes', new_quotes)
+new_quotes_handler = CommandHandler('new_quotes', new_quotes, pass_args=True)
 play_handler = CommandHandler('play', play, pass_args=True)
 remind_handler = CommandHandler('remind', remind)
 score_handler = CommandHandler('score', score, pass_args=True)
@@ -749,7 +831,8 @@ update_handler = CommandHandler('update', update_results)
 
 # Nightly quotes updating
 update_quotes = updater.job_queue
-update_quotes.run_repeating(new_quotes, 86400, first=datetime.time(1, 00, 00))
+update_quotes.run_repeating(night_quotes, 86400,
+                            first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
