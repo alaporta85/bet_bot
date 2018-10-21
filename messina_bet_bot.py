@@ -662,7 +662,6 @@ def play(bot, update, args):
 
 	time.sleep(10)
 	money_after = sf.money(browser)
-	# c = 1
 	c = count(1)
 
 	while next(c) < 10 and money_after != (money_before - euros):
@@ -681,9 +680,9 @@ def play(bot, update, args):
 		bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 						 text=message)
 	else:
-			bot.send_message(chat_id=update.message.chat_id,
-			                 text=('Money left did not change, try again ' +
-			                       'the command /play.'))
+		bot.send_message(chat_id=update.message.chat_id,
+		                 text=('Money left did not change, try again ' +
+		                       'the command /play.'))
 
 	browser.quit()
 
