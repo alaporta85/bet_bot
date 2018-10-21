@@ -519,12 +519,12 @@ def night_quotes(bot, update):
 		dbf.empty_table('matches')
 
 		start = time.time()
-		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
+		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
 		sf.fill_db_with_quotes(leagues)
 		end = time.time() - start
 		minutes = int(end // 60)
 		seconds = round(end % 60)
-		logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
+		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
 		                                                            seconds))
 	else:
 		return bot.send_message(chat_id=update.message.chat_id,
@@ -831,7 +831,7 @@ update_handler = CommandHandler('update', update_results)
 # Nightly quotes updating
 update_quotes = updater.job_queue
 update_quotes.run_repeating(night_quotes, 86400,
-                            first=datetime.time(12, 6, 00))
+                            first=datetime.time(14, 36, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
