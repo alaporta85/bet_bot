@@ -426,7 +426,7 @@ def click_panel(browser, index, panel):
 		time.sleep(.5)
 
 
-def fill_db_with_quotes():
+def fill_db_with_quotes(leagues):
 
 	"""
 	Fill the tables "matches" and "quotes" in the db.
@@ -437,7 +437,7 @@ def fill_db_with_quotes():
 	browser = webdriver.Chrome(chrome_path)
 	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
 
-	for j, league in enumerate(countries):
+	for j, league in enumerate(leagues):
 		start = time.time()
 		browser.get(head + countries[league])
 
@@ -473,8 +473,6 @@ def fill_db_with_quotes():
 			# Select the match or continue to the next league if done
 			try:
 				match = all_matches[i]
-				logger.info('FILL DB WITH QUOTES - Iteration {}, '.format(i) +
-							'match {}'.format(match.text.split('\n')[0]))
 			except IndexError:
 				end = time.time() - start
 				minutes = int(end // 60)
