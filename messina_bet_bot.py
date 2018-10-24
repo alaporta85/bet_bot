@@ -433,6 +433,10 @@ def new_quotes(bot, update):
 
 	if role == 'Admin':
 
+		# Delete old data from the two tables
+		dbf.empty_table('quotes')
+		dbf.empty_table('matches')
+
 		start = time.time()
 		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
 		sf.fill_db_with_quotes()
@@ -866,7 +870,7 @@ update_handler = CommandHandler('update', update_results)
 # Nightly quotes updating
 update_quotes = updater.job_queue
 update_quotes.run_repeating(new_quotes, 86400,
-                            first=datetime.time(17, 37, 00))
+                            first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,

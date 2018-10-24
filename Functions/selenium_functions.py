@@ -16,12 +16,12 @@ from Functions import db_functions as dbf
 
 countries = {
 			 'SERIE A': 'italia/idivisionev3.html',
-			 # 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
-			 # 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
-			 # 'BUNDESLIGA': 'germania/bundesliga1.html',
-			 # 'LIGUE 1': 'francia/ligue11.html',
-			 # 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 # 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
+			 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
+			 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
+			 'BUNDESLIGA': 'germania/bundesliga1.html',
+			 'LIGUE 1': 'francia/ligue11.html',
+			 'EREDIVISIE': 'olanda/eredivisie1.html',
+			 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
 			 }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
@@ -453,7 +453,7 @@ def fill_db_with_quotes():
 		# We repeat this for loop for every match of the league. Value is set
 		# to 100 to be sure to download all the matches. When no match is found
 		# for the corresponding index, IndexError is handled
-		for i in range(5, 100):
+		for i in range(100):
 
 			# If list of matches is not found, league is skipped
 			matches_path = './/div[@class="block-event event-description"]'
@@ -473,6 +473,8 @@ def fill_db_with_quotes():
 			# Select the match or continue to the next league if done
 			try:
 				match = all_matches[i]
+				logger.info('FILL DB WITH QUOTES - Iteration {}, '.format(i) +
+							'match {}'.format(match.text.split('\n')[0]))
 			except IndexError:
 				end = time.time() - start
 				minutes = int(end // 60)
