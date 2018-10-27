@@ -1,3 +1,5 @@
+import os
+import random
 import time
 import datetime
 import numpy as np
@@ -216,6 +218,14 @@ def delete(bot, update):
 	return bot.send_message(
 			chat_id=update.message.chat_id,
 			text='{}, bet deleted.'.format(user))
+
+
+def fischia(bot, update):
+
+	walter = random.choice(os.listdir('Mazzarri/'))
+
+	bot.send_photo(chat_id=update.message.chat_id,
+	               photo=open('Mazzarri/' + walter, 'rb'))
 
 
 def format_text(content):
@@ -848,6 +858,7 @@ bici_handler = CommandHandler('bici', bici)
 cancel_handler = CommandHandler('cancel', cancel)
 confirm_handler = CommandHandler('confirm', confirm)
 delete_handler = CommandHandler('delete', delete)
+fischia_handler = CommandHandler('fischia', fischia)
 get_handler = CommandHandler('get', get, pass_args=True)
 help_quote_handler = CommandHandler('help_quote', help_quote)
 help_stats_handler = CommandHandler('help_stats', help_stats)
@@ -856,7 +867,6 @@ log_handler = CommandHandler('log', send_log)
 match_handler = CommandHandler('match', match, pass_args=True)
 matiz_handler = CommandHandler('matiz', matiz)
 new_quotes_handler = CommandHandler('new_quotes', new_quotes, pass_args=True)
-# new_quotes_handler = CommandHandler('new_quotes', new_quotes)
 play_handler = CommandHandler('play', play, pass_args=True)
 remind_handler = CommandHandler('remind', remind)
 score_handler = CommandHandler('score', score, pass_args=True)
@@ -898,6 +908,7 @@ dispatcher.add_handler(new_quotes_handler)
 dispatcher.add_handler(log_handler)
 dispatcher.add_handler(remind_handler)
 dispatcher.add_handler(matiz_handler)
+dispatcher.add_handler(fischia_handler)
 
 logger = log.set_logging()
 updater.start_polling()
