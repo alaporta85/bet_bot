@@ -412,7 +412,7 @@ def stats_of_the_month():
 	def lmb2():
 		return lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S').month
 
-	def plot(dict1, dict2):
+	def plot(dict1, dict2, current_month):
 
 		win = [(name, len(dict1[name])) for name in partecipants]
 		win.sort(key=lambda x: x[1], reverse=True)
@@ -453,6 +453,21 @@ def stats_of_the_month():
 			         bars2[x].get_height() + 0.05, message, ha='center',
 			         va='bottom', fontsize=15)
 
+		# data = [(el[0], round(el[1] / maximum, 3)) for el in current_month]
+		# data.sort(key=lambda x: x[1], reverse=True)
+		# current_winner = '{}: {}'.format(data[0][0], data[0][1])
+		#
+		# plt.text(.85, .88, current_winner, horizontalalignment='left',
+		#          transform=ax.transAxes, fontweight='bold', fontsize=18)
+		#
+		# others = ['{}: {}'.format(el[0], el[1], 3) for el in data[1:]]
+		#
+		# plt.text(.82, .65, '\n'.join(others), horizontalalignment='left',
+		#          transform=ax.transAxes, style='italic', fontsize=16)
+		#
+		# plt.plot([.83, .83], [1, .6], 'k-', lw=3, transform=ax.transAxes)
+		# plt.plot([.83, 1], [.6, .6], 'k-', lw=3, transform=ax.transAxes)
+
 		plt.savefig('sotm.png', dpi=120, bbox_inches='tight')
 		plt.gcf().clear()
 
@@ -492,7 +507,7 @@ def stats_of_the_month():
 
 			dict_lose[name].append(mm + "'" + yy)
 
-	plot(dict_win, dict_lose)
+	plot(dict_win, dict_lose, temp)
 
 
 def stats_on_teams_or_bets(string):
