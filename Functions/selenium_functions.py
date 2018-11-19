@@ -42,21 +42,30 @@ recurs_lim = 3
 
 def add_bet_to_basket(browser, match, count, dynamic_message):
 
-	team1 = match[0]
-	team2 = match[1]
-	field = match[2]
-	bet = match[3]
-	url = match[4]
+	"""
+	Click the bet button and add it to the basket. Used inside the command
+	/play.
 
-	try:
-		browser.get(url)
-		click_bet(browser, field, bet)
-		time.sleep(5)
-		check_single_bet(browser, count, team1, team2)
-		return dynamic_message.format(count + 1)
+	:param browser: selenium browser instance
+	:param match: tuple
+	:param count: int
+	:param dynamic_message: str, the message to update in the chat
 
-	except ConnectionError as e:
-		raise ConnectionError(str(e))
+	:return: str, dynamic message updated
+
+	"""
+
+	team1, team2, field, bet, url = match
+
+	# try:
+	browser.get(url)
+	click_bet(browser, field, bet)
+	time.sleep(5)
+	# check_single_bet(browser, count, team1, team2)
+	return dynamic_message.format(count + 1)
+
+	# except ConnectionError as e:
+	# 	raise ConnectionError(str(e))
 
 
 def all_matches_missing(browser, all_matches, league):
@@ -236,37 +245,48 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 								  'Please try again.')
 
 
-def check_single_bet(browser, anumber, team1, team2):
-
-	"""Check whether the bet is inserted correctly."""
-
-	message = 'Problems with {} - {}. Try again.'.format(team1, team2)
-
-	singola = browser.find_elements_by_xpath('.//div[@class="item-ticket"]')
-	multipla = browser.find_elements_by_xpath(
-									   './/div[@class="item-ticket ng-scope"]')
-
-	if not singola and len(multipla) != anumber + 1:
-		logger.info('CHECK SINGLE BET - ' + message)
-		browser.quit()
-		raise ConnectionError(message)
+# def check_single_bet(browser, anumber, team1, team2):
+#
+# 	"""Check whether the bet is inserted correctly."""
+#
+# 	message = 'Problems with {} - {}. Try again.'.format(team1, team2)
+#
+# 	singola = browser.find_elements_by_xpath('.//div[@class="item-ticket"]')
+# 	multipla = browser.find_elements_by_xpath(
+# 									   './/div[@class="item-ticket ng-scope"]')
+#
+# 	if not singola and len(multipla) != anumber + 1:
+# 		logger.info('CHECK SINGLE BET - ' + message)
+# 		browser.quit()
+# 		raise ConnectionError(message)
 
 
 def click_bet(browser, field, bet):
 
 	"""
-	Find the button relative to the bet we are interested in and click
-	it.
+	Find the button relative to the bet to play and click it. Used inside the
+	function add_bet_to_basket().
+
+	:param browser: selenium browser instance
+	:param field: str, Ex. GOAL/NOGOAL + U/O 2,5
+	:param bet: str, Ex. GOAL + OVER
+
+	:return: nothing
+
 	"""
 
 	CLICK_CHECK = False
 
+	# All panels. Ex. Più giocate, Combo, Casa...
 	all_panels = find_all_panels(browser)
 
 	for i, panel in enumerate(all_panels):
 
+		# Open the panel if closed
 		click_panel(browser, i, panel)
 
+		# Select fields and bets containers inside the panel. Each field has
+		# a bets container which contains multiple bets
 		fields_path = ('./div[contains(@class, "group-market")]//' +
 		               'div[@class="market-info"]/div')
 		bets_path = ('./div[contains(@class, "group-market")]//' +
@@ -275,23 +295,29 @@ def click_bet(browser, field, bet):
 		fields = panel.find_elements_by_xpath(fields_path)
 		bets = panel.find_elements_by_xpath(bets_path)
 
-		fields_bets = (fields, bets)
-
-		for field_, bets in zip(fields_bets[0], fields_bets[1]):
+		# Associate each field with its bets and loop through all of them
+		for field_, bets_ in zip(fields, bets):
 			scroll_to_element(browser, 'false', field_)
 			field_name = field_.text.upper()
 
+			# When the correct field is found
 			if field_name == field:
 
-				all_bets = bets.find_elements_by_xpath(
+				# Select all the bets associated
+				all_bets = bets_.find_elements_by_xpath(
 						'.//div[@ng-repeat="selection in prematchSingle' +
 						'EventMarketSimple.market.sel"]')
+
+				# In case the field is ESITO FINALE 1X2 HANDICAP the bets have
+				# a different path
 				if not all_bets:
-					all_bets = bets.find_elements_by_xpath(
+					all_bets = bets_.find_elements_by_xpath(
 							'.//div[@ng-repeat="selection in market.sel"]')
 
+				# Loop through all the bets until we find the correct one
 				for new_bet in all_bets:
 					scroll_to_element(browser, 'false', new_bet)
+
 					if field_name == 'ESITO FINALE 1X2 HANDICAP':
 						bet_name = new_bet.find_element_by_xpath(
 								'.//div[@class="selection-name ' +
@@ -301,14 +327,15 @@ def click_bet(browser, field, bet):
 								'.//div[@class="selection-name ' +
 								'ng-binding"]').text.upper()
 
+					# When found, we click it and break
 					if bet_name == bet:
-
 						new_bet.click()
 						CLICK_CHECK = True
 						break
-
-			if CLICK_CHECK:
 				break
+
+			else:
+				continue
 
 		if CLICK_CHECK:
 			break
@@ -407,23 +434,35 @@ def click_league_button(browser, league):
 
 def click_panel(browser, index, panel):
 
+	"""
+	Click the panel to open it, if closed. Used inside click_bet() and
+	find_all_fields_and_bets() functions.
+
+	:param browser: selenium browser instance
+	:param index: int, index of the panel to click
+	:param panel: selenium element
+
+	:return: nothing
+
+	"""
+
 	button = panel.find_elements_by_xpath(
 			'//div[contains(@class, "group-name")]')[index]
 	scroll_to_element(browser, 'false', button)
-	txt = button.text
+	name = button.text
 
-	try:
-		WebDriverWait(
-				browser, WAIT).until(EC.element_to_be_clickable(
-					(By.LINK_TEXT, txt)))
-	except TimeoutException:
-		logger.info('CLICK PANEL - Not possible to click on ' +
-		            '{} panel'.format(txt))
-		raise ConnectionError
+	# try:
+	WebDriverWait(
+			browser, WAIT).until(EC.element_to_be_clickable(
+				(By.LINK_TEXT, name)))
+	# except TimeoutException:
+	# 	logger.info('CLICK PANEL - Not possible to click on ' +
+	# 	            '{} panel'.format(name))
+	# 	raise ConnectionError
 
 	if 'active' not in button.get_attribute('class'):
 		button.click()
-		time.sleep(.5)
+		time.sleep(1)
 
 
 def fill_db_with_quotes(leagues):
@@ -683,8 +722,13 @@ def find_all_fields_and_bets(browser):
 def find_all_panels(browser):
 
 	"""
-	Return the HTML container of the panels (PIU' GIOCATE, CHANCE MIX,
-	TRICOMBO, ...).
+	Return the HTML container of the panels (Più giocate, Combo, Casa, ...).
+	Used inside click_bet() and find_all_fields_and_bets() functions.
+
+	:param browser: selenium browser instance
+
+	:return: selenium element
+
 	"""
 
 	all_panels_path = '//div[@class="item-group ng-scope"]'

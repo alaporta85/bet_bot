@@ -529,7 +529,6 @@ def new_quotes(bot, update, args):
 		                        text='Fatti i cazzi tuoi')
 
 
-
 def nickname(update):
 
 	name = update.message.from_user.first_name
@@ -586,9 +585,12 @@ def play(bot, update, args):
 	to bet.
 	"""
 
+	# Warning message if amount is missing
 	if not args:
 		return bot.send_message(chat_id=update.message.chat_id, text=(
 				'Please insert the amount to bet. Ex: /play 5'))
+
+	# Check that input is an integer number >= 2
 	try:
 		euros = int(args[0])
 		if euros < 2:
@@ -600,6 +602,7 @@ def play(bot, update, args):
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=message)
 
+	# Check if there is any bet which has not been confirmed by the user
 	not_conf_list = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_user', 'pred_team1', 'pred_team2', 'pred_field',
@@ -617,7 +620,7 @@ def play(bot, update, args):
 								text=('/confirm or /cancel each of them and ' +
 									  'then play again.'))
 
-	# vedo se ci sono scommesse in Pending e se è così ne prendo l'id
+	# Check if there is any bet to play and, if yes, select the id
 	bet_id = dbf.db_select(
 			table='bets',
 			columns_in=['bet_id'],
@@ -631,7 +634,7 @@ def play(bot, update, args):
 	# Check whether there are matches already started
 	invalid_bets = dbf.check_before_play(bet_id)
 	if invalid_bets:
-		message = '{}, {} - {} was scheduled on {} at {}. Too late.'
+		msg = '{}, {} - {} was scheduled on {} at {}. Too late.'
 		for x in range(len(invalid_bets)):
 			bet = invalid_bets[x]
 			dt = datetime.datetime.strptime(bet[1], '%Y-%m-%d %H:%M:%S')
@@ -642,19 +645,18 @@ def play(bot, update, args):
 				logger.info('PLAY - Too late for the following bet: ' +
 							'{}: {} - {}.'.format(bet[0], bet[2], bet[3]))
 				bot.send_message(chat_id=update.message.chat_id,
-								 text=message.format(bet[0], bet[2], bet[3],
-													 date_to_print,
-													 time_to_print))
+								 text=msg.format(bet[0], bet[2], bet[3],
+												 date_to_print,
+												 time_to_print))
 			else:
 				return bot.send_message(chat_id=update.message.chat_id,
-										text=message.format(bet[0], bet[1],
-															bet[2],
-															date_to_print,
-															time_to_print))
+										text=msg.format(bet[0], bet[1], bet[2],
+										                date_to_print,
+														time_to_print))
 
 	# This message will be updated during the process to keep track of all
 	# the steps
-	dynamic_message = 'Please wait while placing the bet.\nMatches added: {}'
+	dynamic_message = 'Wait while placing the bet.\nMatches added: {}'
 	sent = bot.send_message(chat_id=update.message.chat_id,
 							text=dynamic_message.format(0))
 

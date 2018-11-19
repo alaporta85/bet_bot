@@ -160,11 +160,15 @@ def check_still_to_confirm(first_name):
 def create_matches_to_play(bet_id):
 
 	"""
-	Called inside the command /play_bet.
+	Called inside the command /play.
 
 	:param bet_id: int
 
-	:return: list of tuples representing the matches to be added in the basket
+	:return: list of tuples representing the matches to be added in the basket.
+			 Each tuple has the form
+
+			        (team1, team2, field_name, field_value, url)
+
 	"""
 
 	data = dbf.db_select(
