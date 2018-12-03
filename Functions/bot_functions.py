@@ -76,7 +76,7 @@ def all_bets_per_team(team_name, league_id):
 	return message_standard, message_combo
 
 
-def check_if_too_late(id_of_bet):
+def check_if_too_late(id_of_bet):      # DONE
 
 	invalid_matches = []
 
@@ -158,7 +158,7 @@ def check_if_duplicate(first_name, details):
 	return message
 
 
-def check_if_input_is_correct(user_input):
+def check_if_input_is_correct(user_input):    # DONE
 
 	# Warning message if amount is missing
 	if not user_input:
@@ -258,7 +258,7 @@ def create_matches_to_play(bet_id):
 	return matches_to_play
 
 
-def from_str_to_dt(datetime_as_string):
+def from_str_to_dt(datetime_as_string):    # DONE
 	return datetime.datetime.strptime(datetime_as_string, '%Y-%m-%d %H:%M:%S')
 
 
@@ -485,7 +485,7 @@ def matches_per_day(day):
 	return message
 
 
-def one_or_more_preds_are_not_confirmed():
+def one_or_more_preds_are_not_confirmed():   # DONE
 
 	not_conf_list = dbf.db_select(
 			table='predictions',

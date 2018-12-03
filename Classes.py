@@ -301,7 +301,7 @@ def score2(which):
 	plt.title(which, fontsize=16, fontweight='bold', style='italic')
 
 	for i, bar in enumerate(bars):
-		text = '{}\n({}%)\n{}\n{}'.format(ratio[i], perc[i], mean_quoteP[i],
+		text = '{}\n{}%\n{}\n{}'.format(ratio[i], perc[i], mean_quoteP[i],
 		                              mean_quoteW[i])
 		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
 		         '{}'.format(text), ha='center', va='bottom', fontsize=12,

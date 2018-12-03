@@ -581,19 +581,25 @@ def night_quotes(bot, update):
 def play(bot, update, args):
 
 	"""
-	Manage the login and play the bet. Args input is the amount of euros
-	to bet.
+	Play the bet online.
+
+	:param bot: -
+	:param update: -
+	:param args: list, amount to play. Ex. [5]
+
+	:return: nothing
+
 	"""
+	chat_id = update.message.chat_id
 
 	euros = bf.check_if_input_is_correct(args)
 	if type(euros) == str:
-		return bot.send_message(chat_id=update.message.chat_id, text=euros)
+		return bot.send_message(chat_id=chat_id, text=euros)
 
 	# Check if there is any bet which has not been confirmed by any user
 	warn = bf.one_or_more_preds_are_not_confirmed()
 	if warn:
-		return bot.send_message(
-				parse_mode='HTML', chat_id=update.message.chat_id, text=warn)
+		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=warn)
 
 	# Check if there is any bet to play and, if yes, select the id
 	try:
@@ -602,117 +608,82 @@ def play(bot, update, args):
 				columns_in=['bet_id'],
 		        where='bet_status = "Pending"')[0]
 	except IndexError:
-		return bot.send_message(chat_id=update.message.chat_id,
-								text='No bets to play.')
+		return bot.send_message(chat_id=chat_id, text='No bets to play.')
 
 	# Check whether there are matches already started
 	late = bf.check_if_too_late(bet_id)
 	if late:
-		return bot.send_message(
-				parse_mode='HTML', chat_id=update.message.chat_id, text=late)
-
-
-	invalid_bets = dbf.check_before_play(bet_id)
-	if invalid_bets:
-		msg = '{}, {} - {} was scheduled on {} at {}. Too late.'
-		for x in range(len(invalid_bets)):
-			bet = invalid_bets[x]
-			dt = datetime.datetime.strptime(bet[1], '%Y-%m-%d %H:%M:%S')
-			date_to_print = (str(dt.year) + '/' + str(dt.month) + '/' +
-			                 str(dt.day))
-			time_to_print = (str(dt.hour) + ':' + str(dt.minute))
-			if x < len(invalid_bets) - 1:
-				logger.info('PLAY - Too late for the following bet: ' +
-							'{}: {} - {}.'.format(bet[0], bet[2], bet[3]))
-				bot.send_message(chat_id=update.message.chat_id,
-								 text=msg.format(bet[0], bet[2], bet[3],
-												 date_to_print,
-												 time_to_print))
-			else:
-				return bot.send_message(chat_id=update.message.chat_id,
-										text=msg.format(bet[0], bet[1], bet[2],
-										                date_to_print,
-														time_to_print))
+		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
 
 	# This message will be updated during the process to keep track of all
 	# the steps
-	dynamic_message = 'Wait while placing the bet.\nMatches added: {}'
-	sent = bot.send_message(chat_id=update.message.chat_id,
-							text=dynamic_message.format(0))
+	dynamic_message = 'Matches added: {}'
+	sent = bot.send_message(chat_id=chat_id, text=dynamic_message.format(0))
 
-	# mess_id will be used to update the message
+	# To identify the message
 	mess_id = sent.message_id
 
+	# Create a list with all the preds to play
 	matches_to_play = bf.create_matches_to_play(bet_id)
 
-	browser = sf.go_to_lottomatica()
-	logger.info('PLAY - Connected to Lottomatica')
-	cnt = 0
-	for match in matches_to_play:
-		try:
-			basket_message = sf.add_bet_to_basket(browser, match, cnt,
-												  dynamic_message)
-			logger.info('PLAY - {}-{}  {} '.format(
-					match[0], match[1], match[3]) + 'added')
+	# Add all the preds to the basket and update the message inside the chat
+	browser = None
+	for i, (tm1, tm2, field, bet, url) in enumerate(matches_to_play):
 
-			bot.edit_message_text(chat_id=update.message.chat_id,
-								  message_id=mess_id, text=basket_message)
-			cnt += 1
-		except ConnectionError as e:
-			return bot.send_message(chat_id=update.message.chat_id,
-									text=str(e))
+		browser = sf.connect_to(some_url=url, browser=browser)
+		basket_msg = sf.add_bet_to_basket(
+				browser, (field, bet), i, dynamic_message)
+		logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
 
-	logger.info('PLAY - All matches added')
-	bot.edit_message_text(chat_id=update.message.chat_id, message_id=mess_id,
-						  text='Checking everything is fine...')
+		bot.edit_message_text(
+				chat_id=chat_id, message_id=mess_id, text=basket_msg)
 
+	# Insert the amount to bet
 	sf.insert_euros(browser, euros)
 
+	# Log in
 	sf.login(browser)
-	logger.info('PLAY - Logged in')
-	bot.edit_message_text(chat_id=update.message.chat_id,
-						  message_id=mess_id,
-						  text='Logged in')
+	logger.info('PLAY - Logged')
+	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
 
 	# Money left before playing the bet
 	money_before = sf.money(browser)
 
-	sf.find_scommetti_box(browser)
-
+	# Click the button to place the bet
+	sf.click_scommetti(browser)
 	logger.info('PLAY - Bet has been played.')
+
+	# Update bet table
 	dbf.db_update(
 			table='bets',
 			columns=['bet_date', 'bet_euros', 'bet_status'],
 			values=[datetime.datetime.now(), euros, 'Placed'],
 			where='bet_status = "Pending"')
-	logger.info('PLAY - "bets" db table updated')
 
-	bot.edit_message_text(chat_id=update.message.chat_id,
-						  message_id=mess_id, text='Done!')
-
+	# Let the chat know and then wait
+	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Done!')
 	time.sleep(10)
-	money_after = sf.money(browser)
-	c = count(1)
 
+	# Money after clicking the button
+	money_after = sf.money(browser)
+
+	# Verify money has the new value. If not, refresh the value and check again
+	# up to 10 times
+	c = count(1)
 	while next(c) < 10 and money_after != (money_before - euros):
-		logger.info('PLAY - Update budget after playing failed')
 		sf.refresh_money(browser)
 		time.sleep(2)
-
-		# Money after playing the bet
 		money_after = sf.money(browser)
 
 	if money_after == money_before - euros:
 
 		# Print the summary
-		message = create_summary('after')
-		message += '\nMoney left: <b>{}</b>'.format(money_after)
-		bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-						 text=message)
+		msg = create_summary('after')
+		msg += '\nMoney left: <b>{}</b>'.format(money_after)
+		bot.send_message(parse_mode='HTML', chat_id=chat_id, text=msg)
 	else:
-		bot.send_message(chat_id=update.message.chat_id,
-		                 text=('Money left did not change, try again ' +
-		                       'the command /play.'))
+		msg = 'Money left did not change, try again the command /play.'
+		bot.send_message(chat_id=update.message.chat_id, text=msg)
 
 	browser.quit()
 

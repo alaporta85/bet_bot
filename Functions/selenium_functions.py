@@ -40,14 +40,14 @@ WAIT = 60
 recurs_lim = 3
 
 
-def add_bet_to_basket(browser, match, count, dynamic_message):
+def add_bet_to_basket(browser, details, count, dynamic_message):
 
 	"""
 	Click the bet button and add it to the basket. Used inside the command
 	/play.
 
 	:param browser: selenium browser instance
-	:param match: tuple
+	:param details: tuple, contain field and bet names
 	:param count: int
 	:param dynamic_message: str, the message to update in the chat
 
@@ -55,9 +55,8 @@ def add_bet_to_basket(browser, match, count, dynamic_message):
 
 	"""
 
-	team1, team2, field, bet, url = match
+	field, bet = details
 
-	browser.get(url)
 	click_bet(browser, field, bet)
 	time.sleep(10)
 
@@ -354,6 +353,19 @@ def click_panel(browser, index, panel):
 		time.sleep(1)
 
 
+def connect_to(some_url, browser=None):
+
+	if not browser:
+		# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
+		browser = webdriver.Chrome(chrome_path)
+		time.sleep(3)
+
+	browser.get(some_url)
+
+	return browser
+
+
+
 def fill_db_with_quotes(leagues):
 
 	"""
@@ -638,7 +650,7 @@ def find_all_panels(browser):
 				browser.quit()
 
 
-def find_scommetti_box(browser):
+def click_scommetti(browser):
 
 	button_location = './/div[@class="buttons-betslip"]'
 	button = browser.find_element_by_xpath(button_location)
