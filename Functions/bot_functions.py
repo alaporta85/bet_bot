@@ -76,6 +76,43 @@ def all_bets_per_team(team_name, league_id):
 	return message_standard, message_combo
 
 
+def check_if_too_late(id_of_bet):
+
+	invalid_matches = []
+
+	dt_now = datetime.datetime.now()
+
+	matches = dbf.db_select(
+			table='bets INNER JOIN predictions on pred_bet = bet_id',
+			columns_in=['pred_id', 'pred_date', 'pred_team1', 'pred_team2'],
+			where='bet_id = {}'.format(id_of_bet))
+
+	matches = [(el[0], from_str_to_dt(el[1]), el[2], el[3]) for el in matches]
+
+	for id_of_pred, dt, tm1, tm2 in matches:
+		if dt < dt_now:
+			invalid_matches.append((tm1, tm2))
+			dbf.db_delete(
+					table='predictions',
+					where='pred_id = {}'.format(id_of_pred))
+
+	if not invalid_matches:
+		return None
+
+	if len(invalid_matches) == len(matches):
+		dbf.db_delete(
+				table='bets',
+				where='bet_id = {}'.format(id_of_bet))
+
+	final_msg = ''
+	temp_msg = 'Too late for  <b>{} - {}</b>\n\n'
+	for tm1, tm2 in invalid_matches:
+
+		final_msg += temp_msg.format(tm1, tm2)
+
+	return final_msg
+
+
 def check_if_duplicate(first_name, details):
 
 	"""
@@ -119,6 +156,24 @@ def check_if_duplicate(first_name, details):
 					   '{} confirmed first.'.format(first_name))
 
 	return message
+
+
+def check_if_input_is_correct(user_input):
+
+	# Warning message if amount is missing
+	if not user_input:
+		return 'Insert the amount. Ex: /play 5'
+
+	# Check that input is an integer number >= 2
+	try:
+		euros = int(user_input[0])
+		if euros < 2:
+			return 'Minimum amount is 2 Euros.'
+		else:
+			return euros
+
+	except ValueError:
+		return 'Amount has to be integer.'
 
 
 def check_still_to_confirm(first_name):
@@ -201,6 +256,10 @@ def create_matches_to_play(bet_id):
 		matches_to_play.append((team1, team2, field_name, field_value, url))
 
 	return matches_to_play
+
+
+def from_str_to_dt(datetime_as_string):
+	return datetime.datetime.strptime(datetime_as_string, '%Y-%m-%d %H:%M:%S')
 
 
 def look_for_quote(team_name, input_bet):
@@ -424,6 +483,27 @@ def matches_per_day(day):
 						quote1, quoteX, quote2))
 
 	return message
+
+
+def one_or_more_preds_are_not_confirmed():
+
+	not_conf_list = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_user', 'pred_team1', 'pred_team2', 'pred_rawbet',
+			            'pred_quote'],
+			where='pred_status = "Not Confirmed"')
+
+	if not_conf_list:
+		message = 'There are still Not Confirmed bets:'
+
+		for user, team1, team2, bet, quote in not_conf_list:
+			message += '\n\n<b>{}</b>: {} - {}  {} <b>@{}</b>'.format(
+					user, team1, team2, bet, quote)
+
+		return message + '\n\n/confirm or /cancel and then play again.'
+
+	else:
+		return None
 
 
 def update_pred_table_after_confirm(first_name, bet_id):

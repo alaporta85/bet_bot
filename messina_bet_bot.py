@@ -585,53 +585,33 @@ def play(bot, update, args):
 	to bet.
 	"""
 
-	# Warning message if amount is missing
-	if not args:
-		return bot.send_message(chat_id=update.message.chat_id, text=(
-				'Please insert the amount to bet. Ex: /play 5'))
+	euros = bf.check_if_input_is_correct(args)
+	if type(euros) == str:
+		return bot.send_message(chat_id=update.message.chat_id, text=euros)
 
-	# Check that input is an integer number >= 2
-	try:
-		euros = int(args[0])
-		if euros < 2:
-			message = 'Minimum amount is 2 Euros.'
-			return bot.send_message(chat_id=update.message.chat_id,
-									text=message)
-	except ValueError:
-		message = 'Amount has to be integer.'
-		return bot.send_message(chat_id=update.message.chat_id,
-								text=message)
-
-	# Check if there is any bet which has not been confirmed by the user
-	not_conf_list = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_user', 'pred_team1', 'pred_team2', 'pred_field',
-			            'pred_rawbet'],
-			where='pred_status = "Not Confirmed"')
-	if not_conf_list:
-		bot.send_message(chat_id=update.message.chat_id,
-						 text='There are still Not Confirmed bets:')
-		for user, team1, team2, field, bet in not_conf_list:
-			bot.send_message(chat_id=update.message.chat_id,
-							 text=('{}\n{} - {}\n{}\n{}'.
-								   format(user, team1, team2, field, bet)))
-
-		return bot.send_message(chat_id=update.message.chat_id,
-								text=('/confirm or /cancel each of them and ' +
-									  'then play again.'))
+	# Check if there is any bet which has not been confirmed by any user
+	warn = bf.one_or_more_preds_are_not_confirmed()
+	if warn:
+		return bot.send_message(
+				parse_mode='HTML', chat_id=update.message.chat_id, text=warn)
 
 	# Check if there is any bet to play and, if yes, select the id
-	bet_id = dbf.db_select(
-			table='bets',
-			columns_in=['bet_id'],
-	        where='bet_status = "Pending"')
-	if not bet_id:
+	try:
+		bet_id = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+		        where='bet_status = "Pending"')[0]
+	except IndexError:
 		return bot.send_message(chat_id=update.message.chat_id,
 								text='No bets to play.')
 
-	bet_id = bet_id[0]
-
 	# Check whether there are matches already started
+	late = bf.check_if_too_late(bet_id)
+	if late:
+		return bot.send_message(
+				parse_mode='HTML', chat_id=update.message.chat_id, text=late)
+
+
 	invalid_bets = dbf.check_before_play(bet_id)
 	if invalid_bets:
 		msg = '{}, {} - {} was scheduled on {} at {}. Too late.'

@@ -57,15 +57,11 @@ def add_bet_to_basket(browser, match, count, dynamic_message):
 
 	team1, team2, field, bet, url = match
 
-	# try:
 	browser.get(url)
 	click_bet(browser, field, bet)
-	time.sleep(5)
-	# check_single_bet(browser, count, team1, team2)
-	return dynamic_message.format(count + 1)
+	time.sleep(10)
 
-	# except ConnectionError as e:
-	# 	raise ConnectionError(str(e))
+	return dynamic_message.format(count + 1)
 
 
 def all_matches_missing(browser, all_matches, league):
@@ -245,22 +241,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 								  'Please try again.')
 
 
-# def check_single_bet(browser, anumber, team1, team2):
-#
-# 	"""Check whether the bet is inserted correctly."""
-#
-# 	message = 'Problems with {} - {}. Try again.'.format(team1, team2)
-#
-# 	singola = browser.find_elements_by_xpath('.//div[@class="item-ticket"]')
-# 	multipla = browser.find_elements_by_xpath(
-# 									   './/div[@class="item-ticket ng-scope"]')
-#
-# 	if not singola and len(multipla) != anumber + 1:
-# 		logger.info('CHECK SINGLE BET - ' + message)
-# 		browser.quit()
-# 		raise ConnectionError(message)
-
-
 def click_bet(browser, field, bet):
 
 	"""
@@ -338,97 +318,6 @@ def click_bet(browser, field, bet):
 				continue
 
 		if CLICK_CHECK:
-			break
-
-
-def click_calcio_button(browser):
-
-	calcio = './/div/div[@class="item-sport ng-scope"]//a'
-
-	for i in range(recurs_lim):
-		try:
-			wait_clickable(browser, WAIT, calcio)
-
-		except TimeoutException:
-			logger.info('CLICK CALCIO BUTTON - CALCIO button not found: ' +
-			            'trial {}'.format(i + 1))
-			if i < 2:
-				browser.refresh()
-				continue
-			else:
-				browser.quit()
-
-	calcio_button = browser.find_element_by_xpath(calcio)
-	scroll_to_element(browser, 'true', calcio_button)
-	scroll_to_element(browser, 'false', calcio_button)
-	calcio_button.click()
-
-
-def click_country_button(browser, league):
-
-	"""
-	Find the button relative to the country we are interested in and click it.
-	"""
-
-	countries_container = './/div[@class="country-name"]'
-
-	for i in range(recurs_lim):
-		try:
-			wait_clickable(browser, WAIT, countries_container)
-			break
-
-		except TimeoutException:
-			logger.info('CLICK COUNTRY BUTTON - ALL COUNTRIES container not ' +
-			            'found: trial {}'.format(i + 1))
-			if i < 2:
-				browser.refresh()
-				click_calcio_button(browser)
-				continue
-			else:
-				browser.quit()
-
-	all_countries = browser.find_elements_by_xpath(countries_container)
-	first_container = all_countries[0]
-	for country in all_countries:
-		panel = country.find_element_by_xpath('.//a')
-		scroll_to_element(browser, 'false', panel)
-		if panel.text.upper() == countries[league]:
-			scroll_to_element(browser, 'true', panel)
-			panel.click()
-
-			return panel, first_container
-
-
-def click_league_button(browser, league):
-
-	"""
-	Find the button relative to the league we are interested in and click it.
-	"""
-
-	nat_leagues_container = ('.//div[@class="item-competition competition ' +
-							 'slide-menu ng-scope"]')
-	for i in range(recurs_lim):
-		try:
-			wait_visible(browser, WAIT, nat_leagues_container)
-			break
-		except TimeoutException:
-			logger.info('CLICK LEAGUE BUTTON - ALL LEAGUES container not ' +
-			            'found: trial {}'.format(i + 1))
-			if i < 2:
-				browser.refresh()
-				click_calcio_button(browser)
-				click_country_button(browser, league)
-				continue
-			else:
-				browser.quit()
-
-	all_nat_leagues = browser.find_elements_by_xpath(nat_leagues_container)
-	for nat_league in all_nat_leagues:
-		panel = nat_league.find_element_by_xpath('.//a')
-		scroll_to_element(browser, 'false', panel)
-		if panel.text.upper() == league:
-			scroll_to_element(browser, 'true', panel)
-			panel.click()
 			break
 
 
@@ -793,7 +682,6 @@ def go_to_lottomatica():
 
 	browser.get(url)
 	browser.refresh()  # To close the popup
-	# click_calcio_button(browser)
 
 	return browser
 
