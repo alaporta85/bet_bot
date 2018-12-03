@@ -793,7 +793,7 @@ def go_to_lottomatica():
 
 	browser.get(url)
 	browser.refresh()  # To close the popup
-	click_calcio_button(browser)
+	# click_calcio_button(browser)
 
 	return browser
 
