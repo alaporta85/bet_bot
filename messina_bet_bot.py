@@ -578,7 +578,7 @@ def night_quotes(bot, update):
 		                        text='Fatti i cazzi tuoi')
 
 
-def play(bot, update, args):
+def play(bot, update, args):    # DONE
 
 	"""
 	Play the bet online.

@@ -1,6 +1,5 @@
 import os
 import time
-import datetime
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import MoveTargetOutOfBoundsException
 from selenium.common.exceptions import ElementNotInteractableException
@@ -12,6 +11,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 from Functions import logging as log
 from Functions import db_functions as dbf
+from Functions import bot_functions as bf
 
 
 countries = {
@@ -40,16 +40,20 @@ WAIT = 60
 recurs_lim = 3
 
 
-def add_bet_to_basket(browser, details, count, dynamic_message):
+def add_bet_to_basket(browser, details, count, dynamic_message):  # DONE
 
 	"""
-	Click the bet button and add it to the basket. Used inside the command
-	/play.
+	Click the bet button and add it to the basket.
+	Used inside the command /play.
 
 	:param browser: selenium browser instance
+
 	:param details: tuple, contain field and bet names
+
 	:param count: int
+
 	:param dynamic_message: str, the message to update in the chat
+
 
 	:return: str, dynamic message updated
 
@@ -63,7 +67,24 @@ def add_bet_to_basket(browser, details, count, dynamic_message):
 	return dynamic_message.format(count + 1)
 
 
-def all_matches_missing(browser, all_matches, league):
+def all_matches_missing(browser, all_matches, league):  # DONE
+
+	"""
+	Check if the container with all the matches is present. Sometimes it is
+	missing because the league is not playing.
+	Used inside fill_db_with_quotes().
+
+	:param browser: selenium browser instance
+
+	:param all_matches: str, box xpath
+
+	:param league: str, name of the league. Ex. SERIE A
+
+
+
+	:return: bool, True if missing otherwise False
+
+	"""
 
 	for j in range(recurs_lim):
 		try:
@@ -72,11 +93,9 @@ def all_matches_missing(browser, all_matches, league):
 		except TimeoutException:
 			logger.info('FILL DB WITH QUOTES - MATCHES for ' +
 			            '{} not found: trial {}.'.format(league, j + 1))
-			if j < recurs_lim:
-				browser.refresh()
-				continue
-			else:
-				return True
+			browser.refresh()
+
+	return True
 
 
 def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
@@ -240,15 +259,18 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 								  'Please try again.')
 
 
-def click_bet(browser, field, bet):
+def click_bet(browser, field, bet):   # DONE
 
 	"""
-	Find the button relative to the bet to play and click it. Used inside the
-	function add_bet_to_basket().
+	Find the button relative to the bet to play and click it.
+	Used inside the function add_bet_to_basket().
 
 	:param browser: selenium browser instance
+
 	:param field: str, Ex. GOAL/NOGOAL + U/O 2,5
+
 	:param bet: str, Ex. GOAL + OVER
+
 
 	:return: nothing
 
@@ -320,15 +342,18 @@ def click_bet(browser, field, bet):
 			break
 
 
-def click_panel(browser, index, panel):
+def click_panel(browser, index, panel):   # DONE
 
 	"""
-	Click the panel to open it, if closed. Used inside click_bet() and
-	find_all_fields_and_bets() functions.
+	Click the panel to open it, if closed.
+	Used inside click_bet() and find_all_fields_and_bets() functions.
 
 	:param browser: selenium browser instance
+
 	:param index: int, index of the panel to click
+
 	:param panel: selenium element
+
 
 	:return: nothing
 
@@ -339,21 +364,29 @@ def click_panel(browser, index, panel):
 	scroll_to_element(browser, 'false', button)
 	name = button.text
 
-	# try:
 	WebDriverWait(
 			browser, WAIT).until(EC.element_to_be_clickable(
 				(By.LINK_TEXT, name)))
-	# except TimeoutException:
-	# 	logger.info('CLICK PANEL - Not possible to click on ' +
-	# 	            '{} panel'.format(name))
-	# 	raise ConnectionError
 
 	if 'active' not in button.get_attribute('class'):
 		button.click()
 		time.sleep(1)
 
 
-def connect_to(some_url, browser=None):
+def connect_to(some_url, browser=None):   # DONE
+
+	"""
+	Connect to website address.
+	Used inside command /play.
+
+	:param some_url: str
+
+	:param browser: selenium browser instance
+
+
+	:return: selenium browser instance
+
+	"""
 
 	if not browser:
 		# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
@@ -365,21 +398,24 @@ def connect_to(some_url, browser=None):
 	return browser
 
 
-
-def fill_db_with_quotes(leagues):
-
-	"""
-	Fill the tables "matches" and "quotes" in the db.
+def fill_db_with_quotes(leagues):   # DONE
 
 	"""
+	Download all the quotes from the website and save them in the database.
 
-	# Start the browser
-	browser = webdriver.Chrome(chrome_path)
+	:param leagues: list, leagues to download
+
+
+	:return: nothing
+
+	"""
+
 	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
 
+	browser = None
 	for j, league in enumerate(leagues):
 		start = time.time()
-		browser.get(head + countries[league])
+		browser = connect_to(head + countries[league], browser)
 
 		# To close the popup. Only the first time after connection
 		if not j:
@@ -441,36 +477,31 @@ def fill_db_with_quotes(leagues):
 	browser.quit()
 
 
-def fill_matches_table(browser, league_id, d_m_y, h_m):
+def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 
 	"""
 	Insert all details relative to a single match into the 'matches' table of
 	the db.
+	Used inside fill_db_with_quotes().
 
-	:param browser:
+	:param browser: selenium browser instance
+
 	:param league_id: int
+
 	:param d_m_y: str, date of the match. Ex 20/20/2018
+
 	:param h_m: str, time of the match. Ex 15:00
+
 
 	:return last_id: int, id of the match the will be used for the quotes
 	:return back: button
 
 	"""
 
-	# Look for the back button until found
+	# Look for the back button
 	back = './/a[@class="back-competition ng-scope"]'
-	for i in range(recurs_lim):
-		try:
-			wait_clickable(browser, WAIT, back)
-			back = browser.find_element_by_xpath(back)
-			break
-		except TimeoutException:
-			logger.info('UPDATE_MATCHES_TABLE - "Back" button not found')
-			if i < recurs_lim:
-				browser.refresh()
-				continue
-			else:
-				browser.quit()
+	wait_clickable(browser, WAIT, back)
+	back = browser.find_element_by_xpath(back)
 
 	# Extract the text with the two teams
 	teams_cont = './/div[@class="event-name ng-binding"]'
@@ -484,34 +515,49 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):
 		team1 = '*' + team1
 		team2 = '*' + team2
 
-	# Format datetime object and insert hours and minutes of the match
+	# Format datetime object
 	dd, mm, yy = d_m_y.split('/')
-	match_date = datetime.datetime.strptime(yy + mm + dd, '%Y%m%d')
-	match_date = match_date.replace(hour=int(h_m.split(':')[0]),
-									minute=int(h_m.split(':')[1]))
+	h, m = h_m.split(':')
+	match_dt = bf.from_str_to_dt(
+			'{}-{}-{} {}:{}:{}'.format(yy, mm, dd, h, m, 00))
 
 	# Fix url to save
 	url = fix_url(browser.current_url)
 
+	# We need the id of the match to update the quotes later
 	last_id = dbf.db_insert(
 			table='matches',
 			columns=['match_league', 'match_team1', 'match_team2',
 			         'match_date', 'match_url'],
-			values=[league_id, team1, team2, match_date, url],
+			values=[league_id, team1, team2, match_dt, url],
 			last_row=True)
 
 	return last_id, back
 
 
-def fill_quotes_table(browser, last_id):
+def fill_quotes_table(browser, last_id):   # DONE
+
+	"""
+	Insert the quotes in the database.
+	Used inside fill_db_with_quotes().
+
+	:param browser: selenium browser instance
+
+	:param last_id: int, id of the match
+
+
+	:return: nothing
+
+	"""
 
 	# Select all fields we want scrape
 	all_fields = dbf.db_select(
 			table='fields',
 			columns_in=['field_name'])
 
+	# Associate each field with its corresponding bets
 	fields_bets = find_all_fields_and_bets(browser)
-	for field, bets in zip(fields_bets[0], fields_bets[1]):
+	for field, bets in fields_bets:
 		scroll_to_element(browser, 'false', field)
 
 		# If it is a field we have in the db we extract all the quotes
@@ -520,28 +566,32 @@ def fill_quotes_table(browser, last_id):
 			all_bets = bets.find_elements_by_xpath(
 				'.//div[@class="selection-name ng-binding"]')
 
-			# Bet name has a different path for the field 'ESITO FINALE 1X2
-			# HANDICAP', don't know why
 			for i, new_bet in enumerate(all_bets):
 				scroll_to_element(browser, 'false', new_bet)
+
+				# Bet name has a different path for the field 'ESITO FINALE 1X2
+				# HANDICAP', don't know why
 				if field_name == 'ESITO FINALE 1X2 HANDICAP':
 					bet_name = new_bet.text.upper().split()[0]
 				else:
 					bet_name = new_bet.text.upper()
 
+				# Extract quote value
 				bet_quote = bets.find_elements_by_xpath(
 								 './/div[@class="selection-price"]')[i]
 				scroll_to_element(browser, 'false', bet_quote)
 				bet_quote = bet_quote.text
 
+				# Take corresponding field id from db
 				field_id = dbf.db_select(
 						table='fields',
 						columns_in=['field_id'],
 						where='field_name = "{}" AND field_value = "{}"'.
 						format(field_name, bet_name))[0]
 
+				# If quote is not available insert '-' in the db
 				if len(bet_quote) == 1:
-					bet_quote = 'NOT AVAILABLE'
+					bet_quote = '-'
 				else:
 					bet_quote = float(bet_quote)
 
@@ -617,7 +667,7 @@ def find_all_fields_and_bets(browser):
 	fields = browser.find_elements_by_xpath(all_fields_path)
 	bets = browser.find_elements_by_xpath(all_bets_path)
 
-	return fields, bets
+	return zip(fields, bets)
 
 
 def find_all_panels(browser):
@@ -650,7 +700,18 @@ def find_all_panels(browser):
 				browser.quit()
 
 
-def click_scommetti(browser):
+def click_scommetti(browser):   # DONE
+
+	"""
+	Click the button SCOMMETTI once logged in.
+	Used inside command /play.
+
+	:param browser: selenium browser instance
+
+
+	:return: nothing
+
+	"""
 
 	button_location = './/div[@class="buttons-betslip"]'
 	button = browser.find_element_by_xpath(button_location)
@@ -658,14 +719,16 @@ def click_scommetti(browser):
 	button.click()
 
 
-def fix_url(match_url):
+def fix_url(match_url):   # DONE
 
 	"""
 	Fix the url to make it work later in the /play command.
 
 	:param match_url: str, url to fix
 
+
 	:return: str, url fixed
+
 	"""
 
 	codes = {'seriea': 'idivisionev3',
@@ -772,7 +835,20 @@ def go_to_placed_bets(browser, LIMIT_2):
 								  'section: MOVIMENTI E GIOCATE.')
 
 
-def insert_euros(browser, euros):
+def insert_euros(browser, euros):   # DONE
+
+	"""
+	Fill the euros box in the website when playing the bet.
+	Used inside /play.
+
+	:param browser: selenium browser instance
+
+	:param euros: int, amount to bet
+
+
+	:return: nothing
+
+	"""
 
 	input_euros = ('.//div[@class="price-container-input"]/' +
 	               'input[@ng-model="amountSelect.amount"]')
@@ -784,7 +860,18 @@ def insert_euros(browser, euros):
 	euros_box.send_keys(Keys.DELETE)
 
 
-def login(browser):
+def login(browser):   # DONE
+
+	"""
+	Make login by inserting username and password.
+	Used inside /play.
+
+	:param browser: selenium browser instance
+
+
+	:return: nothing
+
+	"""
 
 	f = open('login.txt', 'r')
 	credentials = f.readlines()
@@ -794,12 +881,14 @@ def login(browser):
 	password = credentials[1][10:]
 
 	try:
+		# Click the login button
 		button = './/button[@class="btn btn-default btn-accedi"]'
 		wait_clickable(browser, WAIT, button)
 		button = browser.find_element_by_xpath(button)
 		scroll_to_element(browser, 'false', button)
 		button.click()
 
+		# Find the boxes to insert username and password
 		user_path = './/input[@autocomplete="username"]'
 		pass_path = './/input[@autocomplete="current-password"]'
 		accedi_path = './/button[@id="signin-button"]'
@@ -808,6 +897,7 @@ def login(browser):
 		user = browser.find_element_by_xpath(user_path)
 		passw = browser.find_element_by_xpath(pass_path)
 
+		# Insert username and password and login
 		user.send_keys(username)
 		passw.send_keys(password)
 		wait_clickable(browser, WAIT, accedi_path)
