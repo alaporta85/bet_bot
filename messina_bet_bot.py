@@ -752,13 +752,10 @@ def stats(bot, update):
 
 def summary(bot, update):
 
-	logger.info('PROVA1')
 	message = create_summary('before')
-	logger.info('PROVA2')
-	sent = bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
+
+	return bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
 	                        text=message)
-	logger.info('INFO - SUMMARY Datetime of the message is:')
-	logger.info('{}'.format(sent.date))
 
 
 def update_results(bot, update):
