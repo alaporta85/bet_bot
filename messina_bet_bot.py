@@ -631,6 +631,8 @@ def play(bot, update, args):    # DONE
 	for i, (tm1, tm2, field, bet, url) in enumerate(matches_to_play):
 
 		browser = sf.connect_to(some_url=url, browser=browser)
+		if not i:
+			browser.refresh()
 		basket_msg = sf.add_bet_to_basket(
 				browser, (field, bet), i, dynamic_message)
 		logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
