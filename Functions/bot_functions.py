@@ -212,50 +212,50 @@ def check_still_to_confirm(first_name):
 		return False
 
 
-def create_matches_to_play(bet_id):
-
-	"""
-	Called inside the command /play.
-
-	:param bet_id: int
-
-	:return: list of tuples representing the matches to be added in the basket.
-			 Each tuple has the form
-
-			        (team1, team2, field_name, field_value, url)
-
-	"""
-
-	data = dbf.db_select(
-			table='bets INNER JOIN predictions on pred_bet = bet_id',
-			columns_in=['pred_team1', 'pred_team2',
-						'pred_league', 'pred_field'],
-			where='bet_id = {}'.format(bet_id))
-
-	matches_to_play = []
-
-	for team1, team2, league, field_id in data:
-
-		if league == 8:
-			team1 = '*' + team1
-			team2 = '*' + team2
-
-		field_name, field_value = dbf.db_select(
-				table='fields',
-				columns_in=['field_name', 'field_value'],
-				where='field_id = {}'.format(field_id))[0]
-
-
-		url = dbf.db_select(
-				table='matches',
-				columns_in=['match_url'],
-				where=('match_team1 = "{}" AND '.format(team1) +
-					   'match_team2 = "{}" AND '.format(team2) +
-					   'match_league = {}'.format(league)))[0]
-
-		matches_to_play.append((team1, team2, field_name, field_value, url))
-
-	return matches_to_play
+# def create_matches_to_play(bet_id):
+#
+# 	"""
+# 	Called inside the command /play.
+#
+# 	:param bet_id: int
+#
+# 	:return: list of tuples representing the matches to be added in the basket.
+# 			 Each tuple has the form
+#
+# 			        (team1, team2, field_name, field_value, url)
+#
+# 	"""
+#
+# 	data = dbf.db_select(
+# 			table='bets INNER JOIN predictions on pred_bet = bet_id',
+# 			columns_in=['pred_team1', 'pred_team2',
+# 						'pred_league', 'pred_field'],
+# 			where='bet_id = {}'.format(bet_id))
+#
+# 	matches_to_play = []
+#
+# 	for team1, team2, league, field_id in data:
+#
+# 		if league == 8:
+# 			team1 = '*' + team1
+# 			team2 = '*' + team2
+#
+# 		field_name, field_value = dbf.db_select(
+# 				table='fields',
+# 				columns_in=['field_name', 'field_value'],
+# 				where='field_id = {}'.format(field_id))[0]
+#
+#
+# 		url = dbf.db_select(
+# 				table='matches',
+# 				columns_in=['match_url'],
+# 				where=('match_team1 = "{}" AND '.format(team1) +
+# 					   'match_team2 = "{}" AND '.format(team2) +
+# 					   'match_league = {}'.format(league)))[0]
+#
+# 		matches_to_play.append((team1, team2, field_name, field_value, url))
+#
+# 	return matches_to_play
 
 
 def from_str_to_dt(datetime_as_string):    # DONE

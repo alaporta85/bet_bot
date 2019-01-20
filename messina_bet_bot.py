@@ -102,6 +102,9 @@ def confirm(bot, update):
 	bot.send_message(chat_id=update.message.chat_id,
 	                 text='{}, bet placed correctly.'.format(user))
 
+	# Insert the bet into the "to_play" table
+	update_to_play_table(user, bet_id, 'insert')
+
 	auto_play = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_id'],
@@ -200,6 +203,8 @@ def delete(bot, update):
 		message = '{}, no bet to delete.'.format(user)
 		return bot.send_message(chat_id=update.message.chat_id,
 								text=message)
+
+	update_to_play_table(user, bet_id, 'delete')
 
 	dbf.db_delete(
 			table='predictions',
@@ -624,7 +629,8 @@ def play(bot, update, args):    # DONE
 	mess_id = sent.message_id
 
 	# Create a list with all the preds to play
-	matches_to_play = bf.create_matches_to_play(bet_id)
+	# matches_to_play = bf.create_matches_to_play(bet_id)
+	matches_to_play = dbf.db_select(table='to_play')
 
 	# Add all the preds to the basket and update the message inside the chat
 	browser = None
@@ -632,7 +638,7 @@ def play(bot, update, args):    # DONE
 
 		browser = sf.connect_to(some_url=url, browser=browser)
 		if not i:
-			browser.refresh()
+			browser = sf.connect_to(some_url=url, browser=browser)
 		basket_msg = sf.add_bet_to_basket(
 				browser, (field, bet), i, dynamic_message)
 		logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
@@ -653,17 +659,6 @@ def play(bot, update, args):    # DONE
 
 	# Click the button to place the bet
 	sf.click_scommetti(browser)
-	logger.info('PLAY - Bet has been played.')
-
-	# Update bet table
-	dbf.db_update(
-			table='bets',
-			columns=['bet_date', 'bet_euros', 'bet_status'],
-			values=[datetime.datetime.now(), euros, 'Placed'],
-			where='bet_status = "Pending"')
-
-	# Let the chat know and then wait
-	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Done!')
 	time.sleep(10)
 
 	# Money after clicking the button
@@ -678,6 +673,18 @@ def play(bot, update, args):    # DONE
 		money_after = sf.money(browser)
 
 	if money_after == money_before - euros:
+
+		logger.info('PLAY - Bet has been played.')
+
+		# Update bet table
+		dbf.db_update(
+				table='bets',
+				columns=['bet_date', 'bet_euros', 'bet_status'],
+				values=[datetime.datetime.now(), euros, 'Placed'],
+				where='bet_status = "Pending"')
+
+		# Empty table with bets
+		dbf.empty_table(table='to_play')
 
 		# Print the summary
 		msg = create_summary('after')
@@ -807,6 +814,36 @@ def update_results(bot, update):
 		logger.info('UPDATE - Database updated correctly.')
 	else:
 		logger.info('No completed bets were found.')
+
+
+def update_to_play_table(user_name, id_of_the_bet, task):
+
+	team1, team2, field_bet = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_team1', 'pred_team2', 'pred_field'],
+			where='pred_user = "{}" AND pred_bet = {}'.format(
+					user_name, id_of_the_bet))[0]
+
+	if task == 'insert':
+		field, bet = dbf.db_select(
+				table='fields',
+				columns_in=['field_name', 'field_value'],
+				where='field_id = {}'.format(field_bet))[0]
+		url = dbf.db_select(
+				table='matches',
+				columns_in=['match_url'],
+				where='match_team1 = "{}" AND match_team2 = "{}"'.format(
+						team1, team2))[0]
+		dbf.db_insert(
+				table='to_play',
+				columns=['to_play_team1', 'to_play_team2', 'to_play_field',
+				         'to_play_bet', 'to_play_url'],
+				values=[team1, team2, field, bet, url])
+	else:
+		dbf.db_delete(
+				table='to_play',
+				where='to_play_team1 = "{}" AND to_play_team2 = "{}"'.format(
+						team1, team2))
 
 
 cake_handler = CommandHandler('cake', cake)
