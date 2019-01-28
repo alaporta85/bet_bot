@@ -17,7 +17,35 @@ f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
 f.close()
 
+lim_low = 1.8
+lim_high = 3.2
+
 dispatcher = updater.dispatcher
+
+
+def allow(bot, update, args):
+
+	_, role = nickname(update)
+	if role != 'Admin':
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='Fatti i cazzi tuoi')
+
+	users = dbf.db_select(
+			table='people',
+			columns_in=['people_nick'])
+	user = args[0].title()
+
+	if user not in users:
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='User not found')
+
+	dbf.db_insert(
+			table='allow',
+			columns=['allow_name'],
+			values=[user])
+
+	return bot.send_message(chat_id=update.message.chat_id,
+	                        text='{} can play.'.format(user))
 
 
 def cake(bot, update):
@@ -79,6 +107,27 @@ def confirm(bot, update):
 		return bot.send_message(
 				chat_id=update.message.chat_id,
 				text='{}, no bet to confirm.'.format(user))
+
+	# Check if quote respects the limits
+	users_allowed = dbf.db_select(
+			table='allow',
+			columns_in=['allow_name'])
+
+	pred_id, quote = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_id', 'pred_quote'],
+			where=('pred_user = "{}" '.format(user) +
+			       'AND pred_status = "Not Confirmed"'))[0]
+	if (quote < lim_low or quote > lim_high) and user not in users_allowed:
+		dbf.db_delete(
+				table='predictions',
+				where='pred_id = {}'.format(pred_id))
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='Se cia 👏👏🖕🖕')
+
+	dbf.db_delete(
+			table='allow',
+			where='allow_name = "{}"'.format(user))
 
 	# Check if there is any bet with status 'Pending' in the 'bets' table
 	try:
@@ -846,6 +895,7 @@ def update_to_play_table(user_name, id_of_the_bet, task):
 						team1, team2))
 
 
+allow_handler = CommandHandler('allow', allow, pass_args=True)
 cake_handler = CommandHandler('cake', cake)
 bici_handler = CommandHandler('bici', bici)
 cancel_handler = CommandHandler('cancel', cancel)
@@ -904,6 +954,7 @@ dispatcher.add_handler(log_handler)
 dispatcher.add_handler(remind_handler)
 dispatcher.add_handler(matiz_handler)
 dispatcher.add_handler(fischia_handler)
+dispatcher.add_handler(allow_handler)
 
 logger = log.set_logging()
 updater.start_polling()
