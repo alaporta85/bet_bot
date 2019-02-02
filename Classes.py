@@ -88,7 +88,7 @@ class Stats(object):
 
 		normalize_indices()
 		for i in ['GENERAL', '2017-2018', '2018-2019']:
-			score2(i)
+			score(i)
 		cake()
 		series()
 		stats_of_the_month()
@@ -207,47 +207,7 @@ def quotes_rec():
 	return win, lose
 
 
-def score():
-
-	fin_data = [(name, players[name].indices[-1]) for name in players]
-	fin_data.sort(key=lambda x: x[1], reverse=True)
-
-	names = [el[0] for el in fin_data]
-	indices = [round(el[1], 3) for el in fin_data]
-	ratio = [players[name].ratio for name in names]
-	perc = [players[name].perc for name in names]
-	mean_quote = [players[name].mean_quote for name in names]
-	colors = [colors_dict[name] for name in names]
-
-	fig, ax = plt.subplots()
-	fig.set_size_inches(9, 7)
-	bars = plt.bar(range(5), indices, 0.5, color=colors, edgecolor='black',
-	               linewidth=0.5, clip_on=False)
-	plt.xticks(range(5), names, fontsize=14)
-	plt.ylim(0, 1.35)
-	plt.box(on=None)
-	plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
-	plt.tick_params(axis='y', which='both', left=False, labelleft=False)
-
-	for i, bar in enumerate(bars):
-		text = '{}\n({}%)\n{}'.format(ratio[i], perc[i], mean_quote[i])
-		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.03,
-		         '{}'.format(text), ha='center', va='bottom', fontsize=10,
-		         style='italic')
-	for i, bar in enumerate(bars):
-		text = '{}'.format(indices[i])
-		plt.text(bar.get_x() + bar.get_width() / 2.0, indices[i] + 0.16,
-		         '{}'.format(text), ha='center', va='bottom', fontsize=12,
-		         fontweight='bold')
-	for bar in bars:
-		if not bar.get_height():
-			bar.set_linewidth(0)
-
-	plt.savefig('score.png', dpi=120, bbox_inches='tight')
-	plt.gcf().clear()
-
-
-def score2(which):
+def score(which):
 
 	if which == 'GENERAL':
 		year1, year2 = 2017, 2030
