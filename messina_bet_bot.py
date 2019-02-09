@@ -19,16 +19,18 @@ f.close()
 
 lim_low = 1.8
 lim_high = 3.2
+n_bets = 5
 
 dispatcher = updater.dispatcher
 
 
 def allow(bot, update, args):
 
+	chat_id = update.message.chat_id
+
 	_, role = nickname(update)
 	if role != 'Admin':
-		return bot.send_message(chat_id=update.message.chat_id,
-		                        text='Fatti i cazzi tuoi')
+		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
 	users = dbf.db_select(
 			table='people',
@@ -36,32 +38,33 @@ def allow(bot, update, args):
 	user = args[0].title()
 
 	if user not in users:
-		return bot.send_message(chat_id=update.message.chat_id,
-		                        text='User not found')
+		return bot.send_message(chat_id=chat_id, text='User not found')
 
 	dbf.db_insert(
 			table='allow',
 			columns=['allow_name'],
 			values=[user])
 
-	return bot.send_message(chat_id=update.message.chat_id,
-	                        text='{} can play.'.format(user))
+	return bot.send_message(chat_id=chat_id, text='{} can play.'.format(user))
 
 
 def cake(bot, update):
 
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('cake.png', 'rb'))
+	chat_id = update.message.chat_id
+	bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
 
 
 def bici(bot, update):
 
-	bot.send_audio(chat_id=update.message.chat_id, audio=open('bici.mp3', 'rb'))
+	chat_id = update.message.chat_id
+	bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
 
 
 def cancel(bot, update):
 
 	"""Delete the "Not Confirmed" bet from "predictions" table."""
 
+	chat_id = update.message.chat_id
 	user, _ = nickname(update)
 
 	users_list = dbf.db_select(
@@ -70,7 +73,7 @@ def cancel(bot, update):
 	        where='pred_status = "Not Confirmed"')
 
 	if user not in users_list:
-		return bot.send_message(chat_id=update.message.chat_id,
+		return bot.send_message(chat_id=chat_id,
 								text='{}, no bet to cancel.'.format(user))
 
 	dbf.db_delete(
@@ -79,8 +82,7 @@ def cancel(bot, update):
 	        format(user))
 
 	return bot.send_message(
-			chat_id=update.message.chat_id,
-			text='{}, bet canceled.'.format(user))
+			chat_id=chat_id, text='{}, bet canceled.'.format(user))
 
 
 def confirm(bot, update):
@@ -94,6 +96,7 @@ def confirm(bot, update):
 	they will be deleted from the "predictions" table.
 	"""
 
+	chat_id = update.message.chat_id
 	user, _ = nickname(update)
 
 	# This a list of the users who have their bets in the status
@@ -105,8 +108,7 @@ def confirm(bot, update):
 
 	if user not in users_list:
 		return bot.send_message(
-				chat_id=update.message.chat_id,
-				text='{}, no bet to confirm.'.format(user))
+				chat_id=chat_id, text='{}, no bet to confirm.'.format(user))
 
 	# Check if quote respects the limits
 	users_allowed = dbf.db_select(
@@ -122,8 +124,7 @@ def confirm(bot, update):
 		dbf.db_delete(
 				table='predictions',
 				where='pred_id = {}'.format(pred_id))
-		return bot.send_message(chat_id=update.message.chat_id,
-		                        text='Se cia 👏👏🖕🖕')
+		return bot.send_message(chat_id=chat_id, text='Se cia 👏👏🖕🖕')
 
 	dbf.db_delete(
 			table='allow',
@@ -146,9 +147,9 @@ def confirm(bot, update):
 
 	dupl_message = bf.check_if_duplicate(user, details)
 	if dupl_message:
-		bot.send_message(chat_id=update.message.chat_id, text=dupl_message)
+		bot.send_message(chat_id=chat_id, text=dupl_message)
 
-	bot.send_message(chat_id=update.message.chat_id,
+	bot.send_message(chat_id=chat_id,
 	                 text='{}, bet placed correctly.'.format(user))
 
 	# Insert the bet into the "to_play" table
@@ -158,7 +159,7 @@ def confirm(bot, update):
 			table='predictions',
 			columns_in=['pred_id'],
 			where='pred_bet = {}'.format(bet_id))
-	if len(auto_play) == 4:
+	if len(auto_play) == n_bets:
 		return play(bot, update, ['5'])
 
 
@@ -230,6 +231,7 @@ def delete(bot, update):
 
 	"""Delete the "Confirmed" bet from "predictions" table."""
 
+	chat_id = update.message.chat_id
 	user, _ = nickname(update)
 
 	bet_id = dbf.db_select(
@@ -237,8 +239,7 @@ def delete(bot, update):
 			columns_in=['bet_id'],
 	        where='bet_status = "Pending"')
 	if not bet_id:
-		return bot.send_message(chat_id=update.message.chat_id,
-								text='No "Pending" bets.')
+		return bot.send_message(chat_id=chat_id, text='No "Pending" bets.')
 
 	bet_id = bet_id[0]
 
@@ -250,8 +251,7 @@ def delete(bot, update):
 
 	if not bet_to_delete:
 		message = '{}, no bet to delete.'.format(user)
-		return bot.send_message(chat_id=update.message.chat_id,
-								text=message)
+		return bot.send_message(chat_id=chat_id, text=message)
 
 	update_to_play_table(user, bet_id, 'delete')
 
@@ -270,16 +270,15 @@ def delete(bot, update):
 		        where='bet_id = {}'.format(bet_id))
 
 	return bot.send_message(
-			chat_id=update.message.chat_id,
-			text='{}, bet deleted.'.format(user))
+			chat_id=chat_id, text='{}, bet deleted.'.format(user))
 
 
 def fischia(bot, update):
 
+	chat_id = update.message.chat_id
 	walter = random.choice(os.listdir('Mazzarri/'))
 
-	bot.send_photo(chat_id=update.message.chat_id,
-	               photo=open('Mazzarri/' + walter, 'rb'))
+	bot.send_photo(chat_id=chat_id, photo=open('Mazzarri/' + walter, 'rb'))
 
 
 def format_text(content):
@@ -301,16 +300,15 @@ def get(bot, update, args):
 	chosen match. pred_status will be set to "Not Confirmed".
 	"""
 	logger.info('Get Request Received')
+	chat_id = update.message.chat_id
 
 	if not args:
-		return bot.send_message(chat_id=update.message.chat_id,
-								text='Insert the bet.')
+		return bot.send_message(chat_id=chat_id, text='Insert the bet.')
 
 	guess = ' '.join(args).upper()
 
 	if guess[0] == '_' or guess[-1] == '_':
-		return bot.send_message(chat_id=update.message.chat_id,
-								text='Wrong format.')
+		return bot.send_message(chat_id=chat_id, text='Wrong format.')
 
 	try:
 		vals2replace = [(' ', ''), ('*', ''), ('+', ''), (',', '.'),
@@ -328,17 +326,21 @@ def get(bot, update, args):
 	team_name = dbf.select_team(input_team)
 
 	if not team_name:
-		return bot.send_message(chat_id=update.message.chat_id,
-		                        text='Squadra non trovata')
+		return bot.send_message(chat_id=chat_id, text='Team not found')
 	elif '*' in input_team:
 		league_id = 8
 		team_name = '*' + team_name
 	else:
-		league_id = dbf.db_select(
-				table='teams',
-				columns_in=['team_league'],
-				where='team_name = "{}" AND team_league != 8'.
-				format(team_name))[0]
+		try:
+			league_id = dbf.db_select(
+					table='teams',
+					columns_in=['team_league'],
+					where='team_name = "{}" AND team_league != 8'.
+					format(team_name))[0]
+		except IndexError:
+			return bot.send_message(
+					chat_id=chat_id,
+					text='No bets found for {}'.format(team_name))
 
 	if not input_bet:
 		try:
@@ -346,21 +348,18 @@ def get(bot, update, args):
 			                                                       league_id)
 		except ValueError as e:
 			message = str(e)
-			return bot.send_message(chat_id=update.message.chat_id,
-			                        text=message)
+			return bot.send_message(chat_id=chat_id, text=message)
 
-		bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-						 text=message_standard)
-		return bot.send_message(parse_mode='HTML',
-								chat_id=update.message.chat_id,
+		bot.send_message(parse_mode='HTML', chat_id=chat_id,
+		                 text=message_standard)
+		return bot.send_message(parse_mode='HTML', chat_id=chat_id,
 								text=message_combo)
 
 	user, _ = nickname(update)
 
 	warning_message = bf.check_still_to_confirm(user)
 	if warning_message:
-		return bot.send_message(chat_id=update.message.chat_id,
-								text=warning_message)
+		return bot.send_message(chat_id=chat_id, text=warning_message)
 
 	# Used to create the list confirmed_matches. This list will be used to
 	# check whether a match has already been chosen
@@ -382,7 +381,7 @@ def get(bot, update, args):
 		team1, team2, field_id, nice_bet, quote = bf.look_for_quote(team_name,
 		                                                            input_bet)
 	except ValueError as e:
-		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
+		return bot.send_message(chat_id=chat_id, text=str(e))
 
 	if (not confirmed_matches
 	   or (team1, team2) not in confirmed_matches):
@@ -406,19 +405,19 @@ def get(bot, update, args):
 
 		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet, quote)
 
-		return bot.send_message(chat_id=update.message.chat_id,
+		return bot.send_message(chat_id=chat_id,
 						        text=('{}\n\n' +
 						              '/confirm                /cancel').
 						              format(printed_bet))
 	else:
-		message = 'Match already chosen.'
-		return bot.send_message(chat_id=update.message.chat_id,
-		                        text=message)
+		return bot.send_message(chat_id=chat_id, text='Match already chosen')
 
 
 def help_quote(bot, update):
 
 	"""Instructions to insert the correct bet."""
+
+	chat_id = update.message.chat_id
 
 	f = open('Messages/help_quote.txt', 'r')
 	content = f.readlines()
@@ -428,12 +427,14 @@ def help_quote(bot, update):
 	for row in content:
 		message += row
 
-	bot.send_message(chat_id=update.message.chat_id, text=message)
+	return bot.send_message(chat_id=chat_id, text=message)
 
 
 def help_stats(bot, update):
 
 	"""Instructions to use statistic commands."""
+
+	chat_id = update.message.chat_id
 
 	f = open('Messages/help_stats.txt', 'r')
 	content = f.readlines()
@@ -441,10 +442,12 @@ def help_stats(bot, update):
 
 	message = format_text(content)
 
-	bot.send_message(chat_id=update.message.chat_id, text=message)
+	return bot.send_message(chat_id=chat_id, text=message)
 
 
 def info(bot, update):
+
+	chat_id = update.message.chat_id
 
 	f = open('Messages/info.txt', 'r')
 	content = f.readlines()
@@ -454,28 +457,31 @@ def info(bot, update):
 	for row in content:
 		message += row
 
-	bot.send_message(chat_id=update.message.chat_id, text=message)
+	return bot.send_message(chat_id=chat_id, text=message)
 
 
 def match(bot, update, args):
 
 	"""Return the matches of the requested day."""
 
+	chat_id = update.message.chat_id
+
 	if not args:
-		return bot.send_message(chat_id=update.message.chat_id,
+		return bot.send_message(chat_id=chat_id,
 								text='Insert the day. Ex. /match sab')
 	try:
 		message = bf.matches_per_day(args[0])
-		bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-						 text=message)
+		return bot.send_message(parse_mode='HTML', chat_id=chat_id,
+						        text=message)
 	except SyntaxError as e:
-		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
+		return bot.send_message(chat_id=chat_id, text=str(e))
 
 
 def matiz(bot, update):
 
-	bot.send_photo(chat_id=update.message.chat_id,
-	               photo=open('matiz.png', 'rb'))
+	chat_id = update.message.chat_id
+
+	bot.send_photo(chat_id=chat_id, photo=open('matiz.png', 'rb'))
 
 
 # def new_quotes(bot, update):
@@ -528,6 +534,8 @@ def new_quotes(bot, update, args):
 
 	"""
 
+	chat_id = update.message.chat_id
+
 	try:
 		_, role = nickname(update)
 	except AttributeError:
@@ -535,10 +543,8 @@ def new_quotes(bot, update, args):
 
 	if role == 'Admin':
 		if not args:
-			return bot.send_message(
-					chat_id=update.message.chat_id,
-					text=('Insert leagues. ' +
-					      'Ex. /new_quotes serie a, primera division'))
+			message = 'Insert leagues. Ex. /new_quotes serie a, ligue 1'
+			return bot.send_message(chat_id=chat_id, text=message)
 
 		args = ' '.join(args).split(',')
 		args = [arg[1:] if arg[0] == ' ' else arg for arg in args]
@@ -547,7 +553,7 @@ def new_quotes(bot, update, args):
 			if arg.upper() not in sf.countries:
 				leagues = ', '.join([league for league in sf.countries])
 				return bot.send_message(
-						chat_id=update.message.chat_id,
+						chat_id=chat_id,
 						text='Possible options: {}'.format(leagues))
 
 		leagues = [arg.upper() for arg in args]
@@ -607,6 +613,8 @@ def night_quotes(bot, update):
 
 	"""
 
+	chat_id = update.message.chat_id
+
 	try:
 		_, role = nickname(update)
 	except AttributeError:
@@ -628,8 +636,7 @@ def night_quotes(bot, update):
 		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
 		                                                            seconds))
 	else:
-		return bot.send_message(chat_id=update.message.chat_id,
-		                        text='Fatti i cazzi tuoi')
+		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
 
 def play(bot, update, args):    # DONE
@@ -748,51 +755,63 @@ def play(bot, update, args):    # DONE
 
 def remind(bot, update):
 
+	chat_id = update.message.chat_id
 	message = create_summary('resume')
 
-	return bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-	                        text=message)
+	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 
 
 def score(bot, update, args):
 
+	chat_id = update.message.chat_id
+
 	if not args:
-		bot.send_photo(chat_id=update.message.chat_id,
-		               photo=open('score_2018-2019.png', 'rb'))
+		return bot.send_photo(chat_id=chat_id,
+		                      photo=open('score_2018-2019.png', 'rb'))
 	elif args[0] == 'general':
-		bot.send_photo(chat_id=update.message.chat_id,
-		               photo=open('score_GENERAL.png', 'rb'))
+		return bot.send_photo(chat_id=chat_id,
+		                      photo=open('score_GENERAL.png', 'rb'))
 	else:
 		try:
-			bot.send_photo(chat_id=update.message.chat_id,
-			               photo=open('score_{}.png'.format(args[0]), 'rb'))
+			return bot.send_photo(
+					chat_id=chat_id,
+					photo=open('score_{}.png'.format(args[0]), 'rb'))
 		except FileNotFoundError:
-			bot.send_message(chat_id=update.message.chat_id,
-			                 text='Wrong format. Ex: 2017-2018 or "general"')
+			return bot.send_message(
+					chat_id=chat_id,
+					text='Wrong format. Ex: 2017-2018 or "general"')
 
 
 def send_log(bot, update):
 
-	bot.send_document(chat_id=update.message.chat_id,
-	                  document=open('logs/bet_bot.log', 'rb'))
+	chat_id = update.message.chat_id
+
+	return bot.send_document(chat_id=chat_id,
+	                         document=open('logs/bet_bot.log', 'rb'))
 
 
 def series(bot, update):
 
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('series.png',
-															  'rb'))
+	chat_id = update.message.chat_id
+
+	return bot.send_photo(chat_id=chat_id, photo=open('series.png', 'rb'))
 
 
 def sotm(bot, update):
-	bot.send_photo(chat_id=update.message.chat_id, photo=open('sotm.png',
-	                                                          'rb'))
+
+	chat_id = update.message.chat_id
+	return bot.send_photo(chat_id=chat_id, photo=open('sotm.png', 'rb'))
 
 
 def start(bot, update):
-	bot.send_message(chat_id=update.message.chat_id, text="Iannelli suca")
+
+	chat_id = update.message.chat_id
+	return bot.send_message(chat_id=chat_id, text="Iannelli suca")
 
 
 def stats(bot, update):
+
+	chat_id = update.message.chat_id
 
 	message_money = stf.money()
 	message_perc = stf.abs_perc()
@@ -804,16 +823,16 @@ def stats(bot, update):
 	fin_mess = (message_money + message_perc + message_teams +
 	            message_bets + message_quotes + message_combos)
 
-	bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-	                 text=fin_mess)
+	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=fin_mess)
 
 
 def summary(bot, update):
 
+	chat_id = update.message.chat_id
+
 	message = create_summary('before')
 
-	return bot.send_message(parse_mode='HTML', chat_id=update.message.chat_id,
-	                        text=message)
+	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 
 
 def update_results(bot, update):
@@ -823,6 +842,8 @@ def update_results(bot, update):
 	database.
 	"""
 
+	chat_id = update.message.chat_id
+
 	ref_list = dbf.db_select(
 			table='bets',
 			columns_in=['bet_id', 'bet_date'],
@@ -831,13 +852,12 @@ def update_results(bot, update):
 
 	if not ref_list:
 		logger.info('UPDATE - No bets must be updated')
-		return bot.send_message(chat_id=update.message.chat_id,
-								text='No bets to update.')
+		return bot.send_message(chat_id=chat_id, text='No bets to update.')
 
 	try:
 		browser = sf.go_to_lottomatica()
 	except ConnectionError as e:
-		return bot.send_message(chat_id=update.message.chat_id, text=e)
+		return bot.send_message(chat_id=chat_id, text=e)
 	time.sleep(3)
 
 	sf.login(browser)
@@ -852,7 +872,7 @@ def update_results(bot, update):
 
 	except ConnectionError as e:
 		browser.quit()
-		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
+		return bot.send_message(chat_id=chat_id, text=str(e))
 
 	browser.quit()
 
