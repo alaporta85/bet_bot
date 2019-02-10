@@ -19,7 +19,7 @@ f.close()
 
 lim_low = 1.8
 lim_high = 3.2
-n_bets = 5
+n_bets = 4
 
 dispatcher = updater.dispatcher
 
