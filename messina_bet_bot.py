@@ -24,22 +24,30 @@ n_bets = 4
 dispatcher = updater.dispatcher
 
 
-def allow(bot, update, args):
+def allow(bot, update, args):  # DONE
+
+	"""
+	Allow users to play bet outside the decided limits.
+
+	"""
 
 	chat_id = update.message.chat_id
 
+	# Only admins can allow other users
 	_, role = nickname(update)
 	if role != 'Admin':
 		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
+	# Select correct name
 	users = dbf.db_select(
 			table='people',
 			columns_in=['people_nick'])
-	user = args[0].title()
+	user = dbf.jaccard_result(args[0].title(), users, 3)
 
-	if user not in users:
+	if not user:
 		return bot.send_message(chat_id=chat_id, text='User not found')
 
+	# Insert user into the "allow" table
 	dbf.db_insert(
 			table='allow',
 			columns=['allow_name'],
@@ -48,21 +56,34 @@ def allow(bot, update, args):
 	return bot.send_message(chat_id=chat_id, text='{} can play.'.format(user))
 
 
-def cake(bot, update):
+def cake(bot, update):  # DONE
+
+	"""
+	Send the cake.
+
+	"""
 
 	chat_id = update.message.chat_id
 	bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
 
 
-def bici(bot, update):
+def bike(bot, update):  # DONE
+
+	"""
+	Send bike sound.
+
+	"""
 
 	chat_id = update.message.chat_id
-	bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
+	return bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
 
 
-def cancel(bot, update):
+def cancel(bot, update):  # DONE
 
-	"""Delete the "Not Confirmed" bet from "predictions" table."""
+	"""
+	Delete the 'Not Confirmed' bet from 'predictions' table.
+
+	"""
 
 	chat_id = update.message.chat_id
 	user, _ = nickname(update)
@@ -81,19 +102,19 @@ def cancel(bot, update):
 	        where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
 	        format(user))
 
-	return bot.send_message(
-			chat_id=chat_id, text='{}, bet canceled.'.format(user))
+	return bot.send_message(chat_id=chat_id,
+	                        text='{}, bet canceled.'.format(user))
 
 
 def confirm(bot, update):
 
 	"""
-	Update the status of the bet in the "predictions" table from
-	"Not Confirmed" to "Confirmed". If it is the first bet of the day it
-	creates a new entry in the "bets" table and update the bet_id in the
-	"predictions" table. Else, it just uses the bet_id. It also checks
-	whether there are others "Not Confirmed" bets of the same match. If yes,
-	they will be deleted from the "predictions" table.
+	Confirm the match in the 'predictions' table. If it is the first bet of the
+	day it creates a new entry in the 'bets' table and update the bet_id in the
+	'predictions' table. Else, it just uses the bet_id.
+	It also checks whether there are others 'Not Confirmed' bets of the same
+	match. If yes, they will be deleted from the 'predictions' table.
+
 	"""
 
 	chat_id = update.message.chat_id
@@ -108,53 +129,34 @@ def confirm(bot, update):
 
 	if user not in users_list:
 		return bot.send_message(
-				chat_id=chat_id, text='{}, no bet to confirm.'.format(user))
+				chat_id=chat_id, text='{}, no match to confirm.'.format(user))
 
 	# Check if quote respects the limits
-	users_allowed = dbf.db_select(
-			table='allow',
-			columns_in=['allow_name'])
-
-	pred_id, quote = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_id', 'pred_quote'],
-			where=('pred_user = "{}" '.format(user) +
-			       'AND pred_status = "Not Confirmed"'))[0]
-	if (quote < lim_low or quote > lim_high) and user not in users_allowed:
-		dbf.db_delete(
-				table='predictions',
-				where='pred_id = {}'.format(pred_id))
+	limits_ok = limits_are_respected(user)
+	if not limits_ok:
 		return bot.send_message(chat_id=chat_id, text='Se cia 👏👏🖕🖕')
 
+	# Delete user from 'allow' table, if present. If not, nothing happens
 	dbf.db_delete(
 			table='allow',
 			where='allow_name = "{}"'.format(user))
 
-	# Check if there is any bet with status 'Pending' in the 'bets' table
-	try:
-		bet_id = dbf.db_select(
-				table='bets',
-				columns_in=['bet_id'],
-		        where='bet_status = "Pending"')[0]
-	except IndexError:
-		bet_id = dbf.db_insert(
-				table='bets',
-				columns=['bet_status', 'bet_result'],
-				values=['Pending', 'Unknown'],
-				last_row=True)
+	# Update the database
+	bet_id, details = bf.update_db_after_confirm(user)
 
-	details = bf.update_pred_table_after_confirm(user, bet_id)
-
+	# Inform users about possible duplicate matches which have been deleted
 	dupl_message = bf.check_if_duplicate(user, details)
 	if dupl_message:
 		bot.send_message(chat_id=chat_id, text=dupl_message)
 
+	# Inform users match is correctly added
 	bot.send_message(chat_id=chat_id,
-	                 text='{}, bet placed correctly.'.format(user))
+	                 text='{}, match added correctly.'.format(user))
 
 	# Insert the bet into the "to_play" table
 	update_to_play_table(user, bet_id, 'insert')
 
+	# Play the bet automatically
 	auto_play = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_id'],
@@ -458,6 +460,27 @@ def info(bot, update):
 		message += row
 
 	return bot.send_message(chat_id=chat_id, text=message)
+
+
+def limits_are_respected(username):
+
+	users_allowed = dbf.db_select(
+			table='allow',
+			columns_in=['allow_name'])
+
+	pred_id, quote = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_id', 'pred_quote'],
+			where=('pred_user = "{}" '.format(username) +
+			       'AND pred_status = "Not Confirmed"'))[0]
+
+	if (quote < lim_low or quote > lim_high) and username not in users_allowed:
+		dbf.db_delete(
+				table='predictions',
+				where='pred_id = {}'.format(pred_id))
+		return False
+	else:
+		return True
 
 
 def match(bot, update, args):
@@ -917,7 +940,7 @@ def update_to_play_table(user_name, id_of_the_bet, task):
 
 allow_handler = CommandHandler('allow', allow, pass_args=True)
 cake_handler = CommandHandler('cake', cake)
-bici_handler = CommandHandler('bici', bici)
+bici_handler = CommandHandler('bici', bike)
 cancel_handler = CommandHandler('cancel', cancel)
 confirm_handler = CommandHandler('confirm', confirm)
 delete_handler = CommandHandler('delete', delete)

@@ -212,53 +212,7 @@ def check_still_to_confirm(first_name):
 		return False
 
 
-# def create_matches_to_play(bet_id):
-#
-# 	"""
-# 	Called inside the command /play.
-#
-# 	:param bet_id: int
-#
-# 	:return: list of tuples representing the matches to be added in the basket.
-# 			 Each tuple has the form
-#
-# 			        (team1, team2, field_name, field_value, url)
-#
-# 	"""
-#
-# 	data = dbf.db_select(
-# 			table='bets INNER JOIN predictions on pred_bet = bet_id',
-# 			columns_in=['pred_team1', 'pred_team2',
-# 						'pred_league', 'pred_field'],
-# 			where='bet_id = {}'.format(bet_id))
-#
-# 	matches_to_play = []
-#
-# 	for team1, team2, league, field_id in data:
-#
-# 		if league == 8:
-# 			team1 = '*' + team1
-# 			team2 = '*' + team2
-#
-# 		field_name, field_value = dbf.db_select(
-# 				table='fields',
-# 				columns_in=['field_name', 'field_value'],
-# 				where='field_id = {}'.format(field_id))[0]
-#
-#
-# 		url = dbf.db_select(
-# 				table='matches',
-# 				columns_in=['match_url'],
-# 				where=('match_team1 = "{}" AND '.format(team1) +
-# 					   'match_team2 = "{}" AND '.format(team2) +
-# 					   'match_league = {}'.format(league)))[0]
-#
-# 		matches_to_play.append((team1, team2, field_name, field_value, url))
-#
-# 	return matches_to_play
-
-
-def from_str_to_dt(datetime_as_string):    # DONE
+def from_str_to_dt(datetime_as_string):
 	return datetime.datetime.strptime(datetime_as_string, '%Y-%m-%d %H:%M:%S')
 
 
@@ -506,7 +460,7 @@ def one_or_more_preds_are_not_confirmed():   # DONE
 		return None
 
 
-def update_pred_table_after_confirm(first_name, bet_id):
+def update_db_after_confirm(first_name):
 
 	"""
 	Called inside the command /confirm.
@@ -523,6 +477,19 @@ def update_pred_table_after_confirm(first_name, bet_id):
 			 to same match, if any.
 	"""
 
+	# Check if there is any bet with status 'Pending' in the 'bets' table
+	try:
+		bet_id = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+		        where='bet_status = "Pending"')[0]
+	except IndexError:
+		bet_id = dbf.db_insert(
+				table='bets',
+				columns=['bet_status', 'bet_result'],
+				values=['Pending', 'Unknown'],
+				last_row=True)
+
 	dbf.db_update(
 			table='predictions',
 			columns=['pred_bet', 'pred_status'],
@@ -536,4 +503,4 @@ def update_pred_table_after_confirm(first_name, bet_id):
 			where='bet_id = {} AND pred_user = "{}"'.format(bet_id,
 															first_name))[-1]
 
-	return details
+	return bet_id, details
