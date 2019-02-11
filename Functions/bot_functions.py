@@ -460,7 +460,7 @@ def one_or_more_preds_are_not_confirmed():   # DONE
 		return None
 
 
-def update_db_after_confirm(first_name):
+def update_db_after_confirm(username):
 
 	"""
 	Called inside the command /confirm.
@@ -495,12 +495,45 @@ def update_db_after_confirm(first_name):
 			columns=['pred_bet', 'pred_status'],
 			values=[bet_id, 'Confirmed'],
 			where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
-			format(first_name))
+			format(username))
+
+	# Insert the bet into the "to_play" table
+	update_to_play_table(username, bet_id, 'insert')
 
 	details = dbf.db_select(
 			table='bets INNER JOIN predictions on pred_bet = bet_id',
 			columns_in=['pred_team1', 'pred_team2', 'pred_league'],
 			where='bet_id = {} AND pred_user = "{}"'.format(bet_id,
-															first_name))[-1]
+			                                                username))[-1]
 
 	return bet_id, details
+
+
+def update_to_play_table(user_name, id_of_the_bet, task):
+
+	team1, team2, field_bet = dbf.db_select(
+			table='predictions',
+			columns_in=['pred_team1', 'pred_team2', 'pred_field'],
+			where='pred_user = "{}" AND pred_bet = {}'.format(
+					user_name, id_of_the_bet))[0]
+
+	if task == 'insert':
+		field, bet = dbf.db_select(
+				table='fields',
+				columns_in=['field_name', 'field_value'],
+				where='field_id = {}'.format(field_bet))[0]
+		url = dbf.db_select(
+				table='matches',
+				columns_in=['match_url'],
+				where='match_team1 = "{}" AND match_team2 = "{}"'.format(
+						team1, team2))[0]
+		dbf.db_insert(
+				table='to_play',
+				columns=['to_play_team1', 'to_play_team2', 'to_play_field',
+				         'to_play_bet', 'to_play_url'],
+				values=[team1, team2, field, bet, url])
+	else:
+		dbf.db_delete(
+				table='to_play',
+				where='to_play_team1 = "{}" AND to_play_team2 = "{}"'.format(
+						team1, team2))

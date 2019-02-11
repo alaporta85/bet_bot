@@ -81,7 +81,7 @@ def bike(bot, update):  # DONE
 def cancel(bot, update):  # DONE
 
 	"""
-	Delete the 'Not Confirmed' bet from 'predictions' table.
+	Delete the 'Not Confirmed' match from 'predictions' table.
 
 	"""
 
@@ -106,14 +106,10 @@ def cancel(bot, update):  # DONE
 	                        text='{}, bet canceled.'.format(user))
 
 
-def confirm(bot, update):
+def confirm(bot, update):  # DONE
 
 	"""
-	Confirm the match in the 'predictions' table. If it is the first bet of the
-	day it creates a new entry in the 'bets' table and update the bet_id in the
-	'predictions' table. Else, it just uses the bet_id.
-	It also checks whether there are others 'Not Confirmed' bets of the same
-	match. If yes, they will be deleted from the 'predictions' table.
+	Confirm the match and update the database.
 
 	"""
 
@@ -153,9 +149,6 @@ def confirm(bot, update):
 	bot.send_message(chat_id=chat_id,
 	                 text='{}, match added correctly.'.format(user))
 
-	# Insert the bet into the "to_play" table
-	update_to_play_table(user, bet_id, 'insert')
-
 	# Play the bet automatically
 	auto_play = dbf.db_select(
 			table='predictions',
@@ -165,61 +158,33 @@ def confirm(bot, update):
 		return play(bot, update, ['5'])
 
 
-def create_summary(string):
+def create_list_of_matches(bet_id):  # DONE
 
-	if string == 'before':
-		bet_id = dbf.db_select(
-				table='bets',
-				columns_in=['bet_id'],
-				where='bet_status = "Pending"')
-	elif string == 'after':
-		bet_id = dbf.db_select(
-				table='bets',
-				columns_in=['bet_id'],
-				where='bet_status = "Placed" AND bet_result = "Unknown"')[-1]
-	else:
-		message = 'Following bets are still incomplete:\n\n'
+	"""
+	Create a list of the matches belonging to the bet having the passed bet_id.
+	Used inside create_summary().
 
-		unknown_bets = dbf.db_select(
-				table='bets',
-				columns_in=['bet_id'],
-				where='bet_status = "Placed" AND bet_result = "Unknown"')
-		for bet_id in unknown_bets:
-			message2, final_quote = create_summary_message(bet_id)
-			message += ('{}\nPossible win: <b>{:.1f}</b>\n\n\n'.
-			            format(message2, final_quote * 5))
+	:param bet_id: int
 
-		return message
+	:return: str
 
-	if string == 'before' and not bet_id:
-		return 'No bets yet. Choose the first one.'
-
-	bet_id = bet_id if not type(bet_id) == list else bet_id[-1]
-	message, final_quote = create_summary_message(bet_id)
-
-	if string == 'before':
-		message2 = '\n\nPossible win with 5 euros: <b>{:.1f}</b>'.format(
-				final_quote * 5)
-		return message + message2
-	elif string == 'after':
-		message = 'Bet placed correctly.\n\n' + message
-		message += '\nPossible win: <b>{:.1f}</b>'.format(final_quote * 5)
-		return message
-
-
-def create_summary_message(bet_id):
+	"""
 
 	message = ''
 
-	summary = dbf.db_select(
+	matches = dbf.db_select(
 			table='bets INNER JOIN predictions on pred_bet = bet_id',
 			columns_in=['pred_user', 'pred_date', 'pred_team1',
 			            'pred_team2',
 			            'pred_rawbet', 'pred_quote'],
 			where='bet_id = {}'.format(bet_id))
-	summary = sorted(summary, key=lambda x: x[1])
-	final_quote = np.prod(np.array([el[5] for el in summary]))
-	for user, dt, team1, team2, rawbet, quote in summary:
+
+	# Sort matches by datetime
+	matches = sorted(matches, key=lambda x: x[1])
+
+	final_quote = np.prod(np.array([el[5] for el in matches]))
+	for user, dt, team1, team2, rawbet, quote in matches:
+		# Extract the time
 		dt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
 		hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
 
@@ -229,38 +194,103 @@ def create_summary_message(bet_id):
 	return message, final_quote
 
 
-def delete(bot, update):
+def create_summary(string):  # DONE
 
-	"""Delete the "Confirmed" bet from "predictions" table."""
+	"""
+	Create the message with the summary of the bet depending on the string
+	passed.
+
+	:param string: -  'before' for the summary before playing the bet, used
+					  inside /summary()
+
+				   -  'after' for the summary after playing the bet, used
+					  inside /play()
+
+				   -  'remind' for the summary of all the bets placed but still
+				      incomplete, used inside /remind()
+
+	:return: str
+
+	"""
+
+	if string == 'before':
+		bet_id = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+				where='bet_status = "Pending"')
+		if not bet_id:
+			return 'No bets yet. Choose the first one.'
+		else:
+			message, final_quote = create_list_of_matches(bet_id)
+			last_line = ('\n\nPossible win with 5 euros: ' +
+			             '<b>{:.1f}</b>'.format(final_quote * 5))
+			return message + last_line
+
+	elif string == 'after':
+		bet_id = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+				where='bet_status = "Placed" AND bet_result = "Unknown"')[-1]
+
+		message, final_quote = create_list_of_matches(bet_id)
+		first_line = 'Bet placed correctly.\n\n'
+		last_line = '\nPossible win: <b>{:.1f}</b>'.format(final_quote * 5)
+
+		return first_line + message + last_line
+
+	elif string == 'remind':
+		message = 'Bets still incomplete:\n\n'
+
+		incomplete_bets = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+				where='bet_status = "Placed" AND bet_result = "Unknown"')
+		for bet_id in incomplete_bets:
+			message2, final_quote = create_list_of_matches(bet_id)
+			message += ('{}\nPossible win: <b>{:.1f}</b>\n\n\n'.
+			            format(message2, final_quote * 5))
+
+		return message
+
+
+def delete(bot, update):  # DONE
+
+	"""
+	Delete the 'Confirmed' match from 'predictions' table.
+
+	"""
 
 	chat_id = update.message.chat_id
 	user, _ = nickname(update)
 
-	bet_id = dbf.db_select(
-			table='bets',
-			columns_in=['bet_id'],
-	        where='bet_status = "Pending"')
-	if not bet_id:
-		return bot.send_message(chat_id=chat_id, text='No "Pending" bets.')
+	# Check if there is any 'Pending' bet
+	try:
+		bet_id = dbf.db_select(
+				table='bets',
+				columns_in=['bet_id'],
+		        where='bet_status = "Pending"')[0]
+	except IndexError:
+		return bot.send_message(chat_id=chat_id, text='No open bets.')
 
-	bet_id = bet_id[0]
+	# Check if user has a match to delete
+	try:
+		match_to_delete = dbf.db_select(
+				table='predictions',
+				columns_in=['pred_id'],
+				where=('pred_bet = {} AND pred_user = "{}" AND ' +
+				       'pred_status = "Confirmed"').format(bet_id, user))[0]
+	except IndexError:
+		return bot.send_message(chat_id=chat_id,
+		                        text='{}, no match to delete.'.format(user))
 
-	bet_to_delete = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_id'],
-			where=('pred_bet = {} AND pred_user = "{}" AND ' +
-			       'pred_status = "Confirmed"').format(bet_id, user))
-
-	if not bet_to_delete:
-		message = '{}, no bet to delete.'.format(user)
-		return bot.send_message(chat_id=chat_id, text=message)
-
-	update_to_play_table(user, bet_id, 'delete')
-
+	# Update the database
+	bf.update_to_play_table(user, bet_id, 'delete')
 	dbf.db_delete(
 			table='predictions',
-			where='pred_id = {}'.format(bet_to_delete[0]))
+			where='pred_id = {}'.format(match_to_delete[0]))
 
+	# Check if this was the only match of the bet and, if yes, delete the bet
+	# in the 'bet' table
 	conf_bets_left = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_id'],
@@ -275,17 +305,26 @@ def delete(bot, update):
 			chat_id=chat_id, text='{}, bet deleted.'.format(user))
 
 
-def fischia(bot, update):
+def fischia(bot, update):  # DONE
+
+	"""
+	Send random photo of Mazzarri.
+
+	"""
 
 	chat_id = update.message.chat_id
 	walter = random.choice(os.listdir('Mazzarri/'))
 
-	bot.send_photo(chat_id=chat_id, photo=open('Mazzarri/' + walter, 'rb'))
+	return bot.send_photo(chat_id=chat_id,
+	                      photo=open('Mazzarri/' + walter, 'rb'))
 
 
-def format_text(content):
+def format_text(content):  # DONE
 
-	"""Called inside help_stats() function to clean the message text."""
+	"""
+	Called inside help_stats() function to clean the message text.
+
+	"""
 
 	message = ''.join(content)
 	message = message.replace('\n\n', 'xx')
@@ -295,23 +334,33 @@ def format_text(content):
 	return message
 
 
-def get(bot, update, args):
+def get(bot, update, args):  # DONE
 
 	"""
-	Update the table "predictions" in the db with the data relative to the
-	chosen match. pred_status will be set to "Not Confirmed".
+	Update the table 'predictions' in the database with the data relative to
+	the chosen match if command is in the form:
+
+		/play team_bet
+
+	If the command has the form:
+
+		/play team
+
+	it sends all the quotes for that team's match.
+
 	"""
-	logger.info('Get Request Received')
+
 	chat_id = update.message.chat_id
 
+	# Check the format
 	if not args:
 		return bot.send_message(chat_id=chat_id, text='Insert the bet.')
 
 	guess = ' '.join(args).upper()
-
 	if guess[0] == '_' or guess[-1] == '_':
 		return bot.send_message(chat_id=chat_id, text='Wrong format.')
 
+	# Try to separate the team from the bet and replace some values
 	try:
 		vals2replace = [(' ', ''), ('*', ''), ('+', ''), (',', '.'),
 		                ('TEMPO', 'T'),
@@ -322,16 +371,27 @@ def get(bot, update, args):
 		input_team, input_bet = guess.split('_')
 		for old, new in vals2replace:
 			input_bet = input_bet.replace(old, new)
-	except ValueError:
-		input_team, input_bet = (guess, '')
 
+	except ValueError:
+		# If only the team is sent
+		input_team, input_bet = guess, ''
+
+	# Correct team name by Jaccard similarity
 	team_name = dbf.select_team(input_team)
 
 	if not team_name:
 		return bot.send_message(chat_id=chat_id, text='Team not found')
+
+	# If '*' is in the input it means it's a Champions League match
 	elif '*' in input_team:
 		league_id = 8
 		team_name = '*' + team_name
+
+	# Try to select the league. The IndexError occurs when the Jaccard result
+	# is a team playing in Champions League but not in any of the main leagues.
+	# In this case, looking for that team among any team_id != 8 would cause an
+	# error. Ex: if '/play dort' is sent, meaning Dortmund, bot will recognize
+	# it as PORTO and the error is given
 	else:
 		try:
 			league_id = dbf.db_select(
@@ -344,10 +404,14 @@ def get(bot, update, args):
 					chat_id=chat_id,
 					text='No bets found for {}'.format(team_name))
 
+	# If only the team is sent, 2 messages with all the quotes for that match
+	# will be sent in the chat
 	if not input_bet:
 		try:
 			message_standard, message_combo = bf.all_bets_per_team(team_name,
 			                                                       league_id)
+
+		# If, for any reason, quotes are not found
 		except ValueError as e:
 			message = str(e)
 			return bot.send_message(chat_id=chat_id, text=message)
@@ -359,12 +423,13 @@ def get(bot, update, args):
 
 	user, _ = nickname(update)
 
+	# Check if user has other matches not confirmed
 	warning_message = bf.check_still_to_confirm(user)
 	if warning_message:
 		return bot.send_message(chat_id=chat_id, text=warning_message)
 
-	# Used to create the list confirmed_matches. This list will be used to
-	# check whether a match has already been chosen
+	# Create the list of confirmed_matches. This list will be used to check
+	# whether a match has already been chosen
 	try:
 		bet_id = dbf.db_select(
 				table='bets',
@@ -379,14 +444,17 @@ def get(bot, update, args):
 	except IndexError:
 		confirmed_matches = []
 
+	# Try to extract all the info about the match and the requested quote
 	try:
 		team1, team2, field_id, nice_bet, quote = bf.look_for_quote(team_name,
 		                                                            input_bet)
+
+	# To handle invalid bets or missing quotes
 	except ValueError as e:
 		return bot.send_message(chat_id=chat_id, text=str(e))
 
-	if (not confirmed_matches
-	   or (team1, team2) not in confirmed_matches):
+	# If match is available, update the database and send a message
+	if (team1, team2) not in confirmed_matches:
 
 		dt = dbf.db_select(
 				table='matches',
@@ -415,9 +483,12 @@ def get(bot, update, args):
 		return bot.send_message(chat_id=chat_id, text='Match already chosen')
 
 
-def help_quote(bot, update):
+def help_quote(bot, update):  # DONE
 
-	"""Instructions to insert the correct bet."""
+	"""
+	Instructions to insert the correct bet.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -432,9 +503,12 @@ def help_quote(bot, update):
 	return bot.send_message(chat_id=chat_id, text=message)
 
 
-def help_stats(bot, update):
+def help_stats(bot, update):  # DONE
 
-	"""Instructions to use statistic commands."""
+	"""
+	Instructions to use statistic commands.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -447,7 +521,12 @@ def help_stats(bot, update):
 	return bot.send_message(chat_id=chat_id, text=message)
 
 
-def info(bot, update):
+def info(bot, update):  # DONE
+
+	"""
+	Send message of general info.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -462,7 +541,15 @@ def info(bot, update):
 	return bot.send_message(chat_id=chat_id, text=message)
 
 
-def limits_are_respected(username):
+def limits_are_respected(username):  # DONE
+
+	"""
+	Check if quotes limits are respected.
+	:param username: str
+
+	:return: bool
+
+	"""
 
 	users_allowed = dbf.db_select(
 			table='allow',
@@ -483,9 +570,12 @@ def limits_are_respected(username):
 		return True
 
 
-def match(bot, update, args):
+def match(bot, update, args):  # DONE
 
-	"""Return the matches of the requested day."""
+	"""
+	Return the matches of the requested day.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -500,48 +590,16 @@ def match(bot, update, args):
 		return bot.send_message(chat_id=chat_id, text=str(e))
 
 
-def matiz(bot, update):
+def matiz(bot, update):  # DONE
+
+	"""
+	Send matiz photo.
+
+	"""
 
 	chat_id = update.message.chat_id
 
-	bot.send_photo(chat_id=chat_id, photo=open('matiz.png', 'rb'))
-
-
-# def new_quotes(bot, update):
-#
-# 	"""
-# 	Fill the db with the new quotes for the chosen leagues.
-#
-# 	:param bot:
-# 	:param update:
-#
-# 	:return:
-#
-# 	"""
-#
-# 	try:
-# 		_, role = nickname(update)
-# 	except AttributeError:
-# 		role = 'Admin'
-#
-# 	if role == 'Admin':
-#
-# 		# Delete old data from the two tables
-# 		dbf.empty_table('quotes')
-# 		dbf.empty_table('matches')
-#
-# 		start = time.time()
-# 		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
-# 		sf.fill_db_with_quotes()
-# 		end = time.time() - start
-# 		minutes = int(end//60)
-# 		seconds = round(end % 60)
-# 		logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
-# 																	seconds))
-# 	else:
-# 		return bot.send_message(chat_id=update.message.chat_id,
-# 		                        text='Fatti i cazzi tuoi')
-
+	return bot.send_photo(chat_id=chat_id, photo=open('matiz.png', 'rb'))
 
 
 def new_quotes(bot, update, args):
@@ -662,7 +720,7 @@ def night_quotes(bot, update):
 		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
 
-def play(bot, update, args):    # DONE
+def play(bot, update, args):  # DONE
 
 	"""
 	Play the bet online.
@@ -779,7 +837,7 @@ def play(bot, update, args):    # DONE
 def remind(bot, update):
 
 	chat_id = update.message.chat_id
-	message = create_summary('resume')
+	message = create_summary('remind')
 
 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 
@@ -906,36 +964,6 @@ def update_results(bot, update):
 		logger.info('UPDATE - Database updated correctly.')
 	else:
 		logger.info('No completed bets were found.')
-
-
-def update_to_play_table(user_name, id_of_the_bet, task):
-
-	team1, team2, field_bet = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_team1', 'pred_team2', 'pred_field'],
-			where='pred_user = "{}" AND pred_bet = {}'.format(
-					user_name, id_of_the_bet))[0]
-
-	if task == 'insert':
-		field, bet = dbf.db_select(
-				table='fields',
-				columns_in=['field_name', 'field_value'],
-				where='field_id = {}'.format(field_bet))[0]
-		url = dbf.db_select(
-				table='matches',
-				columns_in=['match_url'],
-				where='match_team1 = "{}" AND match_team2 = "{}"'.format(
-						team1, team2))[0]
-		dbf.db_insert(
-				table='to_play',
-				columns=['to_play_team1', 'to_play_team2', 'to_play_field',
-				         'to_play_bet', 'to_play_url'],
-				values=[team1, team2, field, bet, url])
-	else:
-		dbf.db_delete(
-				table='to_play',
-				where='to_play_team1 = "{}" AND to_play_team2 = "{}"'.format(
-						team1, team2))
 
 
 allow_handler = CommandHandler('allow', allow, pass_args=True)
