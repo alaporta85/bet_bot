@@ -221,7 +221,7 @@ def create_summary(string):  # DONE
 		if not bet_id:
 			return 'No bets yet. Choose the first one.'
 		else:
-			message, final_quote = create_list_of_matches(bet_id)
+			message, final_quote = create_list_of_matches(bet_id[0])
 			last_line = ('\n\nPossible win with 5 euros: ' +
 			             '<b>{:.1f}</b>'.format(final_quote * 5))
 			return message + last_line
@@ -232,7 +232,7 @@ def create_summary(string):  # DONE
 				columns_in=['bet_id'],
 				where='bet_status = "Placed" AND bet_result = "Unknown"')[-1]
 
-		message, final_quote = create_list_of_matches(bet_id)
+		message, final_quote = create_list_of_matches(bet_id[0])
 		first_line = 'Bet placed correctly.\n\n'
 		last_line = '\nPossible win: <b>{:.1f}</b>'.format(final_quote * 5)
 
@@ -287,7 +287,7 @@ def delete(bot, update):  # DONE
 	bf.update_to_play_table(user, bet_id, 'delete')
 	dbf.db_delete(
 			table='predictions',
-			where='pred_id = {}'.format(match_to_delete[0]))
+			where='pred_id = {}'.format(match_to_delete))
 
 	# Check if this was the only match of the bet and, if yes, delete the bet
 	# in the 'bet' table

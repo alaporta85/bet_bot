@@ -522,11 +522,19 @@ def update_to_play_table(user_name, id_of_the_bet, task):
 				table='fields',
 				columns_in=['field_name', 'field_value'],
 				where='field_id = {}'.format(field_bet))[0]
-		url = dbf.db_select(
-				table='matches',
-				columns_in=['match_url'],
-				where='match_team1 = "{}" AND match_team2 = "{}"'.format(
-						team1, team2))[0]
+
+		try:
+			url = dbf.db_select(
+					table='matches',
+					columns_in=['match_url'],
+					where='match_team1 = "{}" AND match_team2 = "{}"'.format(
+							team1, team2))[0]
+		except IndexError:
+			url = dbf.db_select(
+					table='matches',
+					columns_in=['match_url'],
+					where='match_team1 = "{}" AND match_team2 = "{}"'.format(
+							'*'+team1, '*'+team2))[0]
 		dbf.db_insert(
 				table='to_play',
 				columns=['to_play_team1', 'to_play_team2', 'to_play_field',
