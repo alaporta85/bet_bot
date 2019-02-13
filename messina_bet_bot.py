@@ -694,13 +694,12 @@ def night_quotes(bot, update):
 
 	"""
 
-	chat_id = update.message.chat_id
-
 	try:
 		_, role = nickname(update)
 	except AttributeError:
 		role = 'Admin'
 
+	print('a')
 	if role == 'Admin':
 		leagues = [league for league in sf.countries]
 
@@ -716,8 +715,8 @@ def night_quotes(bot, update):
 		seconds = round(end % 60)
 		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
 		                                                            seconds))
-	else:
-		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
+	# else:
+	# 	return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
 
 def play(bot, update, args):  # DONE
