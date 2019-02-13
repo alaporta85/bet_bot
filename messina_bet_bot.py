@@ -27,7 +27,7 @@ dispatcher = updater.dispatcher
 def allow(bot, update, args):  # DONE
 
 	"""
-	Allow users to play bet outside the decided limits.
+	Allow users to play bet outside the limits.
 
 	"""
 
@@ -602,16 +602,10 @@ def matiz(bot, update):  # DONE
 	return bot.send_photo(chat_id=chat_id, photo=open('matiz.png', 'rb'))
 
 
-def new_quotes(bot, update, args):
+def new_quotes(bot, update, args):  # DONE
 
 	"""
 	Fill the db with the new quotes for the chosen leagues.
-
-	:param bot:
-	:param update:
-	:param args: list, Ex. [serie a, bundesliga]
-
-	:return:
 
 	"""
 
@@ -622,11 +616,16 @@ def new_quotes(bot, update, args):
 	except AttributeError:
 		role = 'Admin'
 
-	if role == 'Admin':
+	if role != 'Admin':
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='Fatti i cazzi tuoi')
+	else:
+
 		if not args:
 			message = 'Insert leagues. Ex. /new_quotes serie a, ligue 1'
 			return bot.send_message(chat_id=chat_id, text=message)
 
+		# Format the input and send a warning if it is wrong
 		args = ' '.join(args).split(',')
 		args = [arg[1:] if arg[0] == ' ' else arg for arg in args]
 		args = [arg[:-1] if arg[-1] == ' ' else arg for arg in args]
@@ -637,6 +636,8 @@ def new_quotes(bot, update, args):
 						chat_id=chat_id,
 						text='Possible options: {}'.format(leagues))
 
+		# For each league requested, delete all the match already present in
+		# the database
 		leagues = [arg.upper() for arg in args]
 		for league in leagues:
 			league_id = dbf.db_select(
@@ -657,6 +658,7 @@ def new_quotes(bot, update, args):
 						table='matches',
 						where='match_id = {}'.format(match))
 
+		# Start scraping
 		start = time.time()
 		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
 		sf.fill_db_with_quotes(leagues)
@@ -665,12 +667,14 @@ def new_quotes(bot, update, args):
 		seconds = round(end % 60)
 		logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
 																	seconds))
-	else:
-		return bot.send_message(chat_id=update.message.chat_id,
-		                        text='Fatti i cazzi tuoi')
 
 
-def nickname(update):
+def nickname(update):  # DONE
+
+	"""
+	Return nickname and role relative to the user sending the command.
+
+	"""
 
 	name = update.message.from_user.first_name
 
@@ -682,15 +686,10 @@ def nickname(update):
 	return user, role
 
 
-def night_quotes(bot, update):
+def night_quotes(bot, update):  # DONE
 
 	"""
 	Fill the db with the new quotes for all the leagues.
-
-	:param bot:
-	:param update:
-
-	:return:
 
 	"""
 
@@ -699,14 +698,15 @@ def night_quotes(bot, update):
 	except AttributeError:
 		role = 'Admin'
 
-	print('a')
 	if role == 'Admin':
+
 		leagues = [league for league in sf.countries]
 
 		# Delete old data from the two tables
 		dbf.empty_table('quotes')
 		dbf.empty_table('matches')
 
+		# Start scraping
 		start = time.time()
 		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
 		sf.fill_db_with_quotes(leagues)
@@ -715,8 +715,9 @@ def night_quotes(bot, update):
 		seconds = round(end % 60)
 		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
 		                                                            seconds))
-	# else:
-	# 	return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
+	else:
+		chat_id = update.message.chat_id
+		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
 
 def play(bot, update, args):  # DONE
@@ -724,13 +725,8 @@ def play(bot, update, args):  # DONE
 	"""
 	Play the bet online.
 
-	:param bot: -
-	:param update: -
-	:param args: list, amount to play. Ex. [5]
-
-	:return: nothing
-
 	"""
+
 	chat_id = update.message.chat_id
 
 	euros = bf.check_if_input_is_correct(args)
@@ -765,7 +761,6 @@ def play(bot, update, args):  # DONE
 	mess_id = sent.message_id
 
 	# Create a list with all the preds to play
-	# matches_to_play = bf.create_matches_to_play(bet_id)
 	matches_to_play = dbf.db_select(table='to_play')
 
 	# Add all the preds to the basket and update the message inside the chat
@@ -773,8 +768,12 @@ def play(bot, update, args):  # DONE
 	for i, (tm1, tm2, field, bet, url) in enumerate(matches_to_play):
 
 		browser = sf.connect_to(some_url=url, browser=browser)
+
+		# First time we refresh the page to close the cookies bar.
+		# browser.refresh() does not work
 		if not i:
 			browser = sf.connect_to(some_url=url, browser=browser)
+
 		basket_msg = sf.add_bet_to_basket(
 				browser, (field, bet), i, dynamic_message)
 		logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
@@ -833,7 +832,12 @@ def play(bot, update, args):  # DONE
 	browser.quit()
 
 
-def remind(bot, update):
+def remind(bot, update):  # DONE
+
+	"""
+	Send a message to remind the matches of a bet which is still open.
+
+	"""
 
 	chat_id = update.message.chat_id
 	message = create_summary('remind')
@@ -841,7 +845,12 @@ def remind(bot, update):
 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 
 
-def score(bot, update, args):
+def score(bot, update, args):  # DONE
+
+	"""
+	Send the bar plot of the score.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -862,7 +871,12 @@ def score(bot, update, args):
 					text='Wrong format. Ex: 2017-2018 or "general"')
 
 
-def send_log(bot, update):
+def send_log(bot, update):  # DONE
+
+	"""
+	Send the log.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -870,26 +884,48 @@ def send_log(bot, update):
 	                         document=open('logs/bet_bot.log', 'rb'))
 
 
-def series(bot, update):
+def series(bot, update):  # DONE
+
+	"""
+	Send bar plot of positive and negative series.
+
+	"""
 
 	chat_id = update.message.chat_id
 
 	return bot.send_photo(chat_id=chat_id, photo=open('series.png', 'rb'))
 
 
-def sotm(bot, update):
+def sotm(bot, update):  # DONE
+
+	"""
+	Send tbar plot of the best/worst per month.
+
+	"""
 
 	chat_id = update.message.chat_id
+
 	return bot.send_photo(chat_id=chat_id, photo=open('sotm.png', 'rb'))
 
 
-def start(bot, update):
+def start(bot, update):  # DONE
+
+	"""
+	Start the bot.
+
+	"""
 
 	chat_id = update.message.chat_id
+
 	return bot.send_message(chat_id=chat_id, text="Iannelli suca")
 
 
-def stats(bot, update):
+def stats(bot, update):  # DONE
+
+	"""
+	Send some stats.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -906,7 +942,12 @@ def stats(bot, update):
 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=fin_mess)
 
 
-def summary(bot, update):
+def summary(bot, update):  # DONE
+
+	"""
+	Send the summary of the matches already confirmed before playong the bet.
+
+	"""
 
 	chat_id = update.message.chat_id
 
@@ -918,8 +959,8 @@ def summary(bot, update):
 def update_results(bot, update):
 
 	"""
-	Updates the columns "bet_result", "pred_result" and "pred_label" in the
-	database.
+	Once all matches in the bet are concluded, update the database.
+
 	"""
 
 	chat_id = update.message.chat_id
