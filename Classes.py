@@ -260,6 +260,13 @@ def score(which):
 	plt.tick_params(axis='y', which='both', left=False, labelleft=False)
 	plt.title(which, fontsize=16, fontweight='bold', style='italic')
 
+	last_update = dbf.db_select(
+			table='last_results_update',
+			columns_in='message')[0]
+	last_update = last_update.replace('x', '\n')
+	plt.text(0.81, 0.98, str(last_update), transform=ax.transAxes,
+	         fontsize=8)
+
 	for i, bar in enumerate(bars):
 		text = '{}\n{}%\n{}\n{}'.format(ratio[i], perc[i], mean_quoteP[i],
 		                              mean_quoteW[i])

@@ -232,7 +232,7 @@ def create_summary(string):  # DONE
 				columns_in=['bet_id'],
 				where='bet_status = "Placed" AND bet_result = "Unknown"')[-1]
 
-		message, final_quote = create_list_of_matches(bet_id[0])
+		message, final_quote = create_list_of_matches(bet_id)
 		first_line = 'Bet placed correctly.\n\n'
 		last_line = '\nPossible win: <b>{:.1f}</b>'.format(final_quote * 5)
 
@@ -998,6 +998,13 @@ def update_results(bot, update):
 	browser.quit()
 
 	if bets_updated:
+		dt = datetime.datetime.now()
+		last_update = '*Last update:x    {}/{}/{} at {}:{}'.format(
+				dt.day, dt.month, dt.year, dt.hour, dt.minute)
+		dbf.empty_table(table='last_results_update')
+		dbf.db_insert(table='last_results_update',
+		              columns='message',
+		              values=last_update)
 		cl.bets, cl.preds = cl.update_bets_preds()
 		cl.players = {name: cl.Player(name) for name in cl.partecipants}
 		cl.stats = cl.Stats()
