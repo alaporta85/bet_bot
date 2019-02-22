@@ -359,9 +359,11 @@ def click_panel(browser, index, panel):   # DONE
 
 	"""
 
-	button = panel.find_elements_by_xpath(
-			'//div[contains(@class, "group-name")]')[index]
-	scroll_to_element(browser, 'false', button)
+	# button = panel.find_elements_by_xpath(
+	# 		'//div[contains(@class, "group-name")]')[index]
+	button = panel.find_element_by_xpath(
+			'.//div[contains(@class, "group-name")]')
+	scroll_to_element(browser, 'true', button)
 	name = button.text
 
 	WebDriverWait(
@@ -369,7 +371,7 @@ def click_panel(browser, index, panel):   # DONE
 				(By.LINK_TEXT, name)))
 
 	if 'active' not in button.get_attribute('class'):
-		button.click()
+		button.find_element_by_xpath('.//a').click()
 		time.sleep(1)
 
 

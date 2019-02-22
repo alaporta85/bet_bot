@@ -1043,7 +1043,7 @@ update_handler = CommandHandler('update', update_results)
 # Nightly quotes updating
 update_quotes = updater.job_queue
 update_quotes.run_repeating(night_quotes, 86400,
-                            first=datetime.time(9, 27, 00))
+                            first=datetime.time(1, 00, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
