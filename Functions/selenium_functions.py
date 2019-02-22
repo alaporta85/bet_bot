@@ -113,7 +113,7 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 					   'pull-right pull-down"]')
 		prize_element = browser.find_elements_by_xpath(prize_table +
 													   '//tr/td')[7]
-		prize_value = float(prize_element.text[1:-1].replace('.', '').
+		prize_value = float(prize_element.text[:-1].replace('.', '').
 		                    replace(',', '.'))
 
 		dbf.db_update(

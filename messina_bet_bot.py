@@ -965,8 +965,6 @@ def update_results(bot, update):
 
 	"""
 
-	chat_id = update.message.chat_id
-
 	ref_list = dbf.db_select(
 			table='bets',
 			columns_in=['bet_id', 'bet_date'],
@@ -975,12 +973,13 @@ def update_results(bot, update):
 
 	if not ref_list:
 		logger.info('UPDATE - No bets must be updated')
-		return bot.send_message(chat_id=chat_id, text='No bets to update.')
+		return bot.send_message(chat_id=update.message.chat_id,
+		                        text='No bets to update.')
 
 	try:
 		browser = sf.go_to_lottomatica()
 	except ConnectionError as e:
-		return bot.send_message(chat_id=chat_id, text=e)
+		return bot.send_message(chat_id=update.message.chat_id, text=e)
 	time.sleep(3)
 
 	sf.login(browser)
@@ -995,18 +994,18 @@ def update_results(bot, update):
 
 	except ConnectionError as e:
 		browser.quit()
-		return bot.send_message(chat_id=chat_id, text=str(e))
+		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 	browser.quit()
 
 	if bets_updated:
-		# dt = datetime.datetime.now()
-		# last_update = '*Last update:x    {}/{}/{} at {}:{}'.format(
-		# 		dt.day, dt.month, dt.year, dt.hour, dt.minute)
-		# dbf.empty_table(table='last_results_update')
-		# dbf.db_insert(table='last_results_update',
-		#               columns='message',
-		#               values=last_update)
+		dt = datetime.datetime.now()
+		last_update = '*Last update:x    {}/{}/{} at {}:{}'.format(
+				dt.day, dt.month, dt.year, dt.hour, dt.minute)
+		dbf.empty_table(table='last_results_update')
+		dbf.db_insert(table='last_results_update',
+		              columns=['message'],
+		              values=[last_update])
 		cl.bets, cl.preds = cl.update_bets_preds()
 		cl.players = {name: cl.Player(name) for name in cl.partecipants}
 		cl.stats = cl.Stats()
@@ -1044,7 +1043,7 @@ update_handler = CommandHandler('update', update_results)
 # Nightly quotes updating
 update_quotes = updater.job_queue
 update_quotes.run_repeating(night_quotes, 86400,
-                            first=datetime.time(1, 00, 00))
+                            first=datetime.time(9, 27, 00))
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
