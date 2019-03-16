@@ -19,9 +19,9 @@ f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
 f.close()
 
-lim_low = 1.8
-lim_high = 3.2
-n_bets = 4
+lim_low = 1
+lim_high = 1.7
+n_bets = 5
 
 dispatcher = updater.dispatcher
 
