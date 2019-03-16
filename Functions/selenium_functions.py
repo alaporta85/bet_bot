@@ -15,7 +15,7 @@ from Functions import bot_functions as bf
 
 
 countries = {
-			 'SERIE A': 'italia/idivisionev3.html',
+			 'SERIE A': 'italia/seriea.html',
 			 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
 			 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
 			 'BUNDESLIGA': 'germania/bundesliga1.html',
