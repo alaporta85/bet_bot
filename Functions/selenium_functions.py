@@ -16,12 +16,12 @@ from Functions import bot_functions as bf
 
 countries = {
 			 'SERIE A': 'italia/seriea.html',
-			 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
-			 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
-			 'BUNDESLIGA': 'germania/bundesliga1.html',
-			 'LIGUE 1': 'francia/ligue11.html',
+			 'PREMIER LEAGUE': 'inghilterra/premierleague.html',
+			 'PRIMERA DIVISION': 'spagna/primeradivision.html',
+			 'BUNDESLIGA': 'germania/bundesliga.html',
+			 'LIGUE 1': 'francia/ligue1.html',
 			 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 'CHAMPIONS LEAGUE': 'europa/championsleague1.html',
+			 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
 			 }
 
 conn_err_message = ('An error occurred. This might be due to some problems ' +
@@ -524,7 +524,8 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 			'{}-{}-{} {}:{}:{}'.format(yy, mm, dd, h, m, 00))
 
 	# Fix url to save
-	url = fix_url(browser.current_url)
+	# url = fix_url(browser.current_url)
+	url = browser.current_url
 
 	# We need the id of the match to update the quotes later
 	last_id = dbf.db_insert(
@@ -721,29 +722,29 @@ def click_scommetti(browser):   # DONE
 	button.click()
 
 
-def fix_url(match_url):   # DONE
-
-	"""
-	Fix the url to make it work later in the /play command.
-
-	:param match_url: str, url to fix
-
-
-	:return: str, url fixed
-
-	"""
-
-	codes = {'seriea': 'seriea',
-	         'premierleague': 'premierleague1',
-	         'primeradivision': 'primeradivision1',
-	         'bundesliga': 'bundesliga1',
-	         'ligue1': 'ligue11',
-	         'eredivisie': 'eredivisie1',
-	         'championsleague': 'championsleague1'}
-
-	for code in codes:
-		if code in match_url:
-			return match_url.replace(code, codes[code])
+# def fix_url(match_url):   # DONE
+#
+# 	"""
+# 	Fix the url to make it work later in the /play command.
+#
+# 	:param match_url: str, url to fix
+#
+#
+# 	:return: str, url fixed
+#
+# 	"""
+#
+# 	codes = {'seriea': 'seriea',
+# 	         'premierleague': 'premierleague1',
+# 	         'primeradivision': 'primeradivision1',
+# 	         'bundesliga': 'bundesliga1',
+# 	         'ligue1': 'ligue11',
+# 	         'eredivisie': 'eredivisie1',
+# 	         'championsleague': 'championsleague1'}
+#
+# 	for code in codes:
+# 		if code in match_url:
+# 			return match_url.replace(code, codes[code])
 
 
 def go_to_lottomatica():
