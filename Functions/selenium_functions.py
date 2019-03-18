@@ -733,7 +733,7 @@ def fix_url(match_url):   # DONE
 
 	"""
 
-	codes = {'seriea': 'idivisionev3',
+	codes = {'seriea': 'seriea',
 	         'premierleague': 'premierleague1',
 	         'primeradivision': 'primeradivision1',
 	         'bundesliga': 'bundesliga1',
