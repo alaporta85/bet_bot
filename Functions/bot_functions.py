@@ -515,7 +515,7 @@ def update_to_play_table(user_name, id_of_the_bet, task):
 			table='predictions',
 			columns_in=['pred_team1', 'pred_team2', 'pred_field'],
 			where='pred_user = "{}" AND pred_bet = {}'.format(
-					user_name, id_of_the_bet))[0]
+					user_name, id_of_the_bet))[-1]
 
 	if task == 'insert':
 		field, bet = dbf.db_select(
