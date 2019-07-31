@@ -20,7 +20,7 @@ updater = Updater(token=f.readline())
 f.close()
 
 lim_low = 1
-lim_high = 1.7
+lim_high = 3.2
 n_bets = 5
 
 dispatcher = updater.dispatcher
@@ -802,9 +802,9 @@ def play(bot, update, args):  # DONE
 	money_after = sf.money(browser)
 
 	# Verify money has the new value. If not, refresh the value and check again
-	# up to 10 times
+	# up to 1000 times
 	c = count(1)
-	while next(c) < 10 and money_after != (money_before - euros):
+	while next(c) < 1000 and money_after != (money_before - euros):
 		sf.refresh_money(browser)
 		time.sleep(2)
 		money_after = sf.money(browser)
@@ -969,6 +969,7 @@ def update_results(bot, update):
 			table='bets',
 			columns_in=['bet_id', 'bet_date'],
 			where='bet_status = "Placed" AND bet_result = "Unknown"')
+	ref_list.sort(key=lambda x: x[0], reverse=True)
 	logger.info('UPDATE - Selecting Placed bets...')
 
 	if not ref_list:

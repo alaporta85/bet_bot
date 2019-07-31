@@ -202,9 +202,14 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 		bets_list = browser.find_elements_by_xpath(table_path +
 												   '//tr[@class="ng-scope"]')
 
+		# updated = []
 		for ref_bet in ref_list:
 			ref_id = ref_bet[0]
-			ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
+			details_db = dbf.db_select(
+					table='predictions',
+					columns_in=['pred_team1', 'pred_team2'],
+					where='pred_bet = {}'.format(ref_id))
+			# ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
 
 			for bet in bets_list:
 
@@ -214,10 +219,15 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 				if 'blue' not in color:
 
-					date = bet.find_element_by_xpath(
-							'.//td[@class="ng-binding"]').text[:10]
-
-					if date == ref_date:
+					# date = bet.find_element_by_xpath(
+					# 		'.//td[@class="ng-binding"]').text[:10]
+					#
+					# if date == ref_date and date in updated:
+					# 	updated.remove(date)
+					# 	continue
+					#
+					# elif date == ref_date and date not in updated:
+					# 	updated.append(date)
 
 						new_status = bet.find_element_by_xpath(
 								'.//translate-label[@key-default=' +
@@ -236,6 +246,24 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 						new_window = browser.window_handles[-1]
 						browser.switch_to_window(new_window)
+						time.sleep(1)
+
+						new_table_path = './/table[@class="bet-detail"]'
+						wait_visible(browser, 20, new_table_path)
+						new_bets_list = browser.find_elements_by_xpath(
+								new_table_path + '//tr[@class="ng-scope"]')
+
+						details_web = []
+						for new_bet in new_bets_list:
+							match = new_bet.find_element_by_xpath(
+								'.//td[6]').text
+							team1 = dbf.select_team(match.split(' - ')[0])
+							team2 = dbf.select_team(match.split(' - ')[1])
+							details_web.append((team1, team2))
+						if set(details_db) - set(details_web):
+							browser.close()
+							browser.switch_to_window(main_window)
+							continue
 
 						bets_updated += analyze_details_table(browser, ref_id,
 															  new_status, 0)
@@ -244,6 +272,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 						browser.switch_to_window(main_window)
 						break
+
 
 		return bets_updated
 
