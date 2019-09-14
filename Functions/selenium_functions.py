@@ -240,7 +240,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 						main_window = browser.current_window_handle
 						details = bet.find_element_by_xpath('.//a')
-						scroll_to_element(browser, 'false', details)
+						scroll_to_element(browser, details)
 						details.click()
 						time.sleep(3)
 
@@ -327,7 +327,7 @@ def click_bet(browser, field, bet):   # DONE
 
 		# Associate each field with its bets and loop through all of them
 		for field_, bets_ in zip(fields, bets):
-			scroll_to_element(browser, 'false', field_)
+			scroll_to_element(browser, field_)
 			field_name = field_.text.upper()
 
 			# When the correct field is found
@@ -346,7 +346,7 @@ def click_bet(browser, field, bet):   # DONE
 
 				# Loop through all the bets until we find the correct one
 				for new_bet in all_bets:
-					scroll_to_element(browser, 'false', new_bet)
+					scroll_to_element(browser, new_bet)
 
 					if field_name == 'ESITO FINALE 1X2 HANDICAP':
 						bet_name = new_bet.find_element_by_xpath(
@@ -392,7 +392,7 @@ def click_panel(browser, index, panel):   # DONE
 	# 		'//div[contains(@class, "group-name")]')[index]
 	button = panel.find_element_by_xpath(
 			'.//div[contains(@class, "group-name")]')
-	scroll_to_element(browser, 'true', button)
+	scroll_to_element(browser, button)
 	name = button.text
 
 	WebDriverWait(
@@ -400,6 +400,7 @@ def click_panel(browser, index, panel):   # DONE
 				(By.LINK_TEXT, name)))
 
 	if 'active' not in button.get_attribute('class'):
+		scroll_to_element(browser, button)
 		button.find_element_by_xpath('.//a').click()
 		time.sleep(1)
 
@@ -488,7 +489,7 @@ def fill_db_with_quotes(leagues):   # DONE
 				            format(league, minutes, seconds))
 				break
 
-			scroll_to_element(browser, 'false', match)
+			scroll_to_element(browser, match)
 
 			# Extract date and time of the match and then click it
 			ddmmyy, hhmm = match.find_element_by_xpath(
@@ -502,7 +503,7 @@ def fill_db_with_quotes(leagues):   # DONE
 			fill_quotes_table(browser, last_id)
 
 			# Go back at the main page of the league
-			scroll_to_element(browser, 'false', back)
+			scroll_to_element(browser, back)
 			back.click()
 
 	browser.quit()
@@ -530,9 +531,10 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 	"""
 
 	# Look for the back button
-	back = './/a[@class="back-competition ng-scope"]'
-	wait_clickable(browser, WAIT, back)
-	back = browser.find_element_by_xpath(back)
+	back_path = './/a[@class="back-competition ng-scope"]'
+	back = browser.find_element_by_xpath(back_path)
+	scroll_to_element(browser, back)
+	wait_clickable(browser, WAIT, back_path)
 
 	# Extract the text with the two teams
 	teams_cont = './/div[@class="event-name ng-binding"]'
@@ -590,7 +592,7 @@ def fill_quotes_table(browser, last_id):   # DONE
 	# Associate each field with its corresponding bets
 	fields_bets = find_all_fields_and_bets(browser)
 	for field, bets in fields_bets:
-		scroll_to_element(browser, 'false', field)
+		scroll_to_element(browser, field)
 
 		# If it is a field we have in the db we extract all the quotes
 		field_name = field.text.upper()
@@ -599,7 +601,7 @@ def fill_quotes_table(browser, last_id):   # DONE
 				'.//div[@class="selection-name ng-binding"]')
 
 			for i, new_bet in enumerate(all_bets):
-				scroll_to_element(browser, 'false', new_bet)
+				scroll_to_element(browser, new_bet)
 
 				# Bet name has a different path for the field 'ESITO FINALE 1X2
 				# HANDICAP', don't know why
@@ -611,7 +613,7 @@ def fill_quotes_table(browser, last_id):   # DONE
 				# Extract quote value
 				bet_quote = bets.find_elements_by_xpath(
 								 './/div[@class="selection-price"]')[i]
-				scroll_to_element(browser, 'false', bet_quote)
+				scroll_to_element(browser, bet_quote)
 				bet_quote = bet_quote.text
 
 				# Take corresponding field id from db
@@ -658,7 +660,7 @@ def fill_teams_table():
 		wait_clickable(browser, WAIT, matches_path)
 		all_matches = browser.find_elements_by_xpath(matches_path)
 		for match in all_matches:
-			scroll_to_element(browser, 'false', match)
+			scroll_to_element(browser, match)
 			teams = match.text.upper().split(' - ')
 			for team in teams:
 				dbf.db_insert(
@@ -747,7 +749,7 @@ def click_scommetti(browser):   # DONE
 
 	button_location = './/div[@class="buttons-betslip"]'
 	button = browser.find_element_by_xpath(button_location)
-	scroll_to_element(browser, 'false', button)
+	scroll_to_element(browser, button)
 	button.click()
 
 
@@ -843,7 +845,7 @@ def go_to_placed_bets(browser, LIMIT_2):
 		for afilter in date_filters_list:
 			new_filter = afilter.text
 			if new_filter == FILTER:
-				scroll_to_element(browser, 'false', afilter)
+				scroll_to_element(browser, afilter)
 				afilter.click()
 				break
 
@@ -851,7 +853,7 @@ def go_to_placed_bets(browser, LIMIT_2):
 					   '/a[@class="btn button-submit"]')
 		wait_clickable(browser, 20, mostra_path)
 		mostra_button = browser.find_element_by_xpath(mostra_path)
-		scroll_to_element(browser, 'false', mostra_button)
+		scroll_to_element(browser, mostra_button)
 		mostra_button.click()
 
 	except (TimeoutException, ElementNotInteractableException):
@@ -885,7 +887,7 @@ def insert_euros(browser, euros):   # DONE
 	input_euros = ('.//div[@class="price-container-input"]/' +
 	               'input[@ng-model="amountSelect.amount"]')
 	euros_box = browser.find_element_by_xpath(input_euros)
-	scroll_to_element(browser, 'false', euros_box)
+	scroll_to_element(browser, euros_box)
 	euros_box.send_keys(Keys.COMMAND, "a")
 	euros_box.send_keys(Keys.LEFT)
 	euros_box.send_keys(euros)
@@ -917,7 +919,7 @@ def login(browser):   # DONE
 		button = './/button[@class="btn btn-default btn-accedi"]'
 		wait_clickable(browser, WAIT, button)
 		button = browser.find_element_by_xpath(button)
-		scroll_to_element(browser, 'false', button)
+		scroll_to_element(browser, button)
 		button.click()
 
 		# Find the boxes to insert username and password
@@ -982,11 +984,11 @@ def refresh_money(browser):
 				browser.quit()
 
 	refresh = browser.find_element_by_xpath(refresh_path)
-	scroll_to_element(browser, 'false', refresh)
+	scroll_to_element(browser, refresh)
 	refresh.click()
 
 
-def scroll_to_element(browser, true_false, element):
+def scroll_to_element(browser, element):
 
 	"""
 	If the argument of 'scrollIntoView' is 'true' the command scrolls
@@ -994,8 +996,9 @@ def scroll_to_element(browser, true_false, element):
 	is 'false' the element will be positioned at the bottom.
 	"""
 
-	browser.execute_script('return arguments[0].scrollIntoView({});'
-						   .format(true_false), element)
+	browser.execute_script(
+			'return arguments[0].scrollIntoView({block: "center"});',
+			element)
 
 
 def simulate_hover_and_click(browser, element):

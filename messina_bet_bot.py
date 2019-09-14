@@ -1048,7 +1048,7 @@ update_quotes.run_repeating(night_quotes, 86400,
 
 update_tables = updater.job_queue
 update_tables.run_repeating(update_results, 86400,
-							first=datetime.time(5, 00, 00))
+							first=datetime.time(3, 00, 00))
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(help_quote_handler)
