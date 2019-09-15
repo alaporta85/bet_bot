@@ -916,10 +916,10 @@ def login(browser):   # DONE
 
 	try:
 		# Click the login button
-		button = './/button[@class="btn btn-default btn-accedi"]'
-		wait_clickable(browser, WAIT, button)
-		button = browser.find_element_by_xpath(button)
+		button_path = './/button[@class="btn btn-default btn-accedi"]'
+		button = browser.find_element_by_xpath(button_path)
 		scroll_to_element(browser, button)
+		wait_clickable(browser, WAIT, button_path)
 		button.click()
 
 		# Find the boxes to insert username and password
@@ -988,7 +988,7 @@ def refresh_money(browser):
 	refresh.click()
 
 
-def scroll_to_element(browser, element):
+def scroll_to_element(browser, element, position='{block: "center"}'):
 
 	"""
 	If the argument of 'scrollIntoView' is 'true' the command scrolls
@@ -997,7 +997,7 @@ def scroll_to_element(browser, element):
 	"""
 
 	browser.execute_script(
-			'return arguments[0].scrollIntoView({block: "center"});',
+			f'return arguments[0].scrollIntoView({position});',
 			element)
 
 

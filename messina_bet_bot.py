@@ -754,13 +754,19 @@ def play(bot, update, args):  # DONE
 	if late:
 		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
 
-	# This message will be updated during the process to keep track of all
-	# the steps
-	dynamic_message = 'Matches added: {}'
-	sent = bot.send_message(chat_id=chat_id, text=dynamic_message.format(0))
+	# Log in
+	sent = bot.send_message(chat_id=chat_id, text='Logging...')
 
 	# To identify the message
 	mess_id = sent.message_id
+
+	sf.login(sf.go_to_lottomatica())
+	logger.info('PLAY - Logged')
+	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
+
+	# This message will be updated during the process to keep track of all
+	# the steps
+	dynamic_message = 'Matches added: {}'
 
 	# Create a list with all the preds to play
 	matches_to_play = dbf.db_select(table='to_play')
@@ -785,11 +791,6 @@ def play(bot, update, args):  # DONE
 
 	# Insert the amount to bet
 	sf.insert_euros(browser, euros)
-
-	# Log in
-	sf.login(browser)
-	logger.info('PLAY - Logged')
-	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
 
 	# Money left before playing the bet
 	money_before = sf.money(browser)
