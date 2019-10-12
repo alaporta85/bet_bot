@@ -717,6 +717,16 @@ def night_quotes(bot, update):  # DONE
 		seconds = round(end % 60)
 		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
 		                                                            seconds))
+
+		# Start scraping
+		start = time.time()
+		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
+		sf.fill_db_with_quotes(leagues)
+		end = time.time() - start
+		minutes = int(end // 60)
+		seconds = round(end % 60)
+		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
+		                                                              seconds))
 	else:
 		chat_id = update.message.chat_id
 		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
