@@ -9,7 +9,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
-from Functions import logging as log
+from Functions import logging_file as log
 from Functions import db_functions as dbf
 from Functions import bot_functions as bf
 
@@ -388,8 +388,6 @@ def click_panel(browser, index, panel):   # DONE
 
 	"""
 
-	# button = panel.find_elements_by_xpath(
-	# 		'//div[contains(@class, "group-name")]')[index]
 	button = panel.find_element_by_xpath(
 			'.//div[contains(@class, "group-name")]')
 	scroll_to_element(browser, button)
@@ -400,7 +398,6 @@ def click_panel(browser, index, panel):   # DONE
 				(By.LINK_TEXT, name)))
 
 	if 'active' not in button.get_attribute('class'):
-		scroll_to_element(browser, button)
 		button.find_element_by_xpath('.//a').click()
 		time.sleep(1)
 
@@ -435,9 +432,9 @@ def extract_bet_name(field, bet_element):
 	# Bet name has a different path for the field 'ESITO FINALE 1X2
 	# HANDICAP', don't know why
 	if field == 'ESITO FINALE 1X2 HANDICAP':
-		return bet_element.text.upper().split()[0]
+		return bet_element.get_attribute('innerText').upper().split()[0]
 	else:
-		return bet_element.text.upper()
+		return bet_element.get_attribute('innerText').upper()
 
 
 def fill_db_with_quotes(leagues):   # DONE
@@ -492,11 +489,7 @@ def fill_db_with_quotes(leagues):   # DONE
 			try:
 				match = all_matches[i]
 			except IndexError:
-				end = time.time() - start
-				minutes = int(end // 60)
-				seconds = round(end % 60)
-				logger.info('FILL DB WITH QUOTES - Updating {} took {}:{}'.
-				            format(league, minutes, seconds))
+				time_needed(start, league)
 				break
 
 			scroll_to_element(browser, match)
@@ -515,6 +508,8 @@ def fill_db_with_quotes(leagues):   # DONE
 			# Go back at the main page of the league
 			scroll_to_element(browser, back)
 			back.click()
+
+		time_needed(start, league)
 
 	browser.quit()
 
@@ -645,6 +640,74 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 # 						values=[last_id, field_id, bet_quote])
 
 
+# def fill_quotes_table(browser, last_id):   # DONE
+#
+# 	"""
+# 	Insert the quotes in the database.
+# 	Used inside fill_db_with_quotes().
+#
+# 	:param browser: selenium browser instance
+#
+# 	:param last_id: int, id of the match
+#
+#
+# 	:return: nothing
+#
+# 	"""
+#
+# 	# Select all fields we want scrape
+# 	all_fields = dbf.db_select(
+# 			table='fields',
+# 			columns_in=['field_name'])
+#
+# 	# Associate each field with its corresponding bets
+# 	fields_bets = find_all_fields_and_bets(browser)
+# 	for field, bets in fields_bets:
+#
+# 		field_name = field.text.upper()
+# 		while not field_name:
+# 			scroll_to_element(browser, field)
+# 			field_name = field.text.upper()
+#
+# 		# If it is a field we have in the db we extract all the quotes
+# 		if field_name in all_fields:
+# 			all_bets = bets.find_elements_by_xpath(
+# 				'.//div[@class="selection-name ng-binding"]')
+#
+# 			for i, new_bet in enumerate(all_bets):
+#
+# 				bet_name = extract_bet_name(field_name, new_bet)
+# 				while not bet_name:
+# 					scroll_to_element(browser, new_bet)
+# 					bet_name = extract_bet_name(field_name, new_bet)
+#
+# 				# Extract quote value
+# 				bet_quote_el = bets.find_elements_by_xpath(
+# 						'.//div[@class="selection-price"]')[i]
+# 				bet_quote = bet_quote_el.text
+# 				while not bet_quote:
+# 					scroll_to_element(browser, bet_quote_el)
+# 					bet_quote = bet_quote_el.text
+#
+# 				# Take corresponding field id from db
+# 				field_id = dbf.db_select(
+# 						table='fields',
+# 						columns_in=['field_id'],
+# 						where='field_name = "{}" AND field_value = "{}"'.
+# 						format(field_name, bet_name))[0]
+#
+# 				# If quote is not available insert '-' in the db
+# 				if len(bet_quote) == 1:
+# 					bet_quote = '-'
+# 				else:
+# 					bet_quote = float(bet_quote)
+#
+# 				dbf.db_insert(
+# 						table='quotes',
+# 						columns=['quote_match', 'quote_field', 'quote_value'],
+# 						values=[last_id, field_id, bet_quote])
+
+
 def fill_quotes_table(browser, last_id):   # DONE
 
 	"""
@@ -665,16 +728,16 @@ def fill_quotes_table(browser, last_id):   # DONE
 			table='fields',
 			columns_in=['field_name'])
 
+	a = dbf.db_select(
+			table='fields',
+			columns_in=['field_id', 'field_name', 'field_value'])
+	bet2id = {f'{field}_{bet}': idx for idx, field, bet in a}
+
 	# Associate each field with its corresponding bets
 	fields_bets = find_all_fields_and_bets(browser)
 	for field, bets in fields_bets:
-		field_name = field.text.upper()
 
-		while not field_name:
-			scroll_to_element(browser, field)
-			# time.sleep(3)
-			field_name = field.text.upper()
-			print('a')
+		field_name = field.get_attribute('innerText').upper()
 
 		# If it is a field we have in the db we extract all the quotes
 		if field_name in all_fields:
@@ -684,30 +747,14 @@ def fill_quotes_table(browser, last_id):   # DONE
 			for i, new_bet in enumerate(all_bets):
 
 				bet_name = extract_bet_name(field_name, new_bet)
-				while not bet_name:
-					scroll_to_element(browser, new_bet)
-					# time.sleep(3)
-					bet_name = extract_bet_name(field_name, new_bet)
-					print('b')
 
 				# Extract quote value
 				bet_quote_el = bets.find_elements_by_xpath(
 						'.//div[@class="selection-price"]')[i]
-				bet_quote = bet_quote_el.text
-
-				while not bet_quote:
-					scroll_to_element(browser, bet_quote_el)
-					# time.sleep(3)
-					bet_quote = bet_quote_el.text
-					print('c')
-				# print(f'{field}___{bet_name}___{bet_quote}')
+				bet_quote = bet_quote_el.get_attribute('innerText')
 
 				# Take corresponding field id from db
-				field_id = dbf.db_select(
-						table='fields',
-						columns_in=['field_id'],
-						where='field_name = "{}" AND field_value = "{}"'.
-						format(field_name, bet_name))[0]
+				field_id = bet2id[f'{field_name}_{bet_name}']
 
 				# If quote is not available insert '-' in the db
 				if len(bet_quote) == 1:
@@ -1096,6 +1143,15 @@ def simulate_hover_and_click(browser, element):
 				browser).move_to_element(element).click(element).perform()
 	except MoveTargetOutOfBoundsException:
 		raise ConnectionError(conn_err_message)
+
+
+def time_needed(start, league):
+
+	end = time.time() - start
+	minutes = int(end // 60)
+	seconds = round(end % 60)
+	logger.info('FILL DB WITH QUOTES - Updating {} took {}:{}'.
+	            format(league, minutes, seconds))
 
 
 def wait_clickable(browser, seconds, element):
