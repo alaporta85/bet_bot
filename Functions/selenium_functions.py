@@ -1,7 +1,6 @@
 import os
 import time
 from selenium.common.exceptions import TimeoutException
-from selenium.common.exceptions import MoveTargetOutOfBoundsException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -410,6 +409,7 @@ def connect_to(some_url, browser=None):   # DONE
 	if not browser:
 		# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
 		browser = webdriver.Chrome(chrome_path)
+		browser.set_window_size(1200, 850)
 		time.sleep(3)
 
 	browser.get(some_url)
@@ -841,6 +841,7 @@ def go_to_lottomatica():
 
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
 	browser = webdriver.Chrome(chrome_path)
+	browser.set_window_size(1200, 850)
 	time.sleep(3)
 
 	browser.get(url)
@@ -1055,17 +1056,6 @@ def scroll_to_element(browser, element, position='{block: "center"}'):
 	browser.execute_script(
 			f'return arguments[0].scrollIntoView({position});',
 			element)
-
-
-def simulate_hover_and_click(browser, element):
-
-	"""Handles the cases when hover is needed before clicking."""
-
-	try:
-		webdriver.ActionChains(
-				browser).move_to_element(element).click(element).perform()
-	except MoveTargetOutOfBoundsException:
-		raise ConnectionError(conn_err_message)
 
 
 def time_needed(start, league):
