@@ -47,13 +47,9 @@ def add_bet_to_basket(browser, details, count, dynamic_message):  # DONE
 	Used inside the command /play.
 
 	:param browser: selenium browser instance
-
 	:param details: tuple, contain field and bet names
-
 	:param count: int
-
 	:param dynamic_message: str, the message to update in the chat
-
 
 	:return: str, dynamic message updated
 
@@ -75,24 +71,20 @@ def all_matches_missing(browser, all_matches, league):  # DONE
 	Used inside fill_db_with_quotes().
 
 	:param browser: selenium browser instance
-
 	:param all_matches: str, box xpath
-
 	:param league: str, name of the league. Ex. SERIE A
-
-
 
 	:return: bool, True if missing otherwise False
 
 	"""
 
-	for j in range(recurs_lim):
+	for i in range(recurs_lim):
 		try:
 			wait_clickable(browser, WAIT, all_matches)
 			return False
 		except TimeoutException:
 			logger.info('FILL DB WITH QUOTES - MATCHES for ' +
-			            '{} not found: trial {}.'.format(league, j + 1))
+			            '{} not found: trial {}.'.format(league, i + 1))
 			browser.refresh()
 
 	return True
@@ -310,10 +302,10 @@ def click_bet(browser, field, bet):   # DONE
 	# All panels. Ex. Più giocate, Combo, Casa...
 	all_panels = find_all_panels(browser)
 
-	for i, panel in enumerate(all_panels):
+	for panel in all_panels:
 
 		# Open the panel if closed
-		click_panel(browser, i, panel)
+		click_panel(browser, panel)
 
 		# Select fields and bets containers inside the panel. Each field has
 		# a bets container which contains multiple bets
@@ -371,15 +363,13 @@ def click_bet(browser, field, bet):   # DONE
 			break
 
 
-def click_panel(browser, index, panel):   # DONE
+def click_panel(browser, panel):   # DONE
 
 	"""
 	Click the panel to open it, if closed.
 	Used inside click_bet() and find_all_fields_and_bets() functions.
 
 	:param browser: selenium browser instance
-
-	:param index: int, index of the panel to click
 
 	:param panel: selenium element
 
@@ -640,74 +630,6 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 # 						values=[last_id, field_id, bet_quote])
 
 
-# def fill_quotes_table(browser, last_id):   # DONE
-#
-# 	"""
-# 	Insert the quotes in the database.
-# 	Used inside fill_db_with_quotes().
-#
-# 	:param browser: selenium browser instance
-#
-# 	:param last_id: int, id of the match
-#
-#
-# 	:return: nothing
-#
-# 	"""
-#
-# 	# Select all fields we want scrape
-# 	all_fields = dbf.db_select(
-# 			table='fields',
-# 			columns_in=['field_name'])
-#
-# 	# Associate each field with its corresponding bets
-# 	fields_bets = find_all_fields_and_bets(browser)
-# 	for field, bets in fields_bets:
-#
-# 		field_name = field.text.upper()
-# 		while not field_name:
-# 			scroll_to_element(browser, field)
-# 			field_name = field.text.upper()
-#
-# 		# If it is a field we have in the db we extract all the quotes
-# 		if field_name in all_fields:
-# 			all_bets = bets.find_elements_by_xpath(
-# 				'.//div[@class="selection-name ng-binding"]')
-#
-# 			for i, new_bet in enumerate(all_bets):
-#
-# 				bet_name = extract_bet_name(field_name, new_bet)
-# 				while not bet_name:
-# 					scroll_to_element(browser, new_bet)
-# 					bet_name = extract_bet_name(field_name, new_bet)
-#
-# 				# Extract quote value
-# 				bet_quote_el = bets.find_elements_by_xpath(
-# 						'.//div[@class="selection-price"]')[i]
-# 				bet_quote = bet_quote_el.text
-# 				while not bet_quote:
-# 					scroll_to_element(browser, bet_quote_el)
-# 					bet_quote = bet_quote_el.text
-#
-# 				# Take corresponding field id from db
-# 				field_id = dbf.db_select(
-# 						table='fields',
-# 						columns_in=['field_id'],
-# 						where='field_name = "{}" AND field_value = "{}"'.
-# 						format(field_name, bet_name))[0]
-#
-# 				# If quote is not available insert '-' in the db
-# 				if len(bet_quote) == 1:
-# 					bet_quote = '-'
-# 				else:
-# 					bet_quote = float(bet_quote)
-#
-# 				dbf.db_insert(
-# 						table='quotes',
-# 						columns=['quote_match', 'quote_field', 'quote_value'],
-# 						values=[last_id, field_id, bet_quote])
-
-
 def fill_quotes_table(browser, last_id):   # DONE
 
 	"""
@@ -804,7 +726,6 @@ def fill_teams_table():
 	browser.quit()
 
 	dbf.empty_table('teams_short')
-
 	teams = dbf.db_select(table='teams', columns_in=['team_name'])
 	for team in teams:
 		dbf.db_insert(
@@ -822,9 +743,9 @@ def find_all_fields_and_bets(browser):
 
 	all_panels = find_all_panels(browser)
 
-	for i, panel in enumerate(all_panels):
+	for panel in all_panels:
 		try:
-			click_panel(browser, i, panel)
+			click_panel(browser, panel)
 		except ConnectionError:
 			continue
 

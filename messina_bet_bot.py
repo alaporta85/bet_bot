@@ -55,7 +55,7 @@ def allow(bot, update, args):  # DONE
 			columns=['allow_name'],
 			values=[user])
 
-	return bot.send_message(chat_id=chat_id, text='{} can play.'.format(user))
+	return bot.send_message(chat_id=chat_id, text=f'{user} can play.')
 
 
 def cake(bot, update):  # DONE
@@ -97,15 +97,14 @@ def cancel(bot, update):  # DONE
 
 	if user not in users_list:
 		return bot.send_message(chat_id=chat_id,
-								text='{}, no bet to cancel.'.format(user))
+								text=f'{user}, no bet to cancel.')
 
 	dbf.db_delete(
 			table='predictions',
-	        where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
-	        format(user))
+	        where='pred_user = f"{user}" AND pred_status = "Not Confirmed"')
 
 	return bot.send_message(chat_id=chat_id,
-	                        text='{}, bet canceled.'.format(user))
+	                        text=f'{user}, bet canceled.')
 
 
 def confirm(bot, update):  # DONE
@@ -127,7 +126,7 @@ def confirm(bot, update):  # DONE
 
 	if user not in users_list:
 		return bot.send_message(
-				chat_id=chat_id, text='{}, no match to confirm.'.format(user))
+				chat_id=chat_id, text=f'{user}, no match to confirm.')
 
 	# Check if quote respects the limits
 	limits_ok = limits_are_respected(user)
@@ -137,7 +136,7 @@ def confirm(bot, update):  # DONE
 	# Delete user from 'allow' table, if present. If not, nothing happens
 	dbf.db_delete(
 			table='allow',
-			where='allow_name = "{}"'.format(user))
+			where=f'allow_name = "{user}"')
 
 	# Update the database
 	bet_id, details = bf.update_db_after_confirm(user)
@@ -149,13 +148,13 @@ def confirm(bot, update):  # DONE
 
 	# Inform users match is correctly added
 	bot.send_message(chat_id=chat_id,
-	                 text='{}, match added correctly.'.format(user))
+	                 text=f'{user}, match added correctly.')
 
 	# Play the bet automatically
 	auto_play = dbf.db_select(
 			table='predictions',
 			columns_in=['pred_id'],
-			where='pred_bet = {}'.format(bet_id))
+			where=f'pred_bet = {bet_id}')
 	if len(auto_play) == n_bets:
 		return play(bot, update, ['5'])
 
@@ -179,7 +178,7 @@ def create_list_of_matches(bet_id):  # DONE
 			columns_in=['pred_user', 'pred_date', 'pred_team1',
 			            'pred_team2',
 			            'pred_rawbet', 'pred_quote'],
-			where='bet_id = {}'.format(bet_id))
+			where=f'bet_id = {bet_id}')
 
 	# Sort matches by datetime
 	matches = sorted(matches, key=lambda x: x[1])
@@ -190,32 +189,32 @@ def create_list_of_matches(bet_id):  # DONE
 		dt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
 		hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
 
-		message += '<b>{}</b>:     {}-{} ({})    {}      @<b>{}</b>\n'.format(
-				user, team1, team2, hhmm, rawbet, quote)
+		message += (f'<b>{user}</b>:     {team1}-{team2} ({hhmm})    '
+		            f'{rawbet}      @<b>{quote}</b>\n')
 
 	return message, final_quote
 
 
-def create_summary(string):  # DONE
+def create_summary(when, euros):  # DONE
 
 	"""
 	Create the message with the summary of the bet depending on the string
 	passed.
 
-	:param string: -  'before' for the summary before playing the bet, used
+	:param when: -  'before' for the summary before playing the bet, used
 					  inside /summary()
 
-				   -  'after' for the summary after playing the bet, used
-					  inside /play()
+				 -  'after' for the summary after playing the bet, used
+					inside /play()
 
-				   -  'remind' for the summary of all the bets placed but still
-				      incomplete, used inside /remind()
+				 -  'remind' for the summary of all the bets placed but still
+				    incomplete, used inside /remind()
 
 	:return: str
 
 	"""
 
-	if string == 'before':
+	if when == 'before':
 		bet_id = dbf.db_select(
 				table='bets',
 				columns_in=['bet_id'],
@@ -225,10 +224,10 @@ def create_summary(string):  # DONE
 		else:
 			message, final_quote = create_list_of_matches(bet_id[0])
 			last_line = ('\n\nPossible win with 5 euros: ' +
-			             '<b>{:.1f}</b>'.format(final_quote * 5))
+			             f'<b>{round(final_quote*euros, 1)}</b>')
 			return message + last_line
 
-	elif string == 'after':
+	elif when == 'after':
 		bet_id = dbf.db_select(
 				table='bets',
 				columns_in=['bet_id'],
@@ -236,11 +235,11 @@ def create_summary(string):  # DONE
 
 		message, final_quote = create_list_of_matches(bet_id)
 		first_line = 'Bet placed correctly.\n\n'
-		last_line = '\nPossible win: <b>{:.1f}</b>'.format(final_quote * 5)
+		last_line = '\nPossible win: <b>{:.1f}</b>'.format(final_quote*euros)
 
 		return first_line + message + last_line
 
-	elif string == 'remind':
+	elif when == 'remind':
 		message = 'Bets still incomplete:\n\n'
 
 		incomplete_bets = dbf.db_select(
@@ -250,7 +249,7 @@ def create_summary(string):  # DONE
 		for bet_id in incomplete_bets:
 			message2, final_quote = create_list_of_matches(bet_id)
 			message += ('{}\nPossible win: <b>{:.1f}</b>\n\n\n'.
-			            format(message2, final_quote * 5))
+			            format(message2, final_quote*euros))
 
 		return message
 
@@ -485,7 +484,7 @@ def get(bot, update, args):  # DONE
 		return bot.send_message(chat_id=chat_id, text='Match already chosen')
 
 
-def help_quote(bot, update):  # DONE
+def help_quote(bot, update):  # DONE
 
 	"""
 	Instructions to insert the correct bet.
@@ -835,7 +834,7 @@ def play(bot, update, args):  # DONE
 		dbf.empty_table(table='to_play')
 
 		# Print the summary
-		msg = create_summary('after')
+		msg = create_summary(when='after', euros=euros)
 		msg += '\nMoney left: <b>{}</b>'.format(money_after)
 		bot.send_message(parse_mode='HTML', chat_id=chat_id, text=msg)
 	else:
@@ -853,7 +852,7 @@ def remind(bot, update):  # DONE
 	"""
 
 	chat_id = update.message.chat_id
-	message = create_summary('remind')
+	message = create_summary(when='remind', euros=5)
 
 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 
@@ -964,7 +963,7 @@ def summary(bot, update):  # DONE
 
 	chat_id = update.message.chat_id
 
-	message = create_summary('before')
+	message = create_summary(when='before', euros=5)
 
 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 

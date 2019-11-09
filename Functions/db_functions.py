@@ -272,7 +272,7 @@ def select_team(input_team):
 
 def start_db():
 
-    db = sqlite3.connect('/Users/andrea/Desktop/Cartelle/bet_bot/extended_db.db')
+    db = sqlite3.connect('extended_db.db')
     c = db.cursor()
     c.execute("PRAGMA foreign_keys = ON")
 
