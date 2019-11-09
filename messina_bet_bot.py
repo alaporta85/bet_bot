@@ -769,7 +769,7 @@ def play(bot, update, args):  # DONE
 	# To identify the message
 	mess_id = sent.message_id
 
-	sf.login(sf.go_to_lottomatica())
+	browser = sf.login(sf.go_to_lottomatica())
 	logger.info('PLAY - Logged')
 	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
 
@@ -781,7 +781,6 @@ def play(bot, update, args):  # DONE
 	matches_to_play = dbf.db_select(table='to_play')
 
 	# Add all the preds to the basket and update the message inside the chat
-	browser = None
 	for i, (tm1, tm2, field, bet, url) in enumerate(matches_to_play):
 
 		browser = sf.connect_to(some_url=url, browser=browser)
@@ -841,7 +840,7 @@ def play(bot, update, args):  # DONE
 		msg = 'Money left did not change, try again the command /play.'
 		bot.send_message(chat_id=update.message.chat_id, text=msg)
 
-	browser.quit()
+	# browser.quit()
 
 
 def remind(bot, update):  # DONE
