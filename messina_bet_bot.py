@@ -814,7 +814,8 @@ def play(bot, update, args):  # DONE
 	# up to 1000 times
 	c = count(1)
 	while next(c) < 1000 and money_after != (money_before - euros):
-		sf.refresh_money(browser)
+		# sf.refresh_money(browser)
+		browser.refresh()
 		time.sleep(2)
 		money_after = sf.money(browser)
 
@@ -867,7 +868,7 @@ def score(bot, update, args):  # DONE
 
 	if not args:
 		return bot.send_photo(chat_id=chat_id,
-		                      photo=open('score_2018-2019.png', 'rb'))
+		                      photo=open('score_2019-2020.png', 'rb'))
 	elif args[0] == 'general':
 		return bot.send_photo(chat_id=chat_id,
 		                      photo=open('score_GENERAL.png', 'rb'))

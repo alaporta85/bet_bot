@@ -193,14 +193,14 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 		bets_list = browser.find_elements_by_xpath(table_path +
 												   '//tr[@class="ng-scope"]')
 
-		# updated = []
+		updated = []
 		for ref_bet in ref_list:
 			ref_id = ref_bet[0]
 			details_db = dbf.db_select(
 					table='predictions',
 					columns_in=['pred_team1', 'pred_team2'],
 					where='pred_bet = {}'.format(ref_id))
-			# ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
+			ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
 
 			for bet in bets_list:
 
@@ -210,15 +210,15 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 				if 'blue' not in color:
 
-					# date = bet.find_element_by_xpath(
-					# 		'.//td[@class="ng-binding"]').text[:10]
-					#
-					# if date == ref_date and date in updated:
-					# 	updated.remove(date)
-					# 	continue
-					#
-					# elif date == ref_date and date not in updated:
-					# 	updated.append(date)
+					date = bet.find_element_by_xpath(
+							'.//td[@class="ng-binding"]').text[:10]
+
+					if date == ref_date and date in updated:
+						updated.remove(date)
+						continue
+
+					elif date == ref_date and date not in updated:
+						updated.append(date)
 
 						new_status = bet.find_element_by_xpath(
 								'.//translate-label[@key-default=' +
@@ -479,7 +479,7 @@ def fill_db_with_quotes(leagues):   # DONE
 			try:
 				match = all_matches[i]
 			except IndexError:
-				time_needed(start, league)
+				# time_needed(start, league)
 				break
 
 			scroll_to_element(browser, match)
@@ -804,7 +804,7 @@ def click_scommetti(browser):   # DONE
 	button_location = './/div[@class="buttons-betslip"]'
 	button = browser.find_element_by_xpath(button_location)
 	scroll_to_element(browser, button)
-	# button.click()
+	button.click()
 
 
 # def fix_url(match_url):   # DONE
@@ -841,7 +841,7 @@ def go_to_lottomatica():
 
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
 	browser = webdriver.Chrome(chrome_path)
-	browser.set_window_size(1200, 850)
+	# browser.set_window_size(1200, 1000)
 	time.sleep(3)
 
 	browser.get(url)
@@ -883,7 +883,7 @@ def go_to_placed_bets(browser, LIMIT_2):
 	all the past bets.
 	"""
 
-	FILTER = 'Ultimi 5 Mesi'
+	FILTER = 'Ultimi 3 Mesi'
 
 	try:
 		placed_bets_path = './/a[@title="Movimenti e giocate"]'
@@ -1004,23 +1004,32 @@ def money(browser):
 	"""Extract the text from the HTML element and return it as a float."""
 
 	money_path = './/span[@class="user-balance ng-binding"]'
+	money_el = browser.find_element_by_xpath(money_path)
 
+	money = None
+	while not money:
+		money = money_el.get_attribute('innerText')
 
-	for i in range(recurs_lim):
-		try:
-			wait_visible(browser, WAIT, money_path)
-		except TimeoutException:
-			logger.info('MONEY - Money container not found')
-			if i < 2:
-				browser.refresh()
-				continue
-			else:
-				browser.quit()
-
-	money = browser.find_element_by_xpath(money_path).text
 	money = float(money.replace(',', '.'))
 
 	return money
+
+
+	# for i in range(recurs_lim):
+	# 	try:
+	# 		wait_visible(browser, WAIT, money_path)
+	# 	except TimeoutException:
+	# 		logger.info('MONEY - Money container not found')
+	# 		if i < 2:
+	# 			browser.refresh()
+	# 			continue
+	# 		else:
+	# 			browser.quit()
+	#
+	# money = browser.find_element_by_xpath(money_path).text
+	# money = float(money.replace(',', '.'))
+	#
+	# return money
 
 
 def refresh_money(browser):
