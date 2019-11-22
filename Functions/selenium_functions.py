@@ -36,7 +36,7 @@ chrome_path = absolute_path + '/chromedriver'
 logger = log.get_flogger()
 
 WAIT = 10
-recurs_lim = 3
+RECURSIONS = 3
 
 
 def add_bet_to_basket(browser, details, count, dynamic_message):  # DONE
@@ -77,13 +77,13 @@ def all_matches_missing(browser, all_matches, league):  # DONE
 
 	"""
 
-	for i in range(recurs_lim):
+	for i in range(RECURSIONS):
 		try:
 			wait_clickable(browser, WAIT, all_matches)
 			return False
 		except TimeoutException:
-			logger.info('FILL DB WITH QUOTES - MATCHES for ' +
-			            '{} not found: trial {}.'.format(league, i + 1))
+			logger.info('ALL MATCHES MISSING - MATCHES for ' +
+			            f'{league} not found: trial {i+1}.')
 			browser.refresh()
 
 	return True
@@ -96,6 +96,7 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 	inside the bet are concluded. If yes, update the column bet_result in
 	the table 'bet' and the columns 'pred_result' and pred_label in the
 	table 'predictions' of the database.
+
 	"""
 
 	try:
@@ -434,9 +435,6 @@ def fill_db_with_quotes(leagues):   # DONE
 
 	:param leagues: list, leagues to download
 
-
-	:return: nothing
-
 	"""
 
 	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
@@ -453,7 +451,7 @@ def fill_db_with_quotes(leagues):   # DONE
 		league_id = dbf.db_select(
 				table='leagues',
 				columns_in=['league_id'],
-		        where='league_name = "{}"'.format(league))[0]
+		        where=f'league_name = "{league}"')[0]
 
 		# We repeat this for loop for every match of the league. Value is set
 		# to 100 to be sure to download all the matches. When no match is found
@@ -512,13 +510,9 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 	Used inside fill_db_with_quotes().
 
 	:param browser: selenium browser instance
-
 	:param league_id: int
-
 	:param d_m_y: str, date of the match. Ex 20/20/2018
-
 	:param h_m: str, time of the match. Ex 15:00
-
 
 	:return last_id: int, id of the match the will be used for the quotes
 	:return back: button
@@ -546,11 +540,9 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 	# Format datetime object
 	dd, mm, yy = d_m_y.split('/')
 	h, m = h_m.split(':')
-	match_dt = bf.from_str_to_dt(
-			'{}-{}-{} {}:{}:{}'.format(yy, mm, dd, h, m, 00))
+	match_dt = bf.from_str_to_dt(f'{yy}-{mm}-{dd} {h}:{m}:00')
 
 	# Fix url to save
-	# url = fix_url(browser.current_url)
 	url = browser.current_url
 
 	# We need the id of the match to update the quotes later
@@ -637,35 +629,28 @@ def fill_quotes_table(browser, last_id):   # DONE
 	Used inside fill_db_with_quotes().
 
 	:param browser: selenium browser instance
-
 	:param last_id: int, id of the match
-
-
-	:return: nothing
 
 	"""
 
-	# Select all fields we want scrape
-	all_fields = dbf.db_select(
-			table='fields',
-			columns_in=['field_name'])
-
-	a = dbf.db_select(
+	# Select all fields we want to scrape
+	data = dbf.db_select(
 			table='fields',
 			columns_in=['field_id', 'field_name', 'field_value'])
-	bet2id = {f'{field}_{bet}': idx for idx, field, bet in a}
+
+	all_fields = [field for idx, field, bet in data]
+	bet2id = {f'{field}_{bet}': idx for idx, field, bet in data}
 
 	# Associate each field with its corresponding bets
 	fields_bets = find_all_fields_and_bets(browser)
 	for field, bets in fields_bets:
 
-		field_name = field.get_attribute('innerText').upper()
-
 		# If it is a field we have in the db we extract all the quotes
+		field_name = field.get_attribute('innerText').upper()
 		if field_name in all_fields:
+
 			all_bets = bets.find_elements_by_xpath(
 				'.//div[@class="selection-name ng-binding"]')
-
 			for i, new_bet in enumerate(all_bets):
 
 				bet_name = extract_bet_name(field_name, new_bet)
@@ -677,12 +662,6 @@ def fill_quotes_table(browser, last_id):   # DONE
 
 				# Take corresponding field id from db
 				field_id = bet2id[f'{field_name}_{bet_name}']
-
-				# If quote is not available insert '-' in the db
-				if len(bet_quote) == 1:
-					bet_quote = '-'
-				else:
-					bet_quote = float(bet_quote)
 
 				dbf.db_insert(
 						table='quotes',
@@ -772,7 +751,7 @@ def find_all_panels(browser):
 
 	all_panels_path = '//div[@class="item-group ng-scope"]'
 
-	for i in range(recurs_lim):
+	for i in range(RECURSIONS):
 		try:
 			wait_visible(browser, WAIT, all_panels_path)
 			all_panels = browser.find_elements_by_xpath(all_panels_path)
@@ -1037,7 +1016,7 @@ def refresh_money(browser):
 	time.sleep(2)
 	refresh_path = './/user-balance-refresh-btn'
 
-	for i in range(recurs_lim):
+	for i in range(RECURSIONS):
 		try:
 			wait_clickable(browser, WAIT, refresh_path)
 			break

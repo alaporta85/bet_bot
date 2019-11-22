@@ -87,7 +87,7 @@ class Stats(object):
 		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
 		normalize_indices()
-		for i in ['GENERAL', '2017-2018', '2018-2019']:
+		for i in ['GENERAL', '2017-2018', '2018-2019', '2019-2020']:
 			score(i)
 		cake()
 		series()
@@ -240,12 +240,12 @@ def score(which):
 	                         (preds2['Label'] == 'WINNING')]) /
 	              len(preds2[preds2['User'] == name]) * 100, 1) for name
 	        in names]
+	mean_quoteP = [round(preds2[preds2['User'] == name]['Quote'].values.mean(),
+	                     2)
+	               for name in names]
 	mean_quoteW = [round(preds2[(preds2['User'] == name) &
 	                            (preds2['Label'] == 'WINNING')].
 	                sort_values(by='Quote')['Quote'].values[1:-1].mean(), 2)
-	               for name in names]
-	mean_quoteP = [round(preds2[preds2['User'] == name]['Quote'].values.mean(),
-	                     2)
 	               for name in names]
 	colors = [colors_dict[name] for name in names]
 
