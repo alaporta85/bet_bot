@@ -664,10 +664,9 @@ def new_quotes(bot, update, args):  # DONE
 		logger.info('NEW_QUOTES - Nightly job: Updating quote...')
 		sf.fill_db_with_quotes(leagues)
 		end = time.time() - start
-		minutes = int(end//60)
-		seconds = round(end % 60)
-		logger.info('NEW_QUOTES - Whole process took {}:{}.'.format(minutes,
-																	seconds))
+		mins = int(end//60)
+		secs = round(end % 60)
+		logger.info(f'NEW_QUOTES - Whole process took {mins}:{secs}.')
 
 
 def nickname(update):  # DONE
@@ -682,7 +681,7 @@ def nickname(update):  # DONE
 	user, role = dbf.db_select(
 			table='people',
 			columns_in=['people_nick', 'people_role'],
-			where='people_name = "{}"'.format(name))[0]
+			where=f'people_name = "{name}"')[0]
 
 	return user, role
 
@@ -712,20 +711,10 @@ def night_quotes(bot, update):  # DONE
 		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
 		sf.fill_db_with_quotes(leagues)
 		end = time.time() - start
-		minutes = int(end // 60)
-		seconds = round(end % 60)
-		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
-		                                                            seconds))
+		mins = int(end // 60)
+		secs = round(end % 60)
+		logger.info(f'NIGHT_QUOTES - Whole process took {mins}:{secs}.')
 
-		# Start scraping
-		start = time.time()
-		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
-		sf.fill_db_with_quotes(leagues)
-		end = time.time() - start
-		minutes = int(end // 60)
-		seconds = round(end % 60)
-		logger.info('NIGHT_QUOTES - Whole process took {}:{}.'.format(minutes,
-		                                                              seconds))
 	else:
 		chat_id = update.message.chat_id
 		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
