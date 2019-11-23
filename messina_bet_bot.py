@@ -758,9 +758,7 @@ def play(bot, update, args):  # DONE
 	# To identify the message
 	mess_id = sent.message_id
 
-	browser = sf.login(sf.go_to_lottomatica())
-	logger.info('PLAY - Logged')
-	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
+	browser = sf.go_to_lottomatica()
 
 	# This message will be updated during the process to keep track of all
 	# the steps
@@ -785,6 +783,10 @@ def play(bot, update, args):  # DONE
 
 		bot.edit_message_text(
 				chat_id=chat_id, message_id=mess_id, text=basket_msg)
+
+	browser = sf.login(browser=browser)
+	logger.info('PLAY - Logged')
+	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
 
 	# Insert the amount to bet
 	sf.insert_euros(browser, euros)
