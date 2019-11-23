@@ -753,7 +753,7 @@ def play(bot, update, args):  # DONE
 		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
 
 	# Log in
-	sent = bot.send_message(chat_id=chat_id, text='Logging...')
+	sent = bot.send_message(chat_id=chat_id, text='Matches added: 0')
 
 	# To identify the message
 	mess_id = sent.message_id
@@ -784,6 +784,7 @@ def play(bot, update, args):  # DONE
 		bot.edit_message_text(
 				chat_id=chat_id, message_id=mess_id, text=basket_msg)
 
+	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logging')
 	browser = sf.login(browser=browser)
 	logger.info('PLAY - Logged')
 	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
