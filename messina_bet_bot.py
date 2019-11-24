@@ -101,7 +101,7 @@ def cancel(bot, update):  # DONE
 
 	dbf.db_delete(
 			table='predictions',
-	        where='pred_user = f"{user}" AND pred_status = "Not Confirmed"')
+	        where=f'pred_user = "{user}" AND pred_status = "Not Confirmed"')
 
 	return bot.send_message(chat_id=chat_id,
 	                        text=f'{user}, bet canceled.')
