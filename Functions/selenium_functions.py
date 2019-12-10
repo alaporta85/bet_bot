@@ -783,7 +783,9 @@ def click_scommetti(browser):   # DONE
 	button_location = './/div[@class="buttons-betslip"]'
 	button = browser.find_element_by_xpath(button_location)
 	scroll_to_element(browser, button)
+	time.sleep(10)
 	button.click()
+	time.sleep(20)
 
 
 # def fix_url(match_url):   # DONE
@@ -971,6 +973,7 @@ def login(browser):   # DONE
 		wait_clickable(browser, WAIT, accedi_path)
 		accedi = browser.find_element_by_xpath(accedi_path)
 		accedi.click()
+		time.sleep(20)
 
 		return browser
 	except TimeoutException:

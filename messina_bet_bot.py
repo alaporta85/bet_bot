@@ -833,7 +833,7 @@ def play(bot, update, args):  # DONE
 		msg = 'Money left did not change, try again the command /play.'
 		bot.send_message(chat_id=update.message.chat_id, text=msg)
 
-	# browser.quit()
+	browser.quit()
 
 
 def remind(bot, update):  # DONE
