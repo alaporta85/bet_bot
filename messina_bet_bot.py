@@ -989,7 +989,7 @@ def update_results(bot, update):
 	time.sleep(3)
 
 	try:
-		sf.go_to_personal_area(browser, 0)
+		sf.go_to_personal_area(browser)
 
 		sf.go_to_placed_bets(browser, 0)
 
