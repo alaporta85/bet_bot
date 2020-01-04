@@ -664,7 +664,15 @@ def fill_teams_table():
 				where=f'match_league = {league}')
 		new_teams = [el for pair in new_teams for el in pair]
 		new_teams = set(new_teams)
-		print()
+
+		if new_teams - old_teams:
+			dbf.db_delete(table='teams', where=f'team_league = {league}')
+
+			for team in new_teams:
+				dbf.db_insert(
+						table='teams',
+						columns=['team_league', 'team_name'],
+						values=[league, team])
 
 
 def find_all_fields_and_bets(browser):
@@ -1006,4 +1014,4 @@ def wait_visible(browser, seconds, element):
 			browser, seconds).until(EC.visibility_of_element_located(
 					(By.XPATH, element)))
 
-fill_teams_table()
+# fill_teams_table()

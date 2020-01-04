@@ -179,7 +179,10 @@ def compute_indices(dataframe, name):
 
 def money_bal():
 
-	return bets[bets['Result'] == 'WINNING']['Prize'].sum() - bets['Euros'].sum()
+	prize = bets[bets['Result'] == 'WINNING']['Prize'].sum()
+	bet = bets['Euros'].sum()
+
+	return round(prize - bet, 1)
 
 
 def normalize_indices():
