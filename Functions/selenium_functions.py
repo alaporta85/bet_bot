@@ -23,9 +23,6 @@ countries = {
 			 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
 			 }
 
-conn_err_message = ('An error occurred. This might be due to some problems ' +
-					'with the internet connection. Please try again.')
-
 chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.binary_location = ('/Applications/Google Chrome.app/' +
@@ -99,83 +96,83 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 
 	"""
 
-	try:
+	# try:
 
-		prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
-					   'pull-right pull-down"]')
-		prize_element = browser.find_elements_by_xpath(prize_table +
-													   '//tr/td')[7]
-		prize_value = float(prize_element.text[:-1].replace('.', '').
-		                    replace(',', '.'))
+	prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
+				   'pull-right pull-down"]')
+	prize_element = browser.find_elements_by_xpath(prize_table +
+												   '//tr/td')[7]
+	prize_value = float(prize_element.text[:-1].replace('.', '').
+	                    replace(',', '.'))
+
+	dbf.db_update(
+			table='bets',
+			columns=['bet_prize'],
+			values=[prize_value],
+			where='bet_id = {}'.format(ref_id))
+
+	new_table_path = './/table[@class="bet-detail"]'
+	wait_visible(browser, 20, new_table_path)
+	new_bets_list = browser.find_elements_by_xpath(
+			new_table_path + '//tr[@class="ng-scope"]')
+
+	# Count the matches inside the bet which are already concluded
+	matches_completed = 0
+	for new_bet in new_bets_list:
+		label_element = new_bet.find_element_by_xpath(
+			'.//div[contains(@class,"ng-scope")]')
+		label = label_element.get_attribute('ng-switch-when')
+		if label == 'WINNING' or label == 'LOSING':
+			matches_completed += 1
+
+	# If not all of them are concluded code stops here
+	if matches_completed != len(new_bets_list):
+		logger.info('Bet with id {} is still incomplete'.format(ref_id))
+		return 0
+
+	logger.info('Updating bet with id: {}'.format(ref_id))
+	for new_bet in new_bets_list:
+		match = new_bet.find_element_by_xpath('.//td[6]').text
+		team1 = dbf.select_team(match.split(' - ')[0])
+		team2 = dbf.select_team(match.split(' - ')[1])
+		label_element = new_bet.find_element_by_xpath(
+				'.//div[contains(@class,"ng-scope")]')
+		label = label_element.get_attribute('ng-switch-when')
+		quote = float(new_bet.find_element_by_xpath('.//td[10]').text)
+		result = new_bet.find_element_by_xpath('.//td[11]').text
+
+		match_id = dbf.db_select(
+				table='bets INNER JOIN predictions on pred_bet = bet_id',
+				columns_in=['pred_id'],
+				where=('bet_id = {} AND pred_team1 = "{}" AND ' +
+				       'pred_team2 = "{}"').
+				format(ref_id, team1, team2))[0]
 
 		dbf.db_update(
 				table='bets',
-				columns=['bet_prize'],
-				values=[prize_value],
+				columns=['bet_result'],
+				values=[new_status],
 				where='bet_id = {}'.format(ref_id))
 
-		new_table_path = './/table[@class="bet-detail"]'
-		wait_visible(browser, 20, new_table_path)
-		new_bets_list = browser.find_elements_by_xpath(
-				new_table_path + '//tr[@class="ng-scope"]')
+		dbf.db_update(
+				table='predictions',
+				columns=['pred_quote', 'pred_result', 'pred_label'],
+				values=[quote, result, label],
+				where='pred_id = {}'.format(match_id))
 
-		# Count the matches inside the bet which are already concluded
-		matches_completed = 0
-		for new_bet in new_bets_list:
-			label_element = new_bet.find_element_by_xpath(
-				'.//div[contains(@class,"ng-scope")]')
-			label = label_element.get_attribute('ng-switch-when')
-			if label == 'WINNING' or label == 'LOSING':
-				matches_completed += 1
+	return 1
 
-		# If not all of them are concluded code stops here
-		if matches_completed != len(new_bets_list):
-			logger.info('Bet with id {} is still incomplete'.format(ref_id))
-			return 0
-
-		logger.info('Updating bet with id: {}'.format(ref_id))
-		for new_bet in new_bets_list:
-			match = new_bet.find_element_by_xpath('.//td[6]').text
-			team1 = dbf.select_team(match.split(' - ')[0])
-			team2 = dbf.select_team(match.split(' - ')[1])
-			label_element = new_bet.find_element_by_xpath(
-					'.//div[contains(@class,"ng-scope")]')
-			label = label_element.get_attribute('ng-switch-when')
-			quote = float(new_bet.find_element_by_xpath('.//td[10]').text)
-			result = new_bet.find_element_by_xpath('.//td[11]').text
-
-			match_id = dbf.db_select(
-					table='bets INNER JOIN predictions on pred_bet = bet_id',
-					columns_in=['pred_id'],
-					where=('bet_id = {} AND pred_team1 = "{}" AND ' +
-					       'pred_team2 = "{}"').
-					format(ref_id, team1, team2))[0]
-
-			dbf.db_update(
-					table='bets',
-					columns=['bet_result'],
-					values=[new_status],
-					where='bet_id = {}'.format(ref_id))
-
-			dbf.db_update(
-					table='predictions',
-					columns=['pred_quote', 'pred_result', 'pred_label'],
-					values=[quote, result, label],
-					where='pred_id = {}'.format(match_id))
-
-		return 1
-
-	except (TimeoutException, ElementNotInteractableException):
-
-		if LIMIT_4 < 3:
-			logger.info('Recursive analyze_details_table')
-			browser.refresh()
-			time.sleep(3)
-			return analyze_details_table(browser, ref_id,
-			                             new_status, LIMIT_4 + 1)
-		else:
-			raise ConnectionError('Unable to find past bets. ' +
-								  'Please try again.')
+	# except (TimeoutException, ElementNotInteractableException):
+	#
+	# 	if LIMIT_4 < 3:
+	# 		logger.info('Recursive analyze_details_table')
+	# 		browser.refresh()
+	# 		time.sleep(3)
+	# 		return analyze_details_table(browser, ref_id,
+	# 		                             new_status, LIMIT_4 + 1)
+	# 	else:
+	# 		raise ConnectionError('Unable to find past bets. ' +
+	# 							  'Please try again.')
 
 
 def analyze_main_table(browser, ref_list, LIMIT_3):
@@ -188,96 +185,96 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 	bets_updated = 0
 
-	try:
-		table_path = './/table[@id="tabellaRisultatiTransazioni"]'
-		wait_visible(browser, 20, table_path)
-		bets_list = browser.find_elements_by_xpath(table_path +
-												   '//tr[@class="ng-scope"]')
+	# try:
+	table_path = './/table[@id="tabellaRisultatiTransazioni"]'
+	wait_visible(browser, 20, table_path)
+	bets_list = browser.find_elements_by_xpath(table_path +
+											   '//tr[@class="ng-scope"]')
 
-		updated = []
-		for ref_bet in ref_list:
-			ref_id = ref_bet[0]
-			details_db = dbf.db_select(
-					table='predictions',
-					columns_in=['pred_team1', 'pred_team2'],
-					where='pred_bet = {}'.format(ref_id))
-			ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
+	updated = []
+	for ref_bet in ref_list:
+		ref_id = ref_bet[0]
+		details_db = dbf.db_select(
+				table='predictions',
+				columns_in=['pred_team1', 'pred_team2'],
+				where='pred_bet = {}'.format(ref_id))
+		ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
 
-			for bet in bets_list:
+		for bet in bets_list:
 
-				color = bet.find_element_by_xpath(
-						'.//td[contains(@class,"state state")]')\
-					.get_attribute('class')
+			color = bet.find_element_by_xpath(
+					'.//td[contains(@class,"state state")]')\
+				.get_attribute('class')
 
-				if 'blue' not in color:
+			if 'blue' not in color:
 
-					date = bet.find_element_by_xpath(
-							'.//td[@class="ng-binding"]').text[:10]
+				date = bet.find_element_by_xpath(
+						'.//td[@class="ng-binding"]').text[:10]
 
-					if date == ref_date and date in updated:
-						updated.remove(date)
+				if date == ref_date and date in updated:
+					updated.remove(date)
+					continue
+
+				elif date == ref_date and date not in updated:
+					updated.append(date)
+
+					new_status = bet.find_element_by_xpath(
+							'.//translate-label[@key-default=' +
+							'"statement.state"]').text
+
+					if new_status == 'Vincente':
+						new_status = 'WINNING'
+					elif new_status == 'Non Vincente':
+						new_status = 'LOSING'
+
+					main_window = browser.current_window_handle
+					details = bet.find_element_by_xpath('.//a')
+					scroll_to_element(browser, details)
+					details.click()
+					time.sleep(3)
+
+					new_window = browser.window_handles[-1]
+					browser.switch_to_window(new_window)
+					time.sleep(1)
+
+					new_table_path = './/table[@class="bet-detail"]'
+					wait_visible(browser, 20, new_table_path)
+					new_bets_list = browser.find_elements_by_xpath(
+							new_table_path + '//tr[@class="ng-scope"]')
+
+					details_web = []
+					for new_bet in new_bets_list:
+						match = new_bet.find_element_by_xpath(
+							'.//td[6]').text
+						team1 = dbf.select_team(match.split(' - ')[0])
+						team2 = dbf.select_team(match.split(' - ')[1])
+						details_web.append((team1, team2))
+					if set(details_db) - set(details_web):
+						browser.close()
+						browser.switch_to_window(main_window)
 						continue
 
-					elif date == ref_date and date not in updated:
-						updated.append(date)
+					bets_updated += analyze_details_table(browser, ref_id,
+														  new_status, 0)
 
-						new_status = bet.find_element_by_xpath(
-								'.//translate-label[@key-default=' +
-								'"statement.state"]').text
+					browser.close()
 
-						if new_status == 'Vincente':
-							new_status = 'WINNING'
-						elif new_status == 'Non Vincente':
-							new_status = 'LOSING'
-
-						main_window = browser.current_window_handle
-						details = bet.find_element_by_xpath('.//a')
-						scroll_to_element(browser, details)
-						details.click()
-						time.sleep(3)
-
-						new_window = browser.window_handles[-1]
-						browser.switch_to_window(new_window)
-						time.sleep(1)
-
-						new_table_path = './/table[@class="bet-detail"]'
-						wait_visible(browser, 20, new_table_path)
-						new_bets_list = browser.find_elements_by_xpath(
-								new_table_path + '//tr[@class="ng-scope"]')
-
-						details_web = []
-						for new_bet in new_bets_list:
-							match = new_bet.find_element_by_xpath(
-								'.//td[6]').text
-							team1 = dbf.select_team(match.split(' - ')[0])
-							team2 = dbf.select_team(match.split(' - ')[1])
-							details_web.append((team1, team2))
-						if set(details_db) - set(details_web):
-							browser.close()
-							browser.switch_to_window(main_window)
-							continue
-
-						bets_updated += analyze_details_table(browser, ref_id,
-															  new_status, 0)
-
-						browser.close()
-
-						browser.switch_to_window(main_window)
-						break
+					browser.switch_to_window(main_window)
+					break
 
 
-		return bets_updated
+	return bets_updated
 
-	except (TimeoutException, ElementNotInteractableException):
-
-		if LIMIT_3 < 3:
-			logger.info('Recursive analyze_main_table')
-			browser.refresh()
-			time.sleep(3)
-			return analyze_main_table(browser, ref_list, LIMIT_3 + 1)
-		else:
-			raise ConnectionError('Unable to find past bets. ' +
-								  'Please try again.')
+	# except (TimeoutException, ElementNotInteractableException):
+	#
+	# 	if LIMIT_3 < 3:
+	# 		logger.info('Recursive analyze_main_table')
+	# 		browser.refresh()
+	# 		time.sleep(3)
+	# 		return analyze_main_table(browser, ref_list, LIMIT_3 + 1)
+	# 	else:
+	# 		raise ConnectionError('Unable to find past bets. ' +
+	# 							  'Please try again.')
 
 
 def click_bet(browser, field, bet):   # DONE
@@ -287,11 +284,8 @@ def click_bet(browser, field, bet):   # DONE
 	Used inside the function add_bet_to_basket().
 
 	:param browser: selenium browser instance
-
 	:param field: str, Ex. GOAL/NOGOAL + U/O 2,5
-
 	:param bet: str, Ex. GOAL + OVER
-
 
 	:return: nothing
 

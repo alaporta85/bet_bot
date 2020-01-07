@@ -22,6 +22,7 @@ f.close()
 lim_low = 1
 lim_high = 3.2
 n_bets = 5
+group_id = -235014519
 
 dispatcher = updater.dispatcher
 
