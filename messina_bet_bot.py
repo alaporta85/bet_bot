@@ -695,7 +695,9 @@ def night_quotes(bot, update):  # DONE
 	"""
 
 	try:
-		_, role = nickname(update)
+		nm, role = nickname(update)
+		logger.info(f'NIGHT_QUOTES - Nightly job STARTED BY {nm}: ' +
+		            'Updating quote...')
 	except AttributeError:
 		role = 'Admin'
 
