@@ -151,6 +151,9 @@ def confirm(bot, update):  # DONE
 	bot.send_message(chat_id=chat_id,
 	                 text=f'{user}, match added correctly.')
 
+	message = create_summary(when='before', euros=5)
+	bot.send_message(parse_mode='HTML', chat_id=group_id, text=message)
+
 	# Play the bet automatically
 	auto_play = dbf.db_select(
 			table='predictions',
@@ -353,6 +356,17 @@ def get(bot, update, args):  # DONE
 	"""
 
 	chat_id = update.message.chat_id
+	if chat_id == group_id:
+		# TODO send messages to each private chat instead of group chat
+		return bot.send_message(chat_id=chat_id,
+		                        text='Usa il gruppo privato')
+	else:
+		name = update.message.from_user.first_name
+		dbf.db_update(
+				table='people',
+				columns=['people_private_group'],
+				values=[chat_id],
+				where=f'people_name = "{name}"')
 
 	# Check the format
 	if not args:
@@ -489,10 +503,13 @@ def help_quote(bot, update):  # DONE
 
 	"""
 	Instructions to insert the correct bet.
-
 	"""
 
 	chat_id = update.message.chat_id
+	if chat_id == group_id:
+		# TODO send messages to each private chat instead of group chat
+		return bot.send_message(chat_id=chat_id,
+		                        text='Usa il gruppo privato')
 
 	f = open('Messages/help_quote.txt', 'r')
 	content = f.readlines()
@@ -513,6 +530,10 @@ def help_stats(bot, update):  # DONE
 	"""
 
 	chat_id = update.message.chat_id
+	if chat_id == group_id:
+		# TODO send messages to each private chat instead of group chat
+		return bot.send_message(chat_id=chat_id,
+		                        text='Usa il gruppo privato')
 
 	f = open('Messages/help_stats.txt', 'r')
 	content = f.readlines()
@@ -531,6 +552,10 @@ def info(bot, update):  # DONE
 	"""
 
 	chat_id = update.message.chat_id
+	if chat_id == group_id:
+		# TODO send messages to each private chat instead of group chat
+		return bot.send_message(chat_id=chat_id,
+		                        text='Usa il gruppo privato')
 
 	f = open('Messages/info.txt', 'r')
 	content = f.readlines()
@@ -576,10 +601,13 @@ def match(bot, update, args):  # DONE
 
 	"""
 	Return the matches of the requested day.
-
 	"""
 
 	chat_id = update.message.chat_id
+	if chat_id == group_id:
+		# TODO send messages to each private chat instead of group chat
+		return bot.send_message(chat_id=chat_id,
+		                        text='Usa il gruppo privato')
 
 	if not args:
 		return bot.send_message(chat_id=chat_id,
@@ -727,7 +755,6 @@ def play(bot, update, args):  # DONE
 
 	"""
 	Play the bet online.
-
 	"""
 
 	chat_id = update.message.chat_id
@@ -756,7 +783,7 @@ def play(bot, update, args):  # DONE
 		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
 
 	# Log in
-	sent = bot.send_message(chat_id=chat_id, text='Matches added: 0')
+	sent = bot.send_message(chat_id=group_id, text='Matches added: 0')
 
 	# To identify the message
 	mess_id = sent.message_id
@@ -785,12 +812,12 @@ def play(bot, update, args):  # DONE
 		logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
 
 		bot.edit_message_text(
-				chat_id=chat_id, message_id=mess_id, text=basket_msg)
+				chat_id=group_id, message_id=mess_id, text=basket_msg)
 
-	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logging')
+	bot.edit_message_text(chat_id=group_id, message_id=mess_id, text='Logging')
 	browser = sf.login(browser=browser)
 	logger.info('PLAY - Logged')
-	bot.edit_message_text(chat_id=chat_id, message_id=mess_id, text='Logged')
+	bot.edit_message_text(chat_id=group_id, message_id=mess_id, text='Logged')
 
 	# Insert the amount to bet
 	sf.insert_euros(browser, euros)
@@ -831,10 +858,10 @@ def play(bot, update, args):  # DONE
 		# Print the summary
 		msg = create_summary(when='after', euros=euros)
 		msg += '\nMoney left: <b>{}</b>'.format(money_after)
-		bot.send_message(parse_mode='HTML', chat_id=chat_id, text=msg)
+		bot.send_message(parse_mode='HTML', chat_id=group_id, text=msg)
 	else:
 		msg = 'Money left did not change, try again the command /play.'
-		bot.send_message(chat_id=update.message.chat_id, text=msg)
+		bot.send_message(chat_id=group_id, text=msg)
 
 	browser.quit()
 

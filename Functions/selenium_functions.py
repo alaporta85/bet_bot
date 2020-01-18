@@ -1,5 +1,6 @@
 import os
 import time
+import re
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -597,78 +598,6 @@ def fill_quotes_table(browser, last_id):   # DONE
 						values=[last_id, field_id, bet_quote])
 
 
-# def fill_teams_table():
-#
-# 	# Delete old data from "teams"
-# 	dbf.empty_table('teams')
-#
-# 	# Start the browser
-# 	browser = webdriver.Chrome(chrome_path)
-# 	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
-#
-# 	for league in countries:
-# 		browser.get(head + countries[league])
-#
-# 		# To close the popup. Only the first time after connection
-# 		if league == 'SERIE A':
-# 			browser.refresh()
-#
-# 		league_id = dbf.db_select(
-# 				table='leagues',
-# 				columns_in=['league_id'],
-# 				where='league_name = "{}"'.format(league))[0]
-#
-# 		matches_path = './/div[@class="event-name ng-binding"]'
-# 		wait_clickable(browser, WAIT, matches_path)
-# 		all_matches = browser.find_elements_by_xpath(matches_path)
-# 		for match in all_matches:
-# 			scroll_to_element(browser, match)
-# 			teams = match.text.upper().split(' - ')
-# 			for team in teams:
-# 				dbf.db_insert(
-# 						table='teams',
-# 						columns=['team_league', 'team_name'],
-# 						values=[league_id, team])
-#
-# 	browser.quit()
-#
-# 	dbf.empty_table('teams_short')
-# 	teams = dbf.db_select(table='teams', columns_in=['team_name'])
-# 	for team in teams:
-# 		dbf.db_insert(
-# 				table='teams_short',
-# 				columns=['team_short_name', 'team_short_value'],
-# 				values=[team, team[:3]])
-
-
-def fill_teams_table():
-
-	leagues = dbf.db_select(table='leagues', columns_in=['league_id'])
-
-	for league in leagues:
-		old_teams = dbf.db_select(
-				table='teams',
-				columns_in=['team_name'],
-				where=f'team_league={league}')
-		old_teams = set(old_teams)
-
-		new_teams = dbf.db_select(
-				table='matches',
-				columns_in=['match_team1', 'match_team2'],
-				where=f'match_league = {league}')
-		new_teams = [el for pair in new_teams for el in pair]
-		new_teams = set(new_teams)
-
-		if new_teams - old_teams:
-			dbf.db_delete(table='teams', where=f'team_league = {league}')
-
-			for team in new_teams:
-				dbf.db_insert(
-						table='teams',
-						columns=['team_league', 'team_name'],
-						values=[league, team])
-
-
 def find_all_fields_and_bets(browser):
 
 	"""
@@ -1007,5 +936,3 @@ def wait_visible(browser, seconds, element):
 	WebDriverWait(
 			browser, seconds).until(EC.visibility_of_element_located(
 					(By.XPATH, element)))
-
-# fill_teams_table()
