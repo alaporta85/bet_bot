@@ -22,7 +22,10 @@ f.close()
 lim_low = 1
 lim_high = 3.2
 n_bets = 5
-group_id = -235014519
+
+debug = False
+testazza = 67507055
+group_id = -235014519 if not debug else testazza
 
 dispatcher = updater.dispatcher
 

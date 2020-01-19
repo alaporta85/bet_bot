@@ -824,6 +824,13 @@ def login(browser):   # DONE
 	password = credentials[1][10:]
 
 	try:
+
+		better_path = './/a[@class="btn-menu btn-menu--better"]'
+		better = browser.find_element_by_xpath(better_path)
+		wait_clickable(browser, WAIT, better_path)
+		better.click()
+		time.sleep(20)
+
 		# Click the login button
 		button_path = './/button[@class="btn btn-default btn-accedi"]'
 		button = browser.find_element_by_xpath(button_path)
