@@ -15,13 +15,13 @@ from Functions import bot_functions as bf
 
 
 countries = {
-			 'SERIE A': 'italia/seriea.html',
+			 # 'SERIE A': 'italia/seriea.html',
 			 'PREMIER LEAGUE': 'inghilterra/premierleague.html',
-			 'PRIMERA DIVISION': 'spagna/primeradivision.html',
+			 # 'PRIMERA DIVISION': 'spagna/primeradivision.html',
 			 'BUNDESLIGA': 'germania/bundesliga.html',
 			 'LIGUE 1': 'francia/ligue1.html',
-			 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
+			 # 'EREDIVISIE': 'olanda/eredivisie1.html',
+			 # 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
 			 }
 
 chrome_options = Options()
@@ -699,8 +699,9 @@ def go_to_lottomatica():
 	Connect to Lottomatica webpage and click "CALCIO" button.
 	"""
 
-	url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
-		   'scommesse-sportive.html')
+	# url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
+	# 	   'scommesse-sportive.html')
+	url = 'https://www.lottomatica.it/scommesse/avvenimenti'
 
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
 	browser = webdriver.Chrome(chrome_path)
@@ -743,6 +744,7 @@ def go_to_placed_bets(browser, LIMIT_2):
 	"""
 
 	FILTER = 'Ultimi 3 Mesi'
+	FILTER = '12 Mesi'
 
 	try:
 		placed_bets_path = './/a[@title="Movimenti e giocate"]'
@@ -825,11 +827,11 @@ def login(browser):   # DONE
 
 	try:
 
-		better_path = './/a[@class="btn-menu btn-menu--better"]'
-		better = browser.find_element_by_xpath(better_path)
-		wait_clickable(browser, WAIT, better_path)
-		better.click()
-		time.sleep(20)
+		# better_path = './/a[@class="btn-menu btn-menu--better"]'
+		# better = browser.find_element_by_xpath(better_path)
+		# wait_clickable(browser, WAIT, better_path)
+		# better.click()
+		# time.sleep(20)
 
 		# Click the login button
 		button_path = './/button[@class="btn btn-default btn-accedi"]'
