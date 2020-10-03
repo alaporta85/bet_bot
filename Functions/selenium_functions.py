@@ -15,7 +15,7 @@ from Functions import db_functions as dbf
 
 
 countries = {
-			 'SERIE A': 'italia/idivisionev3.html',
+			 'SERIE A': 'italia/seriea.html',
 			 'PREMIER LEAGUE': 'inghilterra/premierleague1.html',
 			 'PRIMERA DIVISION': 'spagna/primeradivision1.html',
 			 'BUNDESLIGA': 'germania/bundesliga1.html',
@@ -462,7 +462,7 @@ def click_panel(browser, index, panel):
 
 	if 'active' not in button.get_attribute('class'):
 		button.click()
-		time.sleep(1)
+		time.sleep(2)
 
 
 def fill_db_with_quotes(leagues):
@@ -473,7 +473,11 @@ def fill_db_with_quotes(leagues):
 	"""
 
 	# Start the browser
-	browser = webdriver.Chrome(chrome_path)
+	try:
+		browser = webdriver.Chrome(chrome_path)
+	except OSError:
+		browser = webdriver.Chrome(chrome_path+'.exe')
+
 	head = 'https://www.lottomatica.it/scommesse/avvenimenti/calcio/'
 
 	for j, league in enumerate(leagues):
