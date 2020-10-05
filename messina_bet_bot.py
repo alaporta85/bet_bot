@@ -1026,7 +1026,7 @@ def update_results(bot, update):
 
 		sf.go_to_placed_bets(browser, 0)
 
-		bets_updated = sf.analyze_main_table(browser, ref_list, 0)
+		bets_updated = sf.analyze_main_table(browser, ref_list)
 
 	except ConnectionError as e:
 		browser.quit()

@@ -66,3 +66,12 @@ def check_manual_short_names():
 		c = shorts.count(short)
 		if c > 1:
 			print(f'Check short name {short}')
+
+
+# Run this function
+# fill_teams_table()
+
+# Check in db the short names and fix the ones that are NULL
+
+# Then run the function below to double check
+# check_manual_short_names()
