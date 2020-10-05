@@ -1,6 +1,5 @@
 import os
 import time
-import re
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -15,13 +14,13 @@ from Functions import bot_functions as bf
 
 
 countries = {
-			 # 'SERIE A': 'italia/seriea.html',
+			 'SERIE A': 'italia/seriea.html',
 			 'PREMIER LEAGUE': 'inghilterra/premierleague.html',
-			 # 'PRIMERA DIVISION': 'spagna/primeradivision.html',
+			 'PRIMERA DIVISION': 'spagna/primeradivision.html',
 			 'BUNDESLIGA': 'germania/bundesliga.html',
 			 'LIGUE 1': 'francia/ligue1.html',
-			 # 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 # 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
+			 'EREDIVISIE': 'olanda/eredivisie1.html',
+			 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
 			 }
 
 chrome_options = Options()
@@ -37,7 +36,7 @@ WAIT = 10
 RECURSIONS = 3
 
 
-def add_bet_to_basket(browser, details, count, dynamic_message):  # DONE
+def add_bet_to_basket(browser, details, count, dynamic_message):
 
 	"""
 	Click the bet button and add it to the basket.
@@ -60,7 +59,7 @@ def add_bet_to_basket(browser, details, count, dynamic_message):  # DONE
 	return dynamic_message.format(count + 1)
 
 
-def all_matches_missing(browser, all_matches, league):  # DONE
+def all_matches_missing(browser, all_matches, league):
 
 	"""
 	Check if the container with all the matches is present. Sometimes it is
@@ -87,7 +86,7 @@ def all_matches_missing(browser, all_matches, league):  # DONE
 	return True
 
 
-def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
+def analyze_details_table(browser, ref_id, new_status):
 
 	"""
 	Used in analyze_main_table function. It first checks if all the matches
@@ -96,8 +95,6 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 	table 'predictions' of the database.
 
 	"""
-
-	# try:
 
 	prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
 				   'pull-right pull-down"]')
@@ -163,20 +160,8 @@ def analyze_details_table(browser, ref_id, new_status, LIMIT_4):
 
 	return 1
 
-	# except (TimeoutException, ElementNotInteractableException):
-	#
-	# 	if LIMIT_4 < 3:
-	# 		logger.info('Recursive analyze_details_table')
-	# 		browser.refresh()
-	# 		time.sleep(3)
-	# 		return analyze_details_table(browser, ref_id,
-	# 		                             new_status, LIMIT_4 + 1)
-	# 	else:
-	# 		raise ConnectionError('Unable to find past bets. ' +
-	# 							  'Please try again.')
 
-
-def analyze_main_table(browser, ref_list, LIMIT_3):
+def analyze_main_table(browser, ref_list):
 
 	"""
 	Used in update_results() function to drive the browser to the personal
@@ -186,7 +171,6 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 	bets_updated = 0
 
-	# try:
 	table_path = './/table[@id="tabellaRisultatiTransazioni"]'
 	wait_visible(browser, 20, table_path)
 	bets_list = browser.find_elements_by_xpath(table_path +
@@ -256,7 +240,7 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 						continue
 
 					bets_updated += analyze_details_table(browser, ref_id,
-														  new_status, 0)
+														  new_status)
 
 					browser.close()
 
@@ -266,19 +250,8 @@ def analyze_main_table(browser, ref_list, LIMIT_3):
 
 	return bets_updated
 
-	# except (TimeoutException, ElementNotInteractableException):
-	#
-	# 	if LIMIT_3 < 3:
-	# 		logger.info('Recursive analyze_main_table')
-	# 		browser.refresh()
-	# 		time.sleep(3)
-	# 		return analyze_main_table(browser, ref_list, LIMIT_3 + 1)
-	# 	else:
-	# 		raise ConnectionError('Unable to find past bets. ' +
-	# 							  'Please try again.')
 
-
-def click_bet(browser, field, bet):   # DONE
+def click_bet(browser, field, bet):
 
 	"""
 	Find the button relative to the bet to play and click it.
@@ -358,7 +331,7 @@ def click_bet(browser, field, bet):   # DONE
 			break
 
 
-def click_panel(browser, panel):   # DONE
+def click_panel(browser, panel):
 
 	"""
 	Click the panel to open it, if closed.
@@ -387,7 +360,7 @@ def click_panel(browser, panel):   # DONE
 		time.sleep(1)
 
 
-def connect_to(some_url, browser=None):   # DONE
+def connect_to(some_url, browser=None):
 
 	"""
 	Connect to website address.
@@ -423,7 +396,7 @@ def extract_bet_name(field, bet_element):
 		return bet_element.get_attribute('innerText').upper()
 
 
-def fill_db_with_quotes(leagues):   # DONE
+def fill_db_with_quotes(leagues):
 
 	"""
 	Download all the quotes from the website and save them in the database.
@@ -497,7 +470,7 @@ def fill_db_with_quotes(leagues):   # DONE
 	browser.quit()
 
 
-def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
+def fill_matches_table(browser, league_id, d_m_y, h_m):
 
 	"""
 	Insert all details relative to a single match into the 'matches' table of
@@ -551,7 +524,7 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):   # DONE
 	return last_id, back
 
 
-def fill_quotes_table(browser, last_id):   # DONE
+def fill_quotes_table(browser, last_id):
 
 	"""
 	Insert the quotes in the database.
@@ -647,7 +620,7 @@ def find_all_panels(browser):
 		return find_all_panels(browser)
 
 
-def click_scommetti(browser):   # DONE
+def click_scommetti(browser):
 
 	"""
 	Click the button SCOMMETTI once logged in.
@@ -668,39 +641,12 @@ def click_scommetti(browser):   # DONE
 	time.sleep(20)
 
 
-# def fix_url(match_url):   # DONE
-#
-# 	"""
-# 	Fix the url to make it work later in the /play command.
-#
-# 	:param match_url: str, url to fix
-#
-#
-# 	:return: str, url fixed
-#
-# 	"""
-#
-# 	codes = {'seriea': 'seriea',
-# 	         'premierleague': 'premierleague1',
-# 	         'primeradivision': 'primeradivision1',
-# 	         'bundesliga': 'bundesliga1',
-# 	         'ligue1': 'ligue11',
-# 	         'eredivisie': 'eredivisie1',
-# 	         'championsleague': 'championsleague1'}
-#
-# 	for code in codes:
-# 		if code in match_url:
-# 			return match_url.replace(code, codes[code])
-
-
 def go_to_lottomatica():
 
 	"""
 	Connect to Lottomatica webpage and click "CALCIO" button.
 	"""
 
-	# url = ('https://www.lottomatica.it/scommesse/avvenimenti/' +
-	# 	   'scommesse-sportive.html')
 	url = 'https://www.lottomatica.it/scommesse/avvenimenti'
 
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
@@ -744,7 +690,6 @@ def go_to_placed_bets(browser, LIMIT_2):
 	"""
 
 	FILTER = 'Ultimi 3 Mesi'
-	FILTER = '12 Mesi'
 
 	try:
 		placed_bets_path = './/a[@title="Movimenti e giocate"]'
@@ -785,7 +730,7 @@ def go_to_placed_bets(browser, LIMIT_2):
 								  'section: MOVIMENTI E GIOCATE.')
 
 
-def insert_euros(browser, euros):   # DONE
+def insert_euros(browser, euros):
 
 	"""
 	Fill the euros box in the website when playing the bet.
@@ -807,7 +752,7 @@ def insert_euros(browser, euros):   # DONE
 	euros_box.send_keys(Keys.DELETE)
 
 
-def login(browser):   # DONE
+def login(browser):
 
 	"""
 	Make login by inserting username and password.
@@ -826,12 +771,6 @@ def login(browser):   # DONE
 	password = credentials[1][10:]
 
 	try:
-
-		# better_path = './/a[@class="btn-menu btn-menu--better"]'
-		# better = browser.find_element_by_xpath(better_path)
-		# wait_clickable(browser, WAIT, better_path)
-		# better.click()
-		# time.sleep(20)
 
 		# Click the login button
 		button_path = './/button[@class="btn btn-default btn-accedi"]'
