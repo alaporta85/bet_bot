@@ -14,6 +14,7 @@ from Functions import bot_functions as bf
 from Functions import stats_functions as stf
 from Functions import logging_file as log
 import Classes as cl
+import config as cfg
 
 f = open('token.txt', 'r')
 updater = Updater(token=f.readline())
@@ -663,8 +664,8 @@ def new_quotes(bot, update, args):  # DONE
 		args = [arg[1:] if arg[0] == ' ' else arg for arg in args]
 		args = [arg[:-1] if arg[-1] == ' ' else arg for arg in args]
 		for arg in args:
-			if arg.upper() not in sf.countries:
-				leagues = ', '.join([league for league in sf.countries])
+			if arg.upper() not in cfg.countries:
+				leagues = ', '.join([league for league in cfg.countries])
 				return bot.send_message(
 						chat_id=chat_id,
 						text='Possible options: {}'.format(leagues))
@@ -734,7 +735,7 @@ def night_quotes(bot, update):  # DONE
 
 	if role == 'Admin':
 
-		leagues = [league for league in sf.countries]
+		leagues = [league for league in cfg.countries]
 
 		# Delete old data from the two tables
 		dbf.empty_table('quotes')

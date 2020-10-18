@@ -1,39 +1,15 @@
-import os
 import time
+from datetime import datetime
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
-from Functions import logging_file as log
 from Functions import db_functions as dbf
 from Functions import bot_functions as bf
-
-
-countries = {
-			 'SERIE A': 'italia/seriea.html',
-			 'PREMIER LEAGUE': 'inghilterra/premierleague.html',
-			 'PRIMERA DIVISION': 'spagna/primeradivision.html',
-			 'BUNDESLIGA': 'germania/bundesliga.html',
-			 'LIGUE 1': 'francia/ligue1.html',
-			 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
-			 }
-
-chrome_options = Options()
-chrome_options.add_argument("--headless")
-chrome_options.binary_location = ('/Applications/Google Chrome.app/' +
-								  'Contents/MacOS/Google Chrome')
-
-absolute_path = os.getcwd()
-chrome_path = absolute_path + '/chromedriver'
-logger = log.get_flogger()
-
-WAIT = 10
-RECURSIONS = 3
+import config as cfg
 
 
 def add_bet_to_basket(browser, details, count, dynamic_message):
@@ -74,13 +50,13 @@ def all_matches_missing(browser, all_matches, league):
 
 	"""
 
-	for i in range(RECURSIONS):
+	for i in range(cfg.RECURSIONS):
 		try:
-			wait_clickable(browser, WAIT, all_matches)
+			wait_clickable(browser, cfg.WAIT, all_matches)
 			return False
 		except TimeoutException:
-			logger.info('ALL MATCHES MISSING - MATCHES for ' +
-			            f'{league} not found: trial {i+1}.')
+			cfg.logger.info('ALL MATCHES MISSING - MATCHES for ' +
+			                f'{league} not found: trial {i+1}.')
 			browser.refresh()
 
 	return True
@@ -125,10 +101,10 @@ def analyze_details_table(browser, ref_id, new_status):
 
 	# If not all of them are concluded code stops here
 	if matches_completed != len(new_bets_list):
-		logger.info('Bet with id {} is still incomplete'.format(ref_id))
+		cfg.logger.info('Bet with id {} is still incomplete'.format(ref_id))
 		return 0
 
-	logger.info('Updating bet with id: {}'.format(ref_id))
+	cfg.logger.info('Updating bet with id: {}'.format(ref_id))
 	for new_bet in new_bets_list:
 		match = new_bet.find_element_by_xpath('.//td[6]').text
 		team1 = dbf.select_team(match.split(' - ')[0])
@@ -350,9 +326,11 @@ def click_panel(browser, panel):
 			'.//div[contains(@class, "group-name")]')
 	scroll_to_element(browser, button)
 	name = button.text
+	if name.strip().lower() not in cfg.PANELS_TO_USE:
+		return
 
 	WebDriverWait(
-			browser, WAIT).until(EC.element_to_be_clickable(
+			browser, cfg.WAIT).until(EC.element_to_be_clickable(
 				(By.LINK_TEXT, name)))
 
 	if 'active' not in button.get_attribute('class'):
@@ -377,7 +355,7 @@ def connect_to(some_url, browser=None):
 
 	if not browser:
 		# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
-		browser = webdriver.Chrome(chrome_path)
+		browser = webdriver.Chrome(cfg.chrome_path)
 		browser.set_window_size(1200, 850)
 		time.sleep(3)
 
@@ -410,7 +388,7 @@ def fill_db_with_quotes(leagues):
 	browser = None
 	for j, league in enumerate(leagues):
 		start = time.time()
-		browser = connect_to(head + countries[league], browser)
+		browser = connect_to(head + cfg.countries[league], browser)
 
 		# To close the popup. Only the first time after connection
 		if not j:
@@ -439,7 +417,7 @@ def fill_db_with_quotes(leagues):
 				if len(all_matches) == len(set(all_matches)):
 					break
 				else:
-					logger.info('FILL DB WITH QUOTES - Repeated matches found')
+					cfg.logger.info('FILL DB WITH QUOTES - Repeated matches found')
 
 			# Select the match or continue to the next league if done
 			try:
@@ -453,6 +431,9 @@ def fill_db_with_quotes(leagues):
 			# Extract date and time of the match and then click it
 			ddmmyy, hhmm = match.find_element_by_xpath(
 					'.//div[@class="event-date ng-binding"]').text.split(' - ')
+			only_date = datetime.strptime(ddmmyy, '%d/%m/%Y').date()
+			if (only_date - cfg.TODAY).days > cfg.DAYS_RANGE:
+				break
 			match.click()
 
 			# Fill "matches" table in the db
@@ -491,7 +472,7 @@ def fill_matches_table(browser, league_id, d_m_y, h_m):
 	back_path = './/a[@class="back-competition ng-scope"]'
 	back = browser.find_element_by_xpath(back_path)
 	scroll_to_element(browser, back)
-	wait_clickable(browser, WAIT, back_path)
+	wait_clickable(browser, cfg.WAIT, back_path)
 
 	# Extract the text with the two teams
 	teams_cont = './/div[@class="event-name ng-binding"]'
@@ -549,6 +530,8 @@ def fill_quotes_table(browser, last_id):
 
 		# If it is a field we have in the db we extract all the quotes
 		field_name = field.get_attribute('innerText').upper()
+		# if field_name == 'UNDER/OVER':
+		# 	print('A')
 		if field_name in all_fields:
 
 			all_bets = bets.find_elements_by_xpath(
@@ -610,12 +593,12 @@ def find_all_panels(browser):
 	all_panels_path = '//div[@class="item-group ng-scope"]'
 
 	try:
-		wait_visible(browser, WAIT, all_panels_path)
+		wait_visible(browser, cfg.WAIT, all_panels_path)
 		all_panels = browser.find_elements_by_xpath(all_panels_path)
 		return all_panels
 
 	except TimeoutException:
-		logger.info('FIND ALL PANELS - PANELS container not found.')
+		cfg.logger.info('FIND ALL PANELS - PANELS container not found.')
 		browser.refresh()
 		return find_all_panels(browser)
 
@@ -650,7 +633,7 @@ def go_to_lottomatica():
 	url = 'https://www.lottomatica.it/scommesse/avvenimenti'
 
 	# browser = webdriver.Chrome(chrome_path, chrome_options=chrome_options)
-	browser = webdriver.Chrome(chrome_path)
+	browser = webdriver.Chrome(cfg.chrome_path)
 	# browser.set_window_size(1200, 1000)
 	time.sleep(3)
 
@@ -675,8 +658,8 @@ def go_to_personal_area(browser):
 
 	except (TimeoutException, ElementNotInteractableException):
 
-		logger.info('GO TO PERSONAL AREA - Unable to go to '
-					'section: AREA PERSONALE.')
+		cfg.logger.info('GO TO PERSONAL AREA - Unable to go to '
+		                'section: AREA PERSONALE.')
 		browser.refresh()
 		time.sleep(3)
 		return go_to_personal_area(browser)
@@ -720,8 +703,8 @@ def go_to_placed_bets(browser, LIMIT_2):
 	except (TimeoutException, ElementNotInteractableException):
 
 		if LIMIT_2 < 3:
-			logger.info('GO TO PLACED BETS - Unable to go to '
-						'section: MOVIMENTI E GIOCATE.')
+			cfg.logger.info('GO TO PLACED BETS - Unable to go to '
+			                'section: MOVIMENTI E GIOCATE.')
 			browser.refresh()
 			time.sleep(3)
 			return go_to_placed_bets(browser, LIMIT_2 + 1)
@@ -776,22 +759,22 @@ def login(browser):
 		button_path = './/button[@class="btn btn-default btn-accedi"]'
 		button = browser.find_element_by_xpath(button_path)
 		scroll_to_element(browser, button)
-		wait_clickable(browser, WAIT, button_path)
+		wait_clickable(browser, cfg.WAIT, button_path)
 		button.click()
 
 		# Find the boxes to insert username and password
 		user_path = './/input[@autocomplete="username"]'
 		pass_path = './/input[@autocomplete="current-password"]'
 		accedi_path = './/button[@id="signin-button"]'
-		wait_visible(browser, WAIT, user_path)
-		wait_visible(browser, WAIT, pass_path)
+		wait_visible(browser, cfg.WAIT, user_path)
+		wait_visible(browser, cfg.WAIT, pass_path)
 		user = browser.find_element_by_xpath(user_path)
 		passw = browser.find_element_by_xpath(pass_path)
 
 		# Insert username and password and login
 		user.send_keys(username)
 		passw.send_keys(password)
-		wait_clickable(browser, WAIT, accedi_path)
+		wait_clickable(browser, cfg.WAIT, accedi_path)
 		accedi = browser.find_element_by_xpath(accedi_path)
 		accedi.click()
 		time.sleep(20)
@@ -858,8 +841,8 @@ def time_needed(start, league):
 	end = time.time() - start
 	minutes = int(end // 60)
 	seconds = round(end % 60)
-	logger.info('FILL DB WITH QUOTES - Updating {} took {}:{}'.
-	            format(league, minutes, seconds))
+	cfg.logger.info('FILL DB WITH QUOTES - Updating {} took {}:{}'.
+	                format(league, minutes, seconds))
 
 
 def wait_clickable(browser, seconds, element):
