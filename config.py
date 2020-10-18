@@ -29,4 +29,4 @@ PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
                  'tempo 1', 'tempo 2', 'parziale e finale']
 
 TODAY = datetime.date.today()
-DAYS_RANGE = 3
+DAYS_RANGE = 5
