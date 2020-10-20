@@ -396,7 +396,7 @@ def fill_db_with_quotes(leagues):
 
 		league_id = dbf.db_select(
 				table='leagues',
-				columns_in=['league_id'],
+				columns=['league_id'],
 		        where=f'league_name = "{league}"')[0]
 
 		# We repeat this for loop for every match of the league. Value is set
