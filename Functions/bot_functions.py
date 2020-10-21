@@ -1,6 +1,6 @@
 import datetime
 import pandas as pd
-from Functions import db_functions as dbf
+import db_functions as dbf
 
 
 def all_bets_per_team(team_name, league_id):
@@ -458,90 +458,3 @@ def one_or_more_preds_are_not_confirmed():   # DONE
 
 	else:
 		return None
-
-
-def update_db_after_confirm(username):
-
-	"""
-	Called inside the command /confirm.
-	Update the columns pred_bet and pred_status of the table 'predictions'.
-
-	:param first_name: str, name of the user
-
-	:param bet_id: int
-
-
-	:return: tuple, (team1, team2, league_id) relative to the bet which is
-			 beign confirmed. It will be used inside the function
-			 check_if_duplicate to delete all the Not Confirmed bets relative
-			 to same match, if any.
-	"""
-
-	# Check if there is any bet with status 'Pending' in the 'bets' table
-	try:
-		bet_id = dbf.db_select(
-				table='bets',
-				columns_in=['bet_id'],
-		        where='bet_status = "Pending"')[0]
-	except IndexError:
-		bet_id = dbf.db_insert(
-				table='bets',
-				columns=['bet_status', 'bet_result'],
-				values=['Pending', 'Unknown'],
-				last_row=True)
-
-	dbf.db_update(
-			table='predictions',
-			columns=['pred_bet', 'pred_status'],
-			values=[bet_id, 'Confirmed'],
-			where='pred_user = "{}" AND pred_status = "Not Confirmed"'.
-			format(username))
-
-	# Insert the bet into the "to_play" table
-	update_to_play_table(username, bet_id, 'insert')
-
-	details = dbf.db_select(
-			table='bets INNER JOIN predictions on pred_bet = bet_id',
-			columns_in=['pred_team1', 'pred_team2', 'pred_league'],
-			where='bet_id = {} AND pred_user = "{}"'.format(bet_id,
-			                                                username))[-1]
-
-	return bet_id, details
-
-
-def update_to_play_table(user_name, id_of_the_bet, task):
-
-	team1, team2, field_bet = dbf.db_select(
-			table='predictions',
-			columns_in=['pred_team1', 'pred_team2', 'pred_field'],
-			where='pred_user = "{}" AND pred_bet = {}'.format(
-					user_name, id_of_the_bet))[-1]
-
-	if task == 'insert':
-		field, bet = dbf.db_select(
-				table='fields',
-				columns_in=['field_name', 'field_value'],
-				where='field_id = {}'.format(field_bet))[0]
-
-		try:
-			url = dbf.db_select(
-					table='matches',
-					columns_in=['match_url'],
-					where='match_team1 = "{}" AND match_team2 = "{}"'.format(
-							team1, team2))[0]
-		except IndexError:
-			url = dbf.db_select(
-					table='matches',
-					columns_in=['match_url'],
-					where='match_team1 = "{}" AND match_team2 = "{}"'.format(
-							'*'+team1, '*'+team2))[0]
-		dbf.db_insert(
-				table='to_play',
-				columns=['to_play_team1', 'to_play_team2', 'to_play_field',
-				         'to_play_bet', 'to_play_url'],
-				values=[team1, team2, field, bet, url])
-	else:
-		dbf.db_delete(
-				table='to_play',
-				where='to_play_team1 = "{}" AND to_play_team2 = "{}"'.format(
-						team1, team2))

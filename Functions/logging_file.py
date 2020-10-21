@@ -13,7 +13,7 @@ def set_logging():
 
     """
 
-    logging.config.dictConfig(yaml.load(open('config/logs/logging.config')))
+    logging.config.dictConfig(yaml.load(open('logs_config/logging.config')))
     flogger = get_flogger()
 
     return flogger

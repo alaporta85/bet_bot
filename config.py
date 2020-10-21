@@ -1,17 +1,21 @@
 import os
 import datetime
+from telegram.ext import Updater
 from selenium.webdriver.chrome.options import Options
 from Functions import logging_file as log
 
-countries = {
-			 'SERIE A': 'italia/seriea.html',
-			 'PREMIER LEAGUE': 'inghilterra/premierleague.html',
-			 'PRIMERA DIVISION': 'spagna/primeradivision.html',
-			 # 'BUNDESLIGA': 'germania/bundesliga.html',
-			 # 'LIGUE 1': 'francia/ligue1.html',
-			 # 'EREDIVISIE': 'olanda/eredivisie1.html',
-			 # 'CHAMPIONS LEAGUE': 'europa/championsleague.html',
-			 }
+with open('token.txt', 'r') as f:
+	UPDATER = Updater(token=f.readline())
+DISPATCHER = UPDATER.dispatcher
+
+
+DEBUG = True
+GROUP_ID = -235014519 if not DEBUG else 67507055
+
+
+LIM_LOW = 1
+LIM_HIGH = 3.2
+N_BETS = 6
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
@@ -28,5 +32,5 @@ PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
                  'combo parziale/finale', 'combo doppia chance',
                  'tempo 1', 'tempo 2', 'parziale e finale']
 
-TODAY = datetime.date.today()
+TODAY = datetime.date.today()  # TODO insert in code
 DAYS_RANGE = 5
