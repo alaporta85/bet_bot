@@ -29,7 +29,7 @@ def db_delete(table: str, where: str):
     db.close()
 
 
-def db_insert(table: str, columns: list, values: list):
+def db_insert(table: str, columns: list, values: list, last_index=False):
 
     """
     Insert a new row in the table.
@@ -42,8 +42,12 @@ def db_insert(table: str, columns: list, values: list):
     query = f'INSERT INTO {table} ({cols}) VALUES ({vals})'
 
     c.execute(query)
+    last_id = c.lastrowid
     db.commit()
     db.close()
+
+    if last_index:
+        return last_id
 
 
 def db_select(table: str, columns: list, where: str) -> list:

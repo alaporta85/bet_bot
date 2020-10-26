@@ -496,39 +496,33 @@ def confirm(bot, update):
 # 		logger.info(f'NEW_QUOTES - Whole process took {mins}:{secs}.')
 #
 #
-# def night_quotes(bot, update):  # DONE
-#
-# 	"""
-# 	Fill the db with the new quotes for all the leagues.
-# 	"""
-#
-# 	try:
-# 		role = utl.get_role(update)
-# 	except AttributeError:
-# 		role = 'Admin'
-#
-# 	if role == 'Admin':
-#
-# 		leagues = [league for league in cfg.countries]
-#
-# 		# Delete old data from the two tables
-# 		dbf.empty_table('quotes')
-# 		dbf.empty_table('matches')
-#
-# 		# Start scraping
-# 		start = time.time()
-# 		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
-# 		sf.fill_db_with_quotes(leagues)
-# 		end = time.time() - start
-# 		mins = int(end // 60)
-# 		secs = round(end % 60)
-# 		logger.info(f'NIGHT_QUOTES - Whole process took {mins}:{secs}.')
-#
-# 	else:
-# 		chat_id = update.message.chat_id
-# 		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
-#
-#
+def night_quotes(bot, update):
+
+	"""
+	Fill the db with the new quotes for all the leagues.
+	"""
+
+	try:
+		role = utl.get_role(update)
+	except AttributeError:
+		role = 'Admin'
+
+	if role == 'Admin':
+
+		# Start scraping
+		start = time.time()
+		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
+		sf.scrape_all_quotes()
+		end = time.time() - start
+		mins = int(end // 60)
+		secs = round(end % 60)
+		logger.info(f'NIGHT_QUOTES - Whole process took {mins}:{secs}.')
+
+	else:
+		chat_id = update.message.chat_id
+		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
+
+
 # def play(bot, update, args):  # DONE
 #
 # 	"""
@@ -566,6 +560,7 @@ def confirm(bot, update):
 # 	# To identify the message
 # 	mess_id = sent.message_id
 #
+#   TODO change for connect_to()
 # 	browser = sf.go_to_lottomatica()
 #
 # 	# This message will be updated during the process to keep track of all
@@ -788,6 +783,7 @@ def confirm(bot, update):
 # 		                        text='No bets to update.')
 #
 # 	try:
+#   TODO change for connect_to()
 # 		browser = sf.go_to_lottomatica()
 # 	except ConnectionError as e:
 # 		return bot.send_message(chat_id=update.message.chat_id, text=e)
@@ -839,7 +835,7 @@ confirm_handler = CommandHandler('confirm', confirm)
 # match_handler = CommandHandler('match', match, pass_args=True)
 # matiz_handler = CommandHandler('matiz', matiz)
 # new_quotes_handler = CommandHandler('new_quotes', new_quotes, pass_args=True)
-# night_quotes_handler = CommandHandler('night_quotes', night_quotes)
+night_quotes_handler = CommandHandler('night_quotes', night_quotes)
 # play_handler = CommandHandler('play', play, pass_args=True)
 # remind_handler = CommandHandler('remind', remind)
 # score_handler = CommandHandler('score', score, pass_args=True)
@@ -878,7 +874,7 @@ cfg.DISPATCHER.add_handler(bici_handler)
 # cfg.DISPATCHER.add_handler(sotm_handler)
 # cfg.DISPATCHER.add_handler(match_handler)
 # cfg.DISPATCHER.add_handler(new_quotes_handler)
-# cfg.DISPATCHER.add_handler(night_quotes_handler)
+cfg.DISPATCHER.add_handler(night_quotes_handler)
 # cfg.DISPATCHER.add_handler(log_handler)
 # cfg.DISPATCHER.add_handler(remind_handler)
 # cfg.DISPATCHER.add_handler(matiz_handler)

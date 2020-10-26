@@ -1,5 +1,4 @@
 import os
-import datetime
 from telegram.ext import Updater
 from selenium.webdriver.chrome.options import Options
 from Functions import logging_file as log
@@ -8,6 +7,7 @@ with open('token.txt', 'r') as f:
 	UPDATER = Updater(token=f.readline())
 DISPATCHER = UPDATER.dispatcher
 
+MAIN_PAGE = 'https://www.lottomatica.it/scommesse/avvenimenti'
 
 DEBUG = True
 GROUP_ID = -235014519 if not DEBUG else 67507055
@@ -26,11 +26,11 @@ absolute_path = os.getcwd()
 chrome_path = absolute_path + '/chromedriver'
 logger = log.get_flogger()
 
+MATCHES_TO_SCRAPE = 100
 WAIT = 10
 RECURSIONS = 3
 PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
                  'combo parziale/finale', 'combo doppia chance',
                  'tempo 1', 'tempo 2', 'parziale e finale']
 
-TODAY = datetime.date.today()  # TODO insert in code
-DAYS_RANGE = 5
+DAYS_RANGE = 4

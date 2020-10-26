@@ -77,6 +77,20 @@ def create_summary(euros: int) -> str:
         return 'No bets yet. Choose the first one.'
 
 
+def get_league_name(league_name: str) -> str:
+    all_leagues = dbf.db_select(table='leagues', columns=['name'], where='')
+    return jaccard_result(in_opt=league_name, all_opt=all_leagues, ngrm=3)
+
+
+def get_league_url(league_name: str) -> str:
+
+    league = get_league_name(league_name)
+    url = dbf.db_select(table='leagues',
+                        columns=['url'],
+                        where=f'name = "{league}"')[0]
+    return url
+
+
 def get_match_url(team1: str, team2: str) -> str:
 
     try:
