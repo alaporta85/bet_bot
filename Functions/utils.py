@@ -1,5 +1,7 @@
+import time
 import datetime
 import numpy as np
+from collections import defaultdict
 from nltk.util import ngrams
 from nltk.metrics.distance import jaccard_distance
 
@@ -7,12 +9,68 @@ import db_functions as dbf
 import config as cfg
 
 
-def autoplay(bet_id: int) -> bool:
+def adjust_text_width(text: str, length: int) -> str:
 
+    if length <= len(text):
+        return text
+
+    extra_spaces = length - len(text)
+    return text.replace(':', f':{" "*extra_spaces}')
+
+
+def all_bets_per_team(team_name: str) -> str:
+
+    """
+    Return a message with all the bets for the selected team.
+    """
+
+    match_id, _, team1, team2, *_ = get_match_details(team_name=team_name)[0]
+
+    team1 = team1.replace('*', '')
+    team2 = team2.replace('*', '')
+
+    quotes = dbf.db_select(table='quotes',
+                           columns=['bet', 'quote'],
+                           where=f'match = {match_id}')
+    standard = [(b, q) for b, q in quotes if '+' not in b]
+    standard = bet_mapping(standard)
+    combo = [(b, q) for b, q in quotes if '+' in b]
+    combo = bet_mapping(combo)
+
+    message_standard = f'{team1} - {team2}'
+    for field in standard:
+        message_standard += f'\n\n{field}\n\n'
+        for b, q in standard[field]:
+            message_standard += adjust_text_width(f'\t\t\t- {b}: {q}\n', 30)
+
+    message_combo = ''
+    for field in combo:
+        message_combo += f'\n\n{field}\n\n'
+        for b, q in combo[field]:
+            message_combo += adjust_text_width(f'\t\t\t- {b}: {q}\n', 30)
+
+    return message_standard, message_combo
+
+
+def autoplay() -> bool:
+
+    bet_id = get_pending_bet_id()
     preds = dbf.db_select(table='predictions',
                           columns=['id'],
                           where=f'bet_id = {bet_id}')
     return True if len(preds) == cfg.N_BETS else False
+
+
+def bet_mapping(bets_and_quotes: [(str, float)]) -> dict:
+
+    bets_and_quotes = [(f, b, q) for fb, q in bets_and_quotes
+                       for f, b in (fb.split('_'),)]
+
+    map_dict = defaultdict(list)
+    for f, b, q in bets_and_quotes:
+        map_dict[f].append((b, q))
+
+    return map_dict
 
 
 def create_list_of_matches(bet_id: int) -> str:
@@ -41,70 +99,97 @@ def create_list_of_matches(bet_id: int) -> str:
     return message
 
 
-def create_summary(euros: int) -> str:
+def create_summary_pending_bet() -> str:
 
     """
     Create the message with the summary of the bet still open.
     """
 
-    try:
-        bet_id = dbf.db_select(table='bets',
-                               columns=['id'],
-                               where='status = "Pending"')[0]
+    bet_id = get_pending_bet_id()
+    if bet_id:
         message = create_list_of_matches(bet_id)
         quotes_prod = get_quotes_prod(bet_id)
-        prize = round(quotes_prod*euros, 1)
-        last_line = f'\n\nPossible win with 5€: <b>{prize}</b>'
+        prize = round(quotes_prod*cfg.DEFAULT_EUROS, 1)
+        last_line = f'\n\nVincita con {cfg.DEFAULT_EUROS}€: <b>{prize}</b>'
         return message + last_line
-    except IndexError:
-        pass
+    return ''
 
-    bet_ids = dbf.db_select(
-            table='bets',
-            columns=['id'],
-            where='status = "Placed" AND result = "Unknown"')
 
+def create_summary_placed_bets():
+
+    bet_ids = get_placed_but_open_bet_details()
     if bet_ids:
-        message = 'Open bets:\n\n'
-        for bet_id in bet_ids:
-            message = create_list_of_matches(bet_id)
-            quotes_prod = get_quotes_prod(bet_id)
-            prize = round(quotes_prod * euros, 1)
-            last_line = f'{message}\nPossible win: <b>{prize} €</b>\n\n\n'
-        # noinspection PyUnboundLocalVariable
-        return message + last_line
-    else:
-        return 'No bets yet. Choose the first one.'
+        message = 'Scommesse ancora aperte:\n\n'
+        for bet_id, prize in bet_ids:
+            message += create_list_of_matches(bet_id)
+            message += f'{message}\nVincita: <b>{prize} €</b>\n\n\n'
+        return message
+    return ''
 
 
-def get_league_name(league_name: str) -> str:
+def fix_bet_name(bet_name: str) -> str:
+
+    vals2replace = [(' ', ''), ('*', ''), (',', '.'), ('+', ''),
+                    ('TEMPO', 'T'), ('TP', 'T'),
+                    ('1T', 'PT'), ('2T', 'ST'),
+                    ('GG', 'GOAL'), ('GOL', 'GOAL'),
+                    ('NG', 'NOGOAL'), ('NOGOL', 'NOGOAL'),
+                    ('HANDICAP', 'H'), ('HAND', 'H')]
+    for old, new in vals2replace:
+        bet_name = bet_name.replace(old, new)
+
+    all_alias = dbf.db_select(table='fields', columns=['alias'], where='')
+    return jaccard_result(in_opt=bet_name, all_opt=all_alias, ngrm=2)
+
+
+def fix_league_name(league_name: str) -> str:
     all_leagues = dbf.db_select(table='leagues', columns=['name'], where='')
     return jaccard_result(in_opt=league_name, all_opt=all_leagues, ngrm=3)
 
 
+def fix_team_name(team_name: str) -> str:
+
+    if '*' in team_name:
+        all_teams = dbf.db_select(table='teams',
+                                  columns=['name'],
+                                  where=f'league = "CHAMPIONS LEAGUE"')
+    else:
+        all_teams = dbf.db_select(table='teams', columns=['name'],
+                                  where=f'league != "CHAMPIONS LEAGUE"')
+
+    return jaccard_result(in_opt=team_name, all_opt=all_teams, ngrm=3)
+
+
+def get_bet_quote(match_id: int, bet_name: str) -> float:
+
+    field_bet = dbf.db_select(table='fields',
+                              columns=['name'],
+                              where=f'alias = "{bet_name}"')[0]
+
+    quote = dbf.db_select(table='quotes',
+                          columns=['quote'],
+                          where=f'match = {match_id} AND bet = "{field_bet}"')
+
+    return quote[0] if quote else 0.0
+
+
 def get_league_url(league_name: str) -> str:
 
-    league = get_league_name(league_name)
+    league = fix_league_name(league_name)
     url = dbf.db_select(table='leagues',
                         columns=['url'],
                         where=f'name = "{league}"')[0]
     return url
 
 
-def get_match_url(team1: str, team2: str) -> str:
+def get_match_details(team_name: int) -> list:
 
-    try:
-        url = dbf.db_select(
-                table='matches',
-                columns=['url'],
-                where=f'team1 = "{team1}" AND team2 = "{team2}"')[0]
-    except IndexError:
-        url = dbf.db_select(
-                table='matches',
-                columns=['url'],
-                where=f'team1 = "*{team1}" AND team2 = "*{team2}"')[0]
+    match = dbf.db_select(
+            table='matches',
+            columns=['*'],
+            where=f'team1 = "{team_name}" OR team2 = "{team_name}"')
 
-    return url
+    return match
 
 
 def get_nickname(update) -> str:
@@ -114,6 +199,24 @@ def get_nickname(update) -> str:
                              columns=['nick'],
                              where=f'name = "{name}"')[0]
     return nickname
+
+
+def get_pending_bet_id() -> int:
+
+    pending = dbf.db_select(table='bets',
+                            columns=['id'],
+                            where='status = "Pending"')
+    return pending[0] if pending else 0
+
+
+def get_placed_but_open_bet_details():
+
+    bet_ids = dbf.db_select(
+            table='bets',
+            columns=['id', 'prize'],
+            where='status = "Placed" AND result = "Unknown"')
+
+    return bet_ids
 
 
 def get_quotes_prod(bet_id: int) -> float:
@@ -133,16 +236,22 @@ def get_role(update) -> str:
     return role
 
 
+def get_user_chat_id(update) -> int:
+
+    name = update.message.from_user.first_name
+    chat_id = dbf.db_select(table='people',
+                            columns=['chat_id'],
+                            where=f'name = "{name}"')[0]
+    return chat_id
+
+
 def insert_new_bet_entry() -> int:
 
     dbf.db_insert(table='bets',
                   columns=['status', 'result'],
                   values=['Pending', 'Unknown'])
 
-    bet_id = dbf.db_select(table='bets',
-                           columns=['id'],
-                           where='status = "Pending"')[0]
-    return bet_id
+    return get_pending_bet_id()
 
 
 def jaccard_result(in_opt: str, all_opt: list, ngrm: int) -> str:
@@ -154,8 +263,11 @@ def jaccard_result(in_opt: str, all_opt: list, ngrm: int) -> str:
     in_opt = in_opt.lower().replace(' ', '')
     n_in = set(ngrams(in_opt, ngrm))
 
-    out_opts = [pl.lower().replace(' ', '') for pl in all_opt]
+    out_opts = [pl.lower().replace(' ', '').replace('+', '') for pl in all_opt]
     n_outs = [set(ngrams(pl, ngrm)) for pl in out_opts]
+
+    if in_opt in out_opts:
+        return all_opt[out_opts.index(in_opt)]
 
     distances = [jaccard_distance(n_in, n_out) for n_out in n_outs]
 
@@ -165,31 +277,87 @@ def jaccard_result(in_opt: str, all_opt: list, ngrm: int) -> str:
         return all_opt[np.argmin(distances)]
 
 
+def match_already_chosen(nickname: str) -> bool:
+
+    bet_id = get_pending_bet_id()
+
+    team1, team2 = dbf.db_select(
+            table='predictions',
+            columns=['team1', 'team2'],
+            where=f'user = "{nickname}" AND status = "Not Confirmed"')[0]
+
+    duplicate = dbf.db_select(
+            table='predictions',
+            columns=['id'],
+            where=(f'bet_id = {bet_id} AND team1 = "{team1}" AND ' +
+                   f'team2 = "{team2}" AND status = "Confirmed"'))
+
+    return True if duplicate else False
+
+
+def match_already_started(nickname: str) -> bool:
+
+    dt_pred = dbf.db_select(
+            table='predictions',
+            columns=['date'],
+            where=f'user = "{nickname}" AND status = "Not Confirmed"')[0]
+
+    return str_to_dt(dt_as_string=dt_pred) < datetime.datetime.now()
+
+
+def match_is_out_of_range(match_date: datetime) -> bool:
+
+    today = datetime.datetime.now()
+    secs_diff = (match_date - today).total_seconds()
+    hours_diff = secs_diff // 3600
+    return True if hours_diff > cfg.HOURS_RANGE else False
+
+
 def nothing_pending(nickname: str) -> bool:
 
-    pending = dbf.db_select(table='predictions',
-                            columns=['user'],
-                            where='status = "Not Confirmed"')
+    pending = dbf.db_select(
+            table='predictions',
+            columns=['id'],
+            where=f'user = "{nickname}" AND status = "Not Confirmed"')
 
-    return True if nickname not in pending else False
+    return True if not pending else False
 
 
-def outside_quote_limits(nickname: str) -> bool:
+def quote_outside_limits(nickname: str) -> bool:
 
     """
     Check if quotes limits are respected.
     """
 
-    pred_id, quote = dbf.db_select(table='predictions',
-                                   columns=['id', 'quote'],
-                                   where=(f'user = "{nickname}" AND ' +
-                                          'status = "Not Confirmed"'))[0]
+    quote = dbf.db_select(table='predictions',
+                          columns=['quote'],
+                          where=(f'user = "{nickname}" AND ' +
+                                 'status = "Not Confirmed"'))[0]
 
-    if not cfg.LIM_LOW < quote < cfg.LIM_HIGH:
-        dbf.db_delete(table='predictions', where=f'id = {pred_id}')
-        return True
-    else:
-        return False
+    return quote < cfg.LIM_LOW or quote > cfg.LIM_HIGH
+
+
+def remove_bet_without_preds() -> None:
+
+    bet_id = get_pending_bet_id()
+    if bet_id:
+        preds = dbf.db_select(table='predictions',
+                              columns=['id'],
+                              where=f'bet_id = {bet_id}')
+        if not preds:
+            dbf.db_delete(table='bets', where=f'id = {bet_id}')
+
+
+def remove_existing_match_quotes(team_one: str, team_two: str) -> None:
+
+    match_ids = dbf.db_select(
+            table='matches',
+            columns=['id'],
+            where=f'team1 = "{team_one}" OR team2 = "{team_two}"')
+    if match_ids:
+        for m_id in match_ids:
+            dbf.db_delete(table='matches', where=f'id = {m_id}')
+            dbf.db_delete(table='quotes', where=f'match = {m_id}')
 
 
 def remove_pending_same_match(nickname: str):
@@ -206,60 +374,46 @@ def remove_pending_same_match(nickname: str):
                   where=f'{cond1} AND {cond2} AND {cond3}')
 
 
-def select_team(in_team: str) -> str:
-
-    """
-    Find correct team name.
-    """
-
-    in_team = in_team[1:] if in_team[0] == '*' else in_team
-    all_teams = dbf.db_select(table='teams', columns=['name'], where='')
-
-    return jaccard_result(in_opt=in_team, all_opt=all_teams, ngrm=3)
+def str_to_dt(dt_as_string: str) -> datetime:
+    return datetime.datetime.strptime(dt_as_string, '%Y-%m-%d %H:%M:%S')
 
 
-def update_db_after_confirm(nickname: str) -> int:
-
-    """
-    Update the table 'predictions'.
-    """
-
-    # Check if there is any bet with status 'Pending' in the 'bets' table
-    try:
-        bet_id = dbf.db_select(table='bets',
-                               columns=['id'],
-                               where='status = "Pending"')[0]
-    except IndexError:
-        bet_id = insert_new_bet_entry()
-
-    remove_pending_same_match(nickname)
-
-    dbf.db_update(table='predictions',
-                  columns=['bet_id', 'status'],
-                  values=[bet_id, 'Confirmed'],
-                  where=f'user = "{nickname}" AND status = "Not Confirmed"')
-
-    # Insert the bet into the "to_play" table
-    update_to_play_table(nickname=nickname, bet_id=bet_id)
-
-
-    return bet_id
+def time_needed(start):
+    end = time.time() - start
+    mins = int(end // 60)
+    secs = round(end % 60)
+    return mins, secs
 
 
 def update_to_play_table(nickname: str, bet_id: int):
 
-    # TODO change bet values in table predictions with their alias
-    team1, team2, bet_alias = dbf.db_select(
+    pred_id, team1, team2, bet_alias = dbf.db_select(
             table='predictions',
-            columns=['team1', 'team2', 'bet_alias'],
+            columns=['id', 'team1', 'team2', 'bet_alias'],
             where=f'user = "{nickname}" AND bet_id = {bet_id}')[-1]
 
-    # TODO make sure there is only 1 name for each alias in table fields
-    field, bet = dbf.db_select(table='fields',
-                               columns=['name', 'bet'],
-                               where=f'alias = "{bet_alias}"')[0]
+    field_bet = dbf.db_select(table='fields',
+                              columns=['name'],
+                              where=f'alias = "{bet_alias}"')[0]
+    field, bet = field_bet.split('_')
 
-    url = get_match_url(team1=team1, team2=team2)
+    *_, url = get_match_details(team_name=team1)[0]
     dbf.db_insert(table='to_play',
-                  columns=['url', 'field', 'bet'],
-                  values=[url, field, bet])
+                  columns=['pred_id', 'url', 'field', 'bet'],
+                  values=[pred_id, url, field, bet])
+
+
+def wrong_chat(chat_id: int) -> bool:
+
+    if cfg.DEBUG or chat_id != cfg.GROUP_ID:
+        return False
+    else:
+        return True
+
+
+def wrong_format(input_text: str) -> bool:
+
+    if not input_text or (input_text[0] == '_' or input_text[-1] == '_'):
+        return True
+    else:
+        return False

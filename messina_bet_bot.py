@@ -18,71 +18,97 @@ import config as cfg
 
 
 def cake(bot, update):
-
-	"""
-	Send the cake.
-	"""
-
-	chat_id = update.message.chat_id
-	return bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
+    chat_id = update.message.chat_id
+    return bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
 
 
 def bike(bot, update):
-
-	"""
-	Send bike sound.
-	"""
-
-	chat_id = update.message.chat_id
-	return bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
+    chat_id = update.message.chat_id
+    return bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
 
 
-def cancel(bot, update):
+def cancel(bot, update, text: str = ''):
 
-	"""
-	Delete the 'Not Confirmed' match from 'predictions' table.
-	"""
+    """
+    Delete the 'Not Confirmed' match from 'predictions' table.
+    """
 
-	chat_id = update.message.chat_id
-	user = utl.get_nickname(update)
+    chat_id = update.message.chat_id
+    user = utl.get_nickname(update)
 
-	if utl.nothing_pending(nickname=user):
-		return bot.send_message(chat_id=chat_id, text='No bet to cancel.')
+    if utl.wrong_chat(chat_id=chat_id):
+        message_id = update.message.message_id
+        bot.deleteMessage(chat_id=chat_id, message_id=message_id)
+        return bot.send_message(chat_id=utl.get_user_chat_id(update),
+                                text='Usa questo gruppo per i comandi.')
 
-	dbf.db_delete(table='predictions',
-	              where=f'user = "{user}" AND status = "Not Confirmed"')
+    if utl.nothing_pending(nickname=user):
+        return bot.send_message(chat_id=chat_id,
+                                text='Nessun pronostico da eliminare')
 
-	return bot.send_message(chat_id=chat_id, text='Bet canceled.')
+    dbf.db_delete(table='predictions',
+                  where=f'user = "{user}" AND status = "Not Confirmed"')
+    utl.remove_bet_without_preds()
+
+    if not text:
+        return bot.send_message(chat_id=chat_id, text='Pronostico eliminato')
+    else:
+        return bot.send_message(chat_id=chat_id, text=text)
 
 
 def confirm(bot, update):
 
-	"""
-	Confirm the match and update the database.
-	"""
+    """
+    Confirm the match and update the database.
+    """
 
-	chat_id = update.message.chat_id
-	user = utl.get_nickname(update)
+    chat_id = update.message.chat_id
+    user = utl.get_nickname(update)
 
-	if utl.nothing_pending(nickname=user):
-		return bot.send_message(chat_id=chat_id, text='No match to confirm.')
+    if utl.wrong_chat(chat_id=chat_id):
+        message_id = update.message.message_id
+        bot.deleteMessage(chat_id=chat_id, message_id=message_id)
+        return bot.send_message(chat_id=utl.get_user_chat_id(update),
+                                text='Usa questo gruppo per i comandi.')
 
-	# Check if quote respects the limits
-	if utl.outside_quote_limits(nickname=user):
-		return bot.send_message(chat_id=chat_id, text='Se cia 👏👏🖕🖕')
+    if utl.nothing_pending(nickname=user):
+        return bot.send_message(chat_id=chat_id,
+                                text='Nessun pronostico da confermare')
 
-	# Update the database
-	bet_id = utl.update_db_after_confirm(nickname=user)
+    if utl.match_already_chosen(nickname=user):
+        return cancel(bot, update,
+                      text='Pronostico non valido perché già presente')
 
-	# Inform users match is correctly added
-	bot.send_message(chat_id=chat_id, text='Match added correctly.')
+    if utl.match_already_started(nickname=user):
+        return cancel(bot, update, text='Match già iniziato')
 
-	message = utl.create_summary(euros=5)
-	bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=message)
+    if utl.quote_outside_limits(nickname=user):
+        return cancel(bot, update, text='Quota fuori limiti')
 
-	# Play the bet automatically
-	if utl.autoplay(bet_id):
-		return False#play(bot, update, ['5'])
+    # Remove other "Not Confirmed" preds of the same match, if any
+    utl.remove_pending_same_match(nickname=user)
+
+    # Update prediction status
+    dbf.db_update(table='predictions',
+                  columns=['status'],
+                  values=['Confirmed'],
+                  where=f'user = "{user}" AND status = "Not Confirmed"')
+
+    # Insert bet in the table "to_play"
+    bet_id = utl.get_pending_bet_id()
+    utl.update_to_play_table(nickname=user, bet_id=bet_id)
+
+    # Notify user in private chat
+    bot.send_message(chat_id=chat_id, text='Pronostico aggiunto correttamente')
+
+    # Send summary in group chat
+    summary = utl.create_summary_pending_bet()
+    bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=summary)
+
+    # Play the bet automatically
+    if utl.autoplay():
+        # TODO activate again when "play" command is ready
+        return False#play(bot, update, ['5'])
 
 
 # def delete(bot, update):  # DONE
@@ -135,22 +161,20 @@ def confirm(bot, update):
 #
 # 	return bot.send_message(
 # 			chat_id=chat_id, text='{}, bet deleted.'.format(user))
-#
-#
-# def fischia(bot, update):  # DONE
-#
-# 	"""
-# 	Send random photo of Mazzarri.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-# 	walter = random.choice(os.listdir('Mazzarri/'))
-#
-# 	return bot.send_photo(chat_id=chat_id,
-# 	                      photo=open('Mazzarri/' + walter, 'rb'))
-#
-#
+
+
+def fischia(bot, update):
+
+    """
+    Send random photo of Mazzarri.
+    """
+
+    chat_id = update.message.chat_id
+    walter = random.choice(os.listdir('Mazzarri/'))
+    return bot.send_photo(chat_id=chat_id,
+                          photo=open(f'Mazzarri/{walter}', 'rb'))
+
+
 # def format_text(content):  # DONE
 #
 # 	"""
@@ -164,168 +188,92 @@ def confirm(bot, update):
 # 	message = message.replace('xx', '\n\n')
 #
 # 	return message
-#
-#
-# def get(bot, update, args):  # DONE
-#
-# 	"""
-# 	Update the table 'predictions' in the database with the data relative to
-# 	the chosen match if command is in the form:
-#
-# 		/play team_bet
-#
-# 	If the command has the form:
-#
-# 		/play team
-#
-# 	it sends all the quotes for that team's match.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-# 	if chat_id == cfg.GROUP_ID:
-# 		# TODO send messages to each private chat instead of group chat
-# 		return bot.send_message(chat_id=chat_id,
-# 		                        text='Usa il gruppo privato')
-# 	else:
-# 		name = update.message.from_user.first_name
-# 		dbf.db_update(
-# 				table='people',
-# 				columns=['people_private_group'],
-# 				values=[chat_id],
-# 				where=f'people_name = "{name}"')
-#
-# 	# Check the format
-# 	if not args:
-# 		return bot.send_message(chat_id=chat_id, text='Insert the bet.')
-#
-# 	guess = ' '.join(args).upper()
-# 	if guess[0] == '_' or guess[-1] == '_':
-# 		return bot.send_message(chat_id=chat_id, text='Wrong format.')
-#
-# 	# Try to separate the team from the bet and replace some values
-# 	try:
-# 		vals2replace = [(' ', ''), ('*', ''), ('+', ''), (',', '.'),
-# 		                ('TEMPO', 'T'),
-# 		                ('1T', 'PT'), ('2T', 'ST'),
-# 		                ('GOAL', 'GG'), ('NOGOAL', 'NG'),
-# 		                ('HANDICAP', 'H'), ('HAND', 'H')]
-#
-# 		input_team, input_bet = guess.split('_')
-# 		for old, new in vals2replace:
-# 			input_bet = input_bet.replace(old, new)
-#
-# 	except ValueError:
-# 		# If only the team is sent
-# 		input_team, input_bet = guess, ''
-#
-# 	# Correct team name by Jaccard similarity
-# 	team_name = dbf.select_team(input_team)
-#
-# 	if not team_name:
-# 		return bot.send_message(chat_id=chat_id, text='Team not found')
-#
-# 	# If '*' is in the input it means it's a Champions League match
-# 	elif '*' in input_team:
-# 		league_id = 8
-# 		team_name = '*' + team_name
-#
-# 	# Try to select the league. The IndexError occurs when the Jaccard result
-# 	# is a team playing in Champions League but not in any of the main leagues.
-# 	# In this case, looking for that team among any team_id != 8 would cause an
-# 	# error. Ex: if '/play dort' is sent, meaning Dortmund, bot will recognize
-# 	# it as PORTO and the error is given
-# 	else:
-# 		try:
-# 			league_id = dbf.db_select(
-# 					table='teams',
-# 					columns_in=['team_league'],
-# 					where='team_name = "{}" AND team_league != 8'.
-# 					format(team_name))[0]
-# 		except IndexError:
-# 			return bot.send_message(
-# 					chat_id=chat_id,
-# 					text='No bets found for {}'.format(team_name))
-#
-# 	# If only the team is sent, 2 messages with all the quotes for that match
-# 	# will be sent in the chat
-# 	if not input_bet:
-# 		try:
-# 			message_standard, message_combo = bf.all_bets_per_team(team_name,
-# 			                                                       league_id)
-#
-# 		# If, for any reason, quotes are not found
-# 		except ValueError as e:
-# 			message = str(e)
-# 			return bot.send_message(chat_id=chat_id, text=message)
-#
-# 		bot.send_message(parse_mode='HTML', chat_id=chat_id,
-# 		                 text=message_standard)
-# 		return bot.send_message(parse_mode='HTML', chat_id=chat_id,
-# 								text=message_combo)
-#
-# 	user = utl.get_nickname(update)
-#
-# 	# Check if user has other matches not confirmed
-# 	warning_message = bf.check_still_to_confirm(user)
-# 	if warning_message:
-# 		return bot.send_message(chat_id=chat_id, text=warning_message)
-#
-# 	# Create the list of confirmed_matches. This list will be used to check
-# 	# whether a match has already been chosen
-# 	try:
-# 		bet_id = dbf.db_select(
-# 				table='bets',
-# 				columns_in=['bet_id'],
-# 				where='bet_status = "Pending"')[0]
-#
-# 		confirmed_matches = dbf.db_select(
-# 				table='predictions',
-# 				columns_in=['pred_team1', 'pred_team2'],
-# 				where=('pred_status = "Confirmed" AND pred_bet = {}'.
-# 				format(bet_id)))
-# 	except IndexError:
-# 		confirmed_matches = []
-#
-# 	# Try to extract all the info about the match and the requested quote
-# 	try:
-# 		team1, team2, field_id, nice_bet, quote = bf.look_for_quote(team_name,
-# 		                                                            input_bet)
-#
-# 	# To handle invalid bets or missing quotes
-# 	except ValueError as e:
-# 		return bot.send_message(chat_id=chat_id, text=str(e))
-#
-# 	# If match is available, update the database and send a message
-# 	if (team1, team2) not in confirmed_matches:
-#
-# 		dt = dbf.db_select(
-# 				table='matches',
-# 				columns_in=['match_date'],
-# 				where='match_team1 = "{}" AND match_team2 = "{}"'.
-# 				format(team1, team2))[0]
-#
-# 		team1 = team1.replace('*', '')
-# 		team2 = team2.replace('*', '')
-#
-# 		dbf.db_insert(
-# 				table='predictions',
-# 				columns=['pred_user', 'pred_date', 'pred_team1', 'pred_team2',
-# 				         'pred_league', 'pred_field', 'pred_rawbet',
-# 				         'pred_quote', 'pred_status'],
-# 				values=[user, dt, team1, team2, league_id, field_id,
-# 				        nice_bet, quote, 'Not Confirmed'])
-#
-# 		printed_bet = '{} - {} {} @{}'.format(team1, team2, nice_bet, quote)
-#
-# 		return bot.send_message(chat_id=chat_id,
-# 						        text=('{}\n\n' +
-# 						              '/confirm                /cancel').
-# 						              format(printed_bet))
-# 	else:
-# 		return bot.send_message(chat_id=chat_id, text='Match already chosen')
-#
-#
+
+
+def get(bot, update, args: list):
+
+    """
+    /get team     -> Return all quotes of the match, if found
+    /get team_bet -> Return the requested quote, if found
+    """
+
+    chat_id = update.message.chat_id
+    text = ' '.join(args).upper()
+
+    if utl.wrong_chat(chat_id=chat_id):
+        message_id = update.message.message_id
+        bot.deleteMessage(chat_id=chat_id, message_id=message_id)
+        return bot.send_message(chat_id=utl.get_user_chat_id(update),
+                                text='Usa questo gruppo per i comandi.')
+
+    if utl.wrong_format(input_text=text):
+        message = ('Formato non corretto. ' +
+                   'Ex:\n\t- /get squadra_pronostico\n\t- /get squadra')
+        return bot.send_message(chat_id=chat_id, text=message)
+
+    team = utl.fix_team_name(text.split('_')[0])
+    if not team:
+        return bot.send_message(chat_id=chat_id,
+                                text='Squadra non riconosciuta')
+
+    match_details = utl.get_match_details(team_name=team)
+    if not match_details:
+        return bot.send_message(chat_id=chat_id,
+                                text=f'Nessun match trovato per {team}')
+
+    # If only team is sent, send all quotes of that match
+    if '_' not in text:
+        standard, combo = utl.all_bets_per_team(team_name=team)
+
+        if not combo:
+            return bot.send_message(chat_id=chat_id, text=standard)
+
+        bot.send_message(parse_mode='MarkdownV2', chat_id=chat_id,
+                         text=f'`{standard}`')
+        return bot.send_message(parse_mode='MarkdownV2', chat_id=chat_id,
+                                text=f'`{combo}`')
+
+    # Try to recognize the bet sent by user
+    bet = text.split('_')[1]
+    bet = utl.fix_bet_name(bet)
+    if not bet:
+        return bot.send_message(chat_id=chat_id,
+                                text='Pronostico non riconosciuto')
+
+    # Extract match details
+    match_id, league, team1, team2, dt, _ = match_details[0]
+    team1 = team1.replace('*', '')
+    team2 = team2.replace('*', '')
+
+    quote = utl.get_bet_quote(match_id=match_id, bet_name=bet)
+    if not quote:
+        return bot.send_message(chat_id=chat_id, text='Pronostico non quotato')
+
+    bet_id = utl.get_pending_bet_id()
+    if not bet_id:
+        bet_id = utl.insert_new_bet_entry()
+
+    # Insert prediction as "Not Confirmed"
+    user = utl.get_nickname(update)
+    pred_id = dbf.db_insert(
+            table='predictions',
+            columns=['bet_id', 'user', 'date', 'team1', 'team2',
+                     'league', 'bet_alias', 'quote', 'status'],
+            values=[bet_id, user, dt, team1, team2,
+                    league, bet, quote, 'Not Confirmed'],
+            last_index=True)
+
+    # Remove other pending predictions the user might have
+    dbf.db_delete(table='predictions',
+                  where=(f'id != {pred_id} AND user = "{user}" AND ' +
+                         'status = "Not Confirmed"'))
+
+    # Ask user for confirmation
+    bet_details = '{} - {} {} @{}'.format(team1, team2, bet, quote)
+    message = f'{bet_details}\n\n/confirm                /cancel'
+    return bot.send_message(chat_id=chat_id, text=message)
+
+
 # def help_quote(bot, update):  # DONE
 #
 # 	"""
@@ -416,20 +364,13 @@ def confirm(bot, update):
 # 						        text=message)
 # 	except SyntaxError as e:
 # 		return bot.send_message(chat_id=chat_id, text=str(e))
-#
-#
-# def matiz(bot, update):  # DONE
-#
-# 	"""
-# 	Send matiz photo.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	return bot.send_photo(chat_id=chat_id, photo=open('matiz.png', 'rb'))
-#
-#
+
+
+def matiz(bot, update):
+    chat_id = update.message.chat_id
+    return bot.send_photo(chat_id=chat_id, photo=open('matiz.png', 'rb'))
+
+
 # def new_quotes(bot, update, args):  # DONE
 #
 # 	"""
@@ -494,33 +435,31 @@ def confirm(bot, update):
 # 		mins = int(end//60)
 # 		secs = round(end % 60)
 # 		logger.info(f'NEW_QUOTES - Whole process took {mins}:{secs}.')
-#
-#
+
+
 def night_quotes(bot, update):
 
-	"""
-	Fill the db with the new quotes for all the leagues.
-	"""
+    """
+    Fill the db with the new quotes for all leagues.
+    """
 
-	try:
-		role = utl.get_role(update)
-	except AttributeError:
-		role = 'Admin'
+    try:
+        role = utl.get_role(update)
+    except AttributeError:
+        role = 'Admin'
 
-	if role == 'Admin':
+    if role == 'Admin':
 
-		# Start scraping
-		start = time.time()
-		logger.info('NIGHT_QUOTES - Nightly job: Updating quote...')
-		sf.scrape_all_quotes()
-		end = time.time() - start
-		mins = int(end // 60)
-		secs = round(end % 60)
-		logger.info(f'NIGHT_QUOTES - Whole process took {mins}:{secs}.')
+        # Start scraping
+        start = time.time()
+        cfg.LOGGER.info('NIGHT_QUOTES - Nightly job: Updating quote...')
+        sf.scrape_all_quotes()
+        mins, secs = utl.time_needed(start)
+        cfg.LOGGER.info(f'NIGHT_QUOTES - Whole process took {mins}:{secs}.')
 
-	else:
-		chat_id = update.message.chat_id
-		return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
+    else:
+        chat_id = update.message.chat_id
+        return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
 
 # def play(bot, update, args):  # DONE
@@ -550,6 +489,7 @@ def night_quotes(bot, update):
 # 		return bot.send_message(chat_id=chat_id, text='No bets to play.')
 #
 # 	# Check whether there are matches already started
+# TODO change for match_already_started()
 # 	late = bf.check_if_too_late(bet_id)
 # 	if late:
 # 		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
@@ -637,21 +577,20 @@ def night_quotes(bot, update):
 # 		bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
 #
 # 	browser.quit()
-#
-#
-# def remind(bot, update):  # DONE
-#
-# 	"""
-# 	Send a message to remind the matches of a bet which is still open.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-# 	message = create_summary(when='remind', euros=5)
-#
-# 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
-#
-#
+
+
+def remind(bot, update):
+
+    """
+    Send a message to remind the matches of a bet which is Placed but
+    still open.
+    """
+
+    chat_id = update.message.chat_id
+    message = utl.create_summary_placed_bets()
+    return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
+
+
 # def score(bot, update, args):  # DONE
 #
 # 	"""
@@ -676,57 +615,39 @@ def night_quotes(bot, update):
 # 			return bot.send_message(
 # 					chat_id=chat_id,
 # 					text='Wrong format. Ex: 2017-2018 or "general"')
-#
-#
-# def send_log(bot, update):  # DONE
-#
-# 	"""
-# 	Send the log.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	return bot.send_document(chat_id=chat_id,
-# 	                         document=open('logs/bet_bot.log', 'rb'))
-#
-#
-# def series(bot, update):  # DONE
-#
-# 	"""
-# 	Send bar plot of positive and negative series.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	return bot.send_photo(chat_id=chat_id, photo=open('series.png', 'rb'))
-#
-#
-# def sotm(bot, update):  # DONE
-#
-# 	"""
-# 	Send tbar plot of the best/worst per month.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	return bot.send_photo(chat_id=chat_id, photo=open('sotm.png', 'rb'))
-#
-#
-# def start(bot, update):  # DONE
-#
-# 	"""
-# 	Start the bot.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	return bot.send_message(chat_id=chat_id, text="Iannelli suca")
-#
-#
+
+
+def send_log(bot, update):
+    chat_id = update.message.chat_id
+    return bot.send_document(chat_id=chat_id,
+                             document=open('logs/bet_bot.log', 'rb'))
+
+
+def series(bot, update):
+
+    """
+    Send bar plot of positive and negative series.
+    """
+
+    chat_id = update.message.chat_id
+    return bot.send_photo(chat_id=chat_id, photo=open('series.png', 'rb'))
+
+
+def sotm(bot, update):
+
+    """
+    Send bar plot of the best/worst per month.
+    """
+
+    chat_id = update.message.chat_id
+    return bot.send_photo(chat_id=chat_id, photo=open('sotm.png', 'rb'))
+
+
+def start(bot, update):
+    chat_id = update.message.chat_id
+    return bot.send_message(chat_id=chat_id, text="Iannelli suca")
+
+
 # def stats(bot, update):  # DONE
 #
 # 	"""
@@ -747,22 +668,19 @@ def night_quotes(bot, update):
 # 	            message_bets + message_quotes + message_combos)
 #
 # 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=fin_mess)
-#
-#
-# def summary(bot, update):  # DONE
-#
-# 	"""
-# 	Send the summary of the matches already confirmed before playong the bet.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	message = create_summary(when='before', euros=5)
-#
-# 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
-#
-#
+
+
+def summary(bot, update):
+
+    """
+    Send the summary of the matches already confirmed before playong the bet.
+    """
+
+    chat_id = update.message.chat_id
+    message = utl.create_summary_pending_bet()
+    return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
+
+
 # def update_results(bot, update):
 #
 # 	"""
@@ -826,24 +744,24 @@ bici_handler = CommandHandler('bici', bike)
 cancel_handler = CommandHandler('cancel', cancel)
 confirm_handler = CommandHandler('confirm', confirm)
 # delete_handler = CommandHandler('delete', delete)
-# fischia_handler = CommandHandler('fischia', fischia)
-# get_handler = CommandHandler('get', get, pass_args=True)
+fischia_handler = CommandHandler('fischia', fischia)
+get_handler = CommandHandler('get', get, pass_args=True)
 # help_quote_handler = CommandHandler('help_quote', help_quote)
 # help_stats_handler = CommandHandler('help_stats', help_stats)
 # info_handler = CommandHandler('info', info)
-# log_handler = CommandHandler('log', send_log)
+log_handler = CommandHandler('log', send_log)
 # match_handler = CommandHandler('match', match, pass_args=True)
-# matiz_handler = CommandHandler('matiz', matiz)
+matiz_handler = CommandHandler('matiz', matiz)
 # new_quotes_handler = CommandHandler('new_quotes', new_quotes, pass_args=True)
 night_quotes_handler = CommandHandler('night_quotes', night_quotes)
 # play_handler = CommandHandler('play', play, pass_args=True)
-# remind_handler = CommandHandler('remind', remind)
+remind_handler = CommandHandler('remind', remind)
 # score_handler = CommandHandler('score', score, pass_args=True)
-# series_handler = CommandHandler('series', series)
-# sotm_handler = CommandHandler('sotm', sotm)
-# start_handler = CommandHandler('start', start)
+series_handler = CommandHandler('series', series)
+sotm_handler = CommandHandler('sotm', sotm)
+start_handler = CommandHandler('start', start)
 # stats_handler = CommandHandler('stats', stats)
-# summary_handler = CommandHandler('summary', summary)
+summary_handler = CommandHandler('summary', summary)
 # update_handler = CommandHandler('update', update_results)
 
 # Nightly quotes updating
@@ -855,32 +773,31 @@ update_tables = cfg.UPDATER.job_queue
 # update_tables.run_repeating(update_results, 86400,
 # 							first=datetime.time(3, 00, 00))
 
-# cfg.DISPATCHER.add_handler(start_handler)
+cfg.DISPATCHER.add_handler(start_handler)
 # cfg.DISPATCHER.add_handler(help_quote_handler)
 # cfg.DISPATCHER.add_handler(help_stats_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
-# cfg.DISPATCHER.add_handler(get_handler)
+cfg.DISPATCHER.add_handler(get_handler)
 cfg.DISPATCHER.add_handler(confirm_handler)
 cfg.DISPATCHER.add_handler(cancel_handler)
 # cfg.DISPATCHER.add_handler(delete_handler)
 # cfg.DISPATCHER.add_handler(play_handler)
 # cfg.DISPATCHER.add_handler(update_handler)
-# cfg.DISPATCHER.add_handler(summary_handler)
+cfg.DISPATCHER.add_handler(summary_handler)
 # cfg.DISPATCHER.add_handler(score_handler)
 cfg.DISPATCHER.add_handler(cake_handler)
 cfg.DISPATCHER.add_handler(bici_handler)
-# cfg.DISPATCHER.add_handler(series_handler)
+cfg.DISPATCHER.add_handler(series_handler)
 # cfg.DISPATCHER.add_handler(stats_handler)
-# cfg.DISPATCHER.add_handler(sotm_handler)
+cfg.DISPATCHER.add_handler(sotm_handler)
 # cfg.DISPATCHER.add_handler(match_handler)
 # cfg.DISPATCHER.add_handler(new_quotes_handler)
 cfg.DISPATCHER.add_handler(night_quotes_handler)
-# cfg.DISPATCHER.add_handler(log_handler)
-# cfg.DISPATCHER.add_handler(remind_handler)
-# cfg.DISPATCHER.add_handler(matiz_handler)
-# cfg.DISPATCHER.add_handler(fischia_handler)
+cfg.DISPATCHER.add_handler(log_handler)
+cfg.DISPATCHER.add_handler(remind_handler)
+cfg.DISPATCHER.add_handler(matiz_handler)
+cfg.DISPATCHER.add_handler(fischia_handler)
 
-logger = log.set_logging()
 cfg.UPDATER.start_polling()
-logger.info('Bet_Bot started.')
+cfg.LOGGER.info('Bet_Bot started.')
 cfg.UPDATER.idle()
