@@ -23,7 +23,6 @@ PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
                  'tempo 1', 'tempo 2', 'parziale e finale']
 
 # LOGGING
-# LOGGER = log.get_flogger()
 LOGGER = log.set_logging()
 
 # PLAY

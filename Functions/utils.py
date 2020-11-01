@@ -295,13 +295,19 @@ def match_already_chosen(nickname: str) -> bool:
     return True if duplicate else False
 
 
-def match_already_started(nickname: str) -> bool:
+# def match_already_started(nickname: str) -> bool:
+def match_already_started(**kwargs) -> bool:
 
-    dt_pred = dbf.db_select(
-            table='predictions',
-            columns=['date'],
-            where=f'user = "{nickname}" AND status = "Not Confirmed"')[0]
+    query = None
+    if 'nickname' in kwargs:
+        value = kwargs['nickname']
+        query = f'user = "{value}" AND status = "Not Confirmed"'
+    elif 'match_id' in kwargs:
+        value = kwargs['match_id']
+        query = f'id = {value}'
 
+    table = kwargs['table']
+    dt_pred = dbf.db_select(table=table, columns=['date'], where=query)[0]
     return str_to_dt(dt_as_string=dt_pred) < datetime.datetime.now()
 
 
@@ -353,11 +359,21 @@ def remove_existing_match_quotes(team_one: str, team_two: str) -> None:
     match_ids = dbf.db_select(
             table='matches',
             columns=['id'],
-            where=f'team1 = "{team_one}" OR team2 = "{team_two}"')
+            where=f'team1 = "{team_one}" AND team2 = "{team_two}"')
     if match_ids:
         for m_id in match_ids:
             dbf.db_delete(table='matches', where=f'id = {m_id}')
             dbf.db_delete(table='quotes', where=f'match = {m_id}')
+
+
+def remove_expired_match_quotes() -> None:
+
+    match_ids = dbf.db_select(table='matches', columns=['id'], where='')
+
+    for match_id in match_ids:
+        if match_already_started(table='matches', match_id=match_id):
+            dbf.db_delete(table='matches', where=f'id = {match_id}')
+            dbf.db_delete(table='quotes', where=f'match = {match_id}')
 
 
 def remove_pending_same_match(nickname: str):

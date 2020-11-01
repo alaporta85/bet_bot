@@ -79,7 +79,7 @@ def confirm(bot, update):
         return cancel(bot, update,
                       text='Pronostico non valido perché già presente')
 
-    if utl.match_already_started(nickname=user):
+    if utl.match_already_started(table='predictions', nickname=user):
         return cancel(bot, update, text='Match già iniziato')
 
     if utl.quote_outside_limits(nickname=user):
@@ -450,6 +450,8 @@ def night_quotes(bot, update):
 
     if role == 'Admin':
 
+        utl.remove_expired_match_quotes()
+
         # Start scraping
         start = time.time()
         cfg.LOGGER.info('NIGHT_QUOTES - Nightly job: Updating quote...')
@@ -737,7 +739,6 @@ def summary(bot, update):
 # 		logger.info('UPDATE - Database updated correctly.')
 # 	else:
 # 		logger.info('No completed bets were found.')
-
 
 cake_handler = CommandHandler('cake', cake)
 bici_handler = CommandHandler('bici', bike)
