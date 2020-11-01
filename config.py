@@ -17,7 +17,7 @@ CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 10
 RECURSIONS = 3
-HOURS_RANGE = 24
+HOURS_RANGE = 200
 PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
                  'combo parziale/finale', 'combo doppia chance',
                  'tempo 1', 'tempo 2', 'parziale e finale']

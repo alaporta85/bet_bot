@@ -259,51 +259,50 @@ def get(bot, update, args: list):
     return bot.send_message(chat_id=chat_id, text=message)
 
 
-# def info(bot, update):  # DONE
+# def info(bot, update):
 #
-# 	"""
-# 	Send message of general info.
+#     # TODO rewrite message
 #
-# 	"""
+#     chat_id = update.message.chat_id
+#     if utl.wrong_chat(chat_id=chat_id):
+#         message_id = update.message.message_id
+#         bot.deleteMessage(chat_id=chat_id, message_id=message_id)
+#         return bot.send_message(chat_id=utl.get_user_chat_id(update),
+#                                 text='Usa questo gruppo per i comandi.')
 #
-# 	chat_id = update.message.chat_id
-# 	if chat_id == cfg.GROUP_ID:
-# 		# TODO send messages to each private chat instead of group chat
-# 		return bot.send_message(chat_id=chat_id,
-# 		                        text='Usa il gruppo privato')
+#     f = open('Messages/info.txt', 'r')
+#     content = f.readlines()
+#     f.close()
 #
-# 	f = open('Messages/info.txt', 'r')
-# 	content = f.readlines()
-# 	f.close()
+#     message = ''
+#     for row in content:
+#         message += row
 #
-# 	message = ''
-# 	for row in content:
-# 		message += row
-#
-# 	return bot.send_message(chat_id=chat_id, text=message)
-#
-#
-# def match(bot, update, args):  # DONE
-#
-# 	"""
-# 	Return the matches of the requested day.
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-# 	if chat_id == cfg.GROUP_ID:
-# 		# TODO send messages to each private chat instead of group chat
-# 		return bot.send_message(chat_id=chat_id,
-# 		                        text='Usa il gruppo privato')
-#
-# 	if not args:
-# 		return bot.send_message(chat_id=chat_id,
-# 								text='Insert the day. Ex. /match sab')
-# 	try:
-# 		message = bf.matches_per_day(args[0])
-# 		return bot.send_message(parse_mode='HTML', chat_id=chat_id,
-# 						        text=message)
-# 	except SyntaxError as e:
-# 		return bot.send_message(chat_id=chat_id, text=str(e))
+#     return bot.send_message(chat_id=chat_id, text=message)
+
+
+def match(bot, update, args):
+
+    """
+    Return the matches of the requested day.
+    """
+
+    chat_id = update.message.chat_id
+
+    if utl.wrong_chat(chat_id=chat_id):
+        message_id = update.message.message_id
+        bot.deleteMessage(chat_id=chat_id, message_id=message_id)
+        return bot.send_message(chat_id=utl.get_user_chat_id(update),
+                                text='Usa questo gruppo per i comandi.')
+
+    if not args:
+        message = 'Inserisci il giorno. Ex: /match sab'
+        return bot.send_message(chat_id=chat_id, text=message)
+
+    weekday = args[0][:3]
+    message = utl.matches_per_day(weekday=weekday)
+    return bot.send_message(parse_mode='MarkdownV2', chat_id=chat_id,
+                            text=f'`{message}`')
 
 
 def matiz(bot, update):
@@ -689,7 +688,7 @@ fischia_handler = CommandHandler('fischia', fischia)
 get_handler = CommandHandler('get', get, pass_args=True)
 # info_handler = CommandHandler('info', info)
 log_handler = CommandHandler('log', send_log)
-# match_handler = CommandHandler('match', match, pass_args=True)
+match_handler = CommandHandler('match', match, pass_args=True)
 matiz_handler = CommandHandler('matiz', matiz)
 # new_quotes_handler = CommandHandler('new_quotes', new_quotes, pass_args=True)
 night_quotes_handler = CommandHandler('night_quotes', night_quotes)
@@ -727,7 +726,7 @@ cfg.DISPATCHER.add_handler(bici_handler)
 cfg.DISPATCHER.add_handler(series_handler)
 # cfg.DISPATCHER.add_handler(stats_handler)
 cfg.DISPATCHER.add_handler(sotm_handler)
-# cfg.DISPATCHER.add_handler(match_handler)
+cfg.DISPATCHER.add_handler(match_handler)
 # cfg.DISPATCHER.add_handler(new_quotes_handler)
 cfg.DISPATCHER.add_handler(night_quotes_handler)
 cfg.DISPATCHER.add_handler(log_handler)

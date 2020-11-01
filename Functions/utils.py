@@ -9,6 +9,51 @@ import db_functions as dbf
 import config as cfg
 
 
+def add_short_names(matches: list) -> list:
+
+    # TODO use jaccard
+
+    new_format = []
+    for hhmm, team1, team2, q1, qx, q2 in matches:
+        short1 = dbf.db_select(table='teams',
+                               columns=['short'],
+                               where=f'name = "{team1}"')[0]
+        short2 = dbf.db_select(table='teams',
+                               columns=['short'],
+                               where=f'name = "{team2}"')[0]
+
+        short1 = short1.replace('*', '')
+        short2 = short2.replace('*', '')
+
+        new_format.append((hhmm, short1, short2, q1, qx, q2))
+
+    return new_format
+
+
+def add_quotes_1x2(matches: list) -> list:
+    matches_quotes = []
+    for match_id, team1, team2, date in matches:
+        q1 = dbf.db_select(
+                table='quotes',
+                columns=['quote'],
+                where=f'match = {match_id} AND bet = "ESITO FINALE 1X2_1"')[0]
+        qx = dbf.db_select(
+                table='quotes',
+                columns=['quote'],
+                where=f'match = {match_id} AND bet = "ESITO FINALE 1X2_X"')[0]
+        q2 = dbf.db_select(
+                table='quotes',
+                columns=['quote'],
+                where=f'match = {match_id} AND bet = "ESITO FINALE 1X2_2"')[0]
+
+        q1 = format(q1, '.2f').rjust(5)
+        qx = format(qx, '.2f').rjust(5)
+        q2 = format(q2, '.2f').rjust(5)
+        matches_quotes.append((date, team1, team2, q1, qx, q2))
+
+    return matches_quotes
+
+
 def adjust_text_width(text: str, length: int) -> str:
 
     if length <= len(text):
@@ -68,6 +113,7 @@ def bet_mapping(bets_and_quotes: [(str, float)]) -> dict:
 
     map_dict = defaultdict(list)
     for f, b, q in bets_and_quotes:
+        q = format(q, '.2f').rjust(5)
         map_dict[f].append((b, q))
 
     return map_dict
@@ -112,10 +158,10 @@ def create_summary_pending_bet() -> str:
         prize = round(quotes_prod*cfg.DEFAULT_EUROS, 1)
         last_line = f'\n\nVincita con {cfg.DEFAULT_EUROS}€: <b>{prize}</b>'
         return message + last_line
-    return ''
+    return 'Nessuna scommessa attiva'
 
 
-def create_summary_placed_bets():
+def create_summary_placed_bets() -> str:
 
     bet_ids = get_placed_but_open_bet_details()
     if bet_ids:
@@ -125,6 +171,19 @@ def create_summary_placed_bets():
             message += f'{message}\nVincita: <b>{prize} €</b>\n\n\n'
         return message
     return ''
+
+
+def datetime_to_time(matches: list) -> list:
+
+    new_format = []
+    for dt_str, team1, team2, quote1, quotex, quote2 in matches:
+        dt = str_to_dt(dt_str)
+        hh = str(dt.hour).zfill(2)
+        mm = str(dt.minute).zfill(2)
+
+        new_format.append((f'{hh}:{mm}', team1, team2, quote1, quotex, quote2))
+
+    return new_format
 
 
 def fix_bet_name(bet_name: str) -> str:
@@ -173,6 +232,34 @@ def get_bet_quote(match_id: int, bet_name: str) -> float:
     return quote[0] if quote else 0.0
 
 
+def get_confirmed_matches(league_name: str) -> list:
+
+    bet_id = get_pending_bet_id()
+
+    cond1 = f'bet_id = {bet_id}'
+    cond2 = f'league = "{league_name}"'
+    cond3 = 'status = "Confirmed"'
+    matches = dbf.db_select(
+            table='predictions',
+            columns=['team1', 'team2', 'date'],
+            where=f'{cond1} AND {cond2} AND {cond3}')
+    return matches
+
+
+def get_info_to_print(league_name: str, datetime: datetime) -> list:
+
+    all_matches = get_matches_of_the_day(league_name=league_name,
+                                         datetime=datetime)
+    confirmed = get_confirmed_matches(league_name=league_name)
+
+    available = [i for i in all_matches if i[1:] not in confirmed]
+    available = add_quotes_1x2(matches=available)
+    available = datetime_to_time(matches=available)
+    available = add_short_names(matches=available)
+
+    return available
+
+
 def get_league_url(league_name: str) -> str:
 
     league = fix_league_name(league_name)
@@ -190,6 +277,15 @@ def get_match_details(team_name: int) -> list:
             where=f'team1 = "{team_name}" OR team2 = "{team_name}"')
 
     return match
+
+
+def get_matches_of_the_day(league_name: str, datetime: datetime) -> list:
+
+    matches = dbf.db_select(table='matches',
+                            columns=['id', 'team1', 'team2', 'date'],
+                            where=f'league = "{league_name}"')
+    return [match for match in matches if
+            str_to_dt(match[-1]).day == datetime.day]
 
 
 def get_nickname(update) -> str:
@@ -295,19 +391,18 @@ def match_already_chosen(nickname: str) -> bool:
     return True if duplicate else False
 
 
-# def match_already_started(nickname: str) -> bool:
 def match_already_started(**kwargs) -> bool:
 
-    query = None
+    where = None
     if 'nickname' in kwargs:
         value = kwargs['nickname']
-        query = f'user = "{value}" AND status = "Not Confirmed"'
+        where = f'user = "{value}" AND status = "Not Confirmed"'
     elif 'match_id' in kwargs:
         value = kwargs['match_id']
-        query = f'id = {value}'
+        where = f'id = {value}'
 
     table = kwargs['table']
-    dt_pred = dbf.db_select(table=table, columns=['date'], where=query)[0]
+    dt_pred = dbf.db_select(table=table, columns=['date'], where=where)[0]
     return str_to_dt(dt_as_string=dt_pred) < datetime.datetime.now()
 
 
@@ -317,6 +412,37 @@ def match_is_out_of_range(match_date: datetime) -> bool:
     secs_diff = (match_date - today).total_seconds()
     hours_diff = secs_diff // 3600
     return True if hours_diff > cfg.HOURS_RANGE else False
+
+
+def matches_per_day(weekday):
+
+    """
+    Return a message containing all the matches scheduled for that day.
+    """
+
+    weekdays = {'lun': 1, 'mar': 2, 'mer': 3, 'gio': 4,
+                'ven': 5, 'sab': 6, 'dom': 7}
+
+    if weekday.lower() not in weekdays:
+        return 'Giorno non valido'
+
+    isoweekday = weekdays[weekday]
+    dt = weekday_to_dt(isoweekday=isoweekday)
+
+    message = ''
+    all_leagues = dbf.db_select(table='leagues', columns=['name'], where='')
+    for league in all_leagues:
+
+        matches = get_info_to_print(league_name=league, datetime=dt)
+        if not matches:
+            continue
+
+        message += f'\t\t\t\t{league}\n\n'
+        for hhmm, team1, team2, q1, qx, q2 in matches:
+            message += f'{hhmm} {team1}-{team2}\t\t{q1} {qx} {q2}\n'
+        message += '\n\n\n'
+
+    return message
 
 
 def nothing_pending(nickname: str) -> bool:
@@ -417,6 +543,15 @@ def update_to_play_table(nickname: str, bet_id: int):
     dbf.db_insert(table='to_play',
                   columns=['pred_id', 'url', 'field', 'bet'],
                   values=[pred_id, url, field, bet])
+
+
+def weekday_to_dt(isoweekday: int) -> datetime:
+
+    dt = datetime.date.today()
+    while dt.isoweekday() != isoweekday:
+        dt += datetime.timedelta(1)
+
+    return dt
 
 
 def wrong_chat(chat_id: int) -> bool:
