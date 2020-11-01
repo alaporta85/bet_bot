@@ -7,9 +7,9 @@ import datetime
 from itertools import count
 from telegram.ext import CommandHandler
 
-from Functions import utils as utl
-from Functions import db_functions as dbf
-from Functions import selenium_functions as sf
+import utils as utl
+import db_functions as dbf
+import selenium_functions as sf
 from Functions import bot_functions as bf
 # from Functions import stats_functions as stf
 from Functions import logging_file as log
@@ -274,29 +274,6 @@ def get(bot, update, args: list):
     return bot.send_message(chat_id=chat_id, text=message)
 
 
-# def help_quote(bot, update):  # DONE
-#
-# 	"""
-# 	Instructions to insert the correct bet.
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-# 	if chat_id == cfg.GROUP_ID:
-# 		# TODO send messages to each private chat instead of group chat
-# 		return bot.send_message(chat_id=chat_id,
-# 		                        text='Usa il gruppo privato')
-#
-# 	f = open('Messages/help_quote.txt', 'r')
-# 	content = f.readlines()
-# 	f.close()
-#
-# 	message = ''
-# 	for row in content:
-# 		message += row
-#
-# 	return bot.send_message(chat_id=chat_id, text=message)
-#
-#
 # def help_stats(bot, update):  # DONE
 #
 # 	"""
@@ -747,7 +724,6 @@ confirm_handler = CommandHandler('confirm', confirm)
 # delete_handler = CommandHandler('delete', delete)
 fischia_handler = CommandHandler('fischia', fischia)
 get_handler = CommandHandler('get', get, pass_args=True)
-# help_quote_handler = CommandHandler('help_quote', help_quote)
 # help_stats_handler = CommandHandler('help_stats', help_stats)
 # info_handler = CommandHandler('info', info)
 log_handler = CommandHandler('log', send_log)
@@ -775,7 +751,6 @@ update_tables = cfg.UPDATER.job_queue
 # 							first=datetime.time(3, 00, 00))
 
 cfg.DISPATCHER.add_handler(start_handler)
-# cfg.DISPATCHER.add_handler(help_quote_handler)
 # cfg.DISPATCHER.add_handler(help_stats_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
 cfg.DISPATCHER.add_handler(get_handler)
