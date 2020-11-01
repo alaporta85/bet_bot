@@ -175,21 +175,6 @@ def fischia(bot, update):
                           photo=open(f'Mazzarri/{walter}', 'rb'))
 
 
-# def format_text(content):  # DONE
-#
-# 	"""
-# 	Called inside help_stats() function to clean the message text.
-#
-# 	"""
-#
-# 	message = ''.join(content)
-# 	message = message.replace('\n\n', 'xx')
-# 	message = message.replace('\n', ' ')
-# 	message = message.replace('xx', '\n\n')
-#
-# 	return message
-
-
 def get(bot, update, args: list):
 
     """
@@ -274,28 +259,6 @@ def get(bot, update, args: list):
     return bot.send_message(chat_id=chat_id, text=message)
 
 
-# def help_stats(bot, update):  # DONE
-#
-# 	"""
-# 	Instructions to use statistic commands.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-# 	if chat_id == cfg.GROUP_ID:
-# 		# TODO send messages to each private chat instead of group chat
-# 		return bot.send_message(chat_id=chat_id,
-# 		                        text='Usa il gruppo privato')
-#
-# 	f = open('Messages/help_stats.txt', 'r')
-# 	content = f.readlines()
-# 	f.close()
-#
-# 	message = format_text(content)
-#
-# 	return bot.send_message(chat_id=chat_id, text=message)
-#
-#
 # def info(bot, update):  # DONE
 #
 # 	"""
@@ -724,7 +687,6 @@ confirm_handler = CommandHandler('confirm', confirm)
 # delete_handler = CommandHandler('delete', delete)
 fischia_handler = CommandHandler('fischia', fischia)
 get_handler = CommandHandler('get', get, pass_args=True)
-# help_stats_handler = CommandHandler('help_stats', help_stats)
 # info_handler = CommandHandler('info', info)
 log_handler = CommandHandler('log', send_log)
 # match_handler = CommandHandler('match', match, pass_args=True)
@@ -751,7 +713,6 @@ update_tables = cfg.UPDATER.job_queue
 # 							first=datetime.time(3, 00, 00))
 
 cfg.DISPATCHER.add_handler(start_handler)
-# cfg.DISPATCHER.add_handler(help_stats_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
 cfg.DISPATCHER.add_handler(get_handler)
 cfg.DISPATCHER.add_handler(confirm_handler)
