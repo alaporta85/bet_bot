@@ -7,7 +7,7 @@
 !/Messages/*
 !/Mazzarri/*
 !Images/*
-!config/logs/*
+!logs_config/*
 
 !matiz.png
 !bici.mp3
