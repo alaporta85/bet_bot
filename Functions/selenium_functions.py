@@ -305,6 +305,7 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 		brow = open_browser()
 	brow.get(utl.get_league_url(league_name))
 	brow.refresh()
+	time.sleep(5)
 
 	for i in range(cfg.MATCHES_TO_SCRAPE):
 		matches = find_all_matches(brow=brow, league_name=league_name)
