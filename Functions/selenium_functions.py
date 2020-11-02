@@ -12,27 +12,28 @@ import config as cfg
 import utils as utl
 
 
-# def add_bet_to_basket(browser, details, count, dynamic_message):
-#
-# 	"""
-# 	Click the bet button and add it to the basket.
-# 	Used inside the command /play.
-#
-# 	:param browser: selenium browser instance
-# 	:param details: tuple, contain field and bet names
-# 	:param count: int
-# 	:param dynamic_message: str, the message to update in the chat
-#
-# 	:return: str, dynamic message updated
-#
-# 	"""
-#
-# 	field, bet = details
-#
-# 	click_bet(browser, field, bet)
-# 	time.sleep(10)
-#
-# 	return dynamic_message.format(count + 1)
+def add_bet_to_basket(brow: webdriver, field_name: str,
+                      bet_name: str) -> webdriver:
+
+	"""
+	Click the bet button and add it to the basket.
+	"""
+
+	open_panels(brow)
+
+	field_bets = all_fields_and_bets(brow=brow)
+
+	bets_container = [b for f, b in field_bets if f == field_name][0]
+
+	bets_group = extract_all_bets_from_container(bets_container=bets_container)
+	for bet in bets_group:
+		if extract_bet_name(bet_element=bet) == bet_name:
+			scroll_to_element(brow, bet)
+			time.sleep(2)
+			bet.click()
+			time.sleep(5)
+
+	return brow
 
 
 # def analyze_details_table(browser, ref_id, new_status):
@@ -200,84 +201,13 @@ import utils as utl
 # 	return bets_updated
 
 
-# def click_bet(browser, field, bet):
-#
-# 	"""
-# 	Find the button relative to the bet to play and click it.
-# 	Used inside the function add_bet_to_basket().
-#
-# 	:param browser: selenium browser instance
-# 	:param field: str, Ex. GOAL/NOGOAL + U/O 2,5
-# 	:param bet: str, Ex. GOAL + OVER
-#
-# 	:return: nothing
-#
-# 	"""
-#
-# 	CLICK_CHECK = False
-#
-# 	# All panels. Ex. Più giocate, Combo, Casa...
-# 	all_panels = find_all_panels(browser)
-#
-# 	for panel in all_panels:
-#
-# 		# Open the panel if closed
-# 		click_panel(browser, panel)
-#
-# 		# Select fields and bets containers inside the panel. Each field has
-# 		# a bets container which contains multiple bets
-# 		fields_path = ('./div[contains(@class, "group-market")]//' +
-# 		               'div[@class="market-info"]/div')
-# 		bets_path = ('./div[contains(@class, "group-market")]//' +
-# 		             'div[@class="market-selections"]')
-#
-# 		fields = panel.find_elements_by_xpath(fields_path)
-# 		bets = panel.find_elements_by_xpath(bets_path)
-#
-# 		# Associate each field with its bets and loop through all of them
-# 		for field_, bets_ in zip(fields, bets):
-# 			scroll_to_element(browser, field_)
-# 			field_name = field_.text.upper()
-#
-# 			# When the correct field is found
-# 			if field_name == field:
-#
-# 				# Select all the bets associated
-# 				all_bets = bets_.find_elements_by_xpath(
-# 						'.//div[@ng-repeat="selection in prematchSingle' +
-# 						'EventMarketSimple.market.sel"]')
-#
-# 				# In case the field is ESITO FINALE 1X2 HANDICAP the bets have
-# 				# a different path
-# 				if not all_bets:
-# 					all_bets = bets_.find_elements_by_xpath(
-# 							'.//div[@ng-repeat="selection in market.sel"]')
-#
-# 				# Loop through all the bets until we find the correct one
-# 				for new_bet in all_bets:
-# 					scroll_to_element(browser, new_bet)
-#
-# 					if field_name == 'ESITO FINALE 1X2 HANDICAP':
-# 						bet_name = new_bet.find_element_by_xpath(
-# 								'.//div[@class="selection-name ' +
-# 								'ng-binding"]').text.upper().split()[0]
-# 					else:
-# 						bet_name = new_bet.find_element_by_xpath(
-# 								'.//div[@class="selection-name ' +
-# 								'ng-binding"]').text.upper()
-#
-# 					# When found, we click it and break
-# 					if bet_name == bet:
-# 						new_bet.click()
-# 						CLICK_CHECK = True
-# 						break
-# 				break
-#
-# 			else:
-# 				continue
-#
-# 		if CLICK_CHECK:
-# 			break
+def extract_all_bets_from_container(bets_container: webdriver) -> [webdriver]:
+
+	bets_ngclass = "{'active':selection.selected}"
+	all_bets = bets_container.find_elements_by_xpath(
+			f'.//div[@ng-class="{bets_ngclass}"]')
+
+	return all_bets
 
 
 def extract_bet_name(bet_element: webdriver) -> str:
@@ -299,9 +229,8 @@ def extract_bet_quote(bet_element: webdriver) -> float:
 
 def extract_bet_info(bets_container: webdriver) -> [(str, float)]:
 
-	bets_ngclass = "{'active':selection.selected}"
-	all_bets = bets_container.find_elements_by_xpath(
-			f'.//div[@ng-class="{bets_ngclass}"]')
+	all_bets = extract_all_bets_from_container(bets_container)
+
 	info = []
 	for bet in all_bets:
 		name = extract_bet_name(bet)
@@ -433,17 +362,11 @@ def insert_quotes(brow: webdriver, last_index: int) -> None:
 	Insert the quotes in the database.
 	"""
 
-	# Select all fields we want to scrape
-	fields_in_db = dbf.db_select(table='fields',
-	                             # columns=['id', 'name'],
-	                             columns=['name'],
-	                             where='')
-
 	open_panels(brow)
 
 	# Associate each field with its corresponding bets
 	already_added = []
-	fields_bets = all_fields_and_bets(brow, fields_in_db)
+	fields_bets = all_fields_and_bets(brow)
 	for field_name, bets in fields_bets:
 
 		all_bets = extract_bet_info(bets_container=bets)
@@ -459,10 +382,14 @@ def insert_quotes(brow: webdriver, last_index: int) -> None:
 			already_added.append(full_name)
 
 
-def all_fields_and_bets(brow: webdriver,
-                        fields_to_scrape: list) -> [(str, webdriver)]:
+def all_fields_and_bets(brow: webdriver) -> [(str, webdriver)]:
 
-	fields_names = [f for i in fields_to_scrape for f, _ in (i.split('_'),)]
+	# Select all fields we want to scrape
+	fields_in_db = dbf.db_select(table='fields',
+	                             columns=['name'],
+	                             where='')
+
+	fields_names = [f for i in fields_in_db for f, _ in (i.split('_'),)]
 	fields_names = set(fields_names)
 
 	all_fields_path = '//div[@class="market-info"]/div'
@@ -513,6 +440,8 @@ def open_panels(brow: webdriver) -> None:
 		if 'active' not in button.get_attribute('class'):
 			button.find_element_by_xpath('.//a').click()
 			time.sleep(1)
+
+		# TODO live check field name
 
 
 def return_to_league_page(brow: webdriver) -> None:
@@ -615,65 +544,60 @@ def return_to_league_page(brow: webdriver) -> None:
 # 								  'section: MOVIMENTI E GIOCATE.')
 
 
-# def insert_euros(brow: webdriver, euros: int) -> None:
-#
-# 	"""
-# 	Fill the euros box in the website when playing the bet.
-# 	"""
-#
-# 	input_euros = ('.//div[@class="price-container-input"]/' +
-# 	               'input[@ng-model="amountSelect.amount"]')
-# 	euros_box = brow.find_element_by_xpath(input_euros)
-# 	scroll_to_element(brow, euros_box)
-# 	euros_box.send_keys(Keys.COMMAND, "a")
-# 	euros_box.send_keys(Keys.LEFT)
-# 	euros_box.send_keys(euros)
-# 	euros_box.send_keys(Keys.DELETE)
+def insert_euros(brow: webdriver, euros: int) -> None:
+
+	"""
+	Fill the euros box in the website when playing the bet.
+	"""
+
+	input_euros = ('.//div[@class="price-container-input"]/' +
+	               'input[@ng-model="amountSelect.amount"]')
+	euros_box = brow.find_element_by_xpath(input_euros)
+	scroll_to_element(brow, euros_box)
+	euros_box.send_keys(Keys.COMMAND, 'a')
+	euros_box.send_keys(Keys.LEFT)
+	euros_box.send_keys(euros)
+	euros_box.send_keys(Keys.DELETE)
 
 
-# def login(brow: webdriver) -> webdriver:
-#
-# 	"""
-# 	Make login by inserting username and password.
-# 	"""
-#
-# 	f = open('login.txt', 'r')
-# 	credentials = f.readlines()
-# 	f.close()
-#
-# 	username = credentials[0][10:-1]
-# 	password = credentials[1][10:]
-#
-# 	try:
-#
-# 		# Click the login button
-# 		button_path = './/button[@class="btn btn-default btn-accedi"]'
-# 		button = brow.find_element_by_xpath(button_path)
-# 		scroll_to_element(brow, button)
-# 		wait_clickable(brow, button_path)
-# 		button.click()
-#
-# 		# Find the boxes to insert username and password
-# 		user_path = './/input[@autocomplete="username"]'
-# 		pass_path = './/input[@autocomplete="current-password"]'
-# 		accedi_path = './/button[@id="signin-button"]'
-# 		wait_visible(brow, user_path)
-# 		wait_visible(brow, pass_path)
-# 		user = brow.find_element_by_xpath(user_path)
-# 		passw = brow.find_element_by_xpath(pass_path)
-#
-# 		# Insert username and password and login
-# 		user.send_keys(username)
-# 		passw.send_keys(password)
-# 		wait_clickable(brow, accedi_path)
-# 		accedi = brow.find_element_by_xpath(accedi_path)
-# 		accedi.click()
-# 		time.sleep(20)
-#
-# 		return brow
-# 	except TimeoutException:
-# 		brow.refresh()
-# 		return login(brow)
+def login(brow: webdriver) -> webdriver:
+
+	"""
+	Make login by inserting username and password.
+	"""
+
+	with open('login.txt', 'r') as f:
+		credentials = f.readlines()
+
+	username = credentials[0][10:-1]
+	password = credentials[1][10:]
+
+	# Click the login button
+	button_path = './/button[@class="btn btn-default btn-accedi"]'
+	button = brow.find_element_by_xpath(button_path)
+	scroll_to_element(brow, button)
+	wait_clickable(brow, button_path)
+	button.click()
+
+	# Find the boxes to insert username and password
+	user_path = './/input[@autocomplete="username"]'
+	pass_path = './/input[@autocomplete="current-password"]'
+	accedi_path = './/button[@id="signin-button"]'
+	wait_visible(brow, user_path)
+	wait_visible(brow, pass_path)
+	user = brow.find_element_by_xpath(user_path)
+	passw = brow.find_element_by_xpath(pass_path)
+
+	# Insert username and password and login
+	user.send_keys(username)
+	passw.send_keys(password)
+	wait_clickable(brow, accedi_path)
+	accedi = brow.find_element_by_xpath(accedi_path)
+	accedi.click()
+	time.sleep(20)
+
+	cfg.LOGGER.info('PLAY - Logged')
+	return brow
 
 
 # def money(browser):

@@ -398,73 +398,32 @@ def play(bot, update, args):
         message = f'{pending_txt}\n{too_late_txt}\n\nNessun pronostico attivo'
         bot.send_message(chat_id=cfg.GROUP_ID, text=message)
 
-#     chat_id = update.message.chat_id
-#
-#     euros = bf.check_if_input_is_correct(args)
-#     if type(euros) == str:
-#         return bot.send_message(chat_id=chat_id, text=euros)
-#
-#     # Check if there is any bet which has not been confirmed by any user
-#     warn = bf.one_or_more_preds_are_not_confirmed()
-#     if warn:
-#         return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=warn)
-#
-#     # Check if there is any bet to play and, if yes, select the id
-#     try:
-#         bet_id = dbf.db_select(
-#                 table='bets',
-#                 columns_in=['bet_id'],
-#                 where='bet_status = "Pending"')[0]
-#     except IndexError:
-#         return bot.send_message(chat_id=chat_id, text='No bets to play.')
-#
-#     # Check whether there are matches already started
-# TODO change for match_already_started()
-#     late = bf.check_if_too_late(bet_id)
-#     if late:
-#         return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
-#
-#     # Log in
-#     sent = bot.send_message(chat_id=cfg.GROUP_ID, text='Matches added: 0')
-#
-#     # To identify the message
-#     mess_id = sent.message_id
-#
-#   TODO change for connect_to()
-#     browser = sf.go_to_lottomatica()
-#
-#     # This message will be updated during the process to keep track of all
-#     # the steps
-#     dynamic_message = 'Matches added: {}'
-#
-#     # Create a list with all the preds to play
-#     matches_to_play = dbf.db_select(table='to_play')
-#
-#     # Add all the preds to the basket and update the message inside the chat
-#     for i, (tm1, tm2, field, bet, url) in enumerate(matches_to_play):
-#
-#         browser = sf.connect_to(some_url=url, browser=browser)
-#
-#         # First time we refresh the page to close the cookies bar.
-#         # browser.refresh() does not work
-#         if not i:
-#             browser = sf.connect_to(some_url=url, browser=browser)
-#
-#         basket_msg = sf.add_bet_to_basket(
-#                 browser, (field, bet), i, dynamic_message)
-#         logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
-#
-#         bot.edit_message_text(
-#                 chat_id=cfg.GROUP_ID, message_id=mess_id, text=basket_msg)
-#
-#     bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id, text='Logging')
-#     browser = sf.login(browser=browser)
-#     logger.info('PLAY - Logged')
-#     bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id, text='Logged')
-#
-#     # Insert the amount to bet
-#     sf.insert_euros(browser, euros)
-#
+    n_bets = len(available)
+    euros = utl.euros_to_play(args)
+
+    live_info = 'Pronostici aggiunti: {}/{}'
+    mess_id = bot.send_message(chat_id=cfg.GROUP_ID,
+                               text=live_info.format(0, n_bets)).message_id
+
+    brow = sf.open_browser()
+    brow.get(cfg.MAIN_PAGE)
+    brow.refresh()
+
+    for i, (url, field, bet) in enumerate(available, 1):
+
+        brow.get(url)
+        sf.add_bet_to_basket(brow, field, bet)
+        bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
+                              text=live_info.format(i, n_bets))
+
+    # Insert the amount to bet
+    sf.insert_euros(brow, euros)
+
+    brow = sf.login(brow=brow)
+    live_info = f'Pronostici aggiunti: {n_bets}/{n_bets}\n\nLogged in'
+    bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
+                          text=live_info)
+
 #     # Money left before playing the bet
 #     money_before = sf.money(browser)
 #

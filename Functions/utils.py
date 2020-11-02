@@ -186,6 +186,22 @@ def datetime_to_time(matches: list) -> list:
     return new_format
 
 
+def euros_to_play(command_input: list) -> int:
+
+    if not command_input:
+        return cfg.DEFAULT_EUROS
+
+    try:
+        euros = int(command_input[0])
+        if euros < 2:
+            return cfg.DEFAULT_EUROS
+        else:
+            return euros
+
+    except ValueError:
+        return cfg.DEFAULT_EUROS
+
+
 def fix_bet_name(bet_name: str) -> str:
 
     vals2replace = [(' ', ''), ('*', ''), (',', '.'), ('+', ''),
