@@ -385,121 +385,128 @@ def night_quotes(bot, update):
         return bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
 
 
-# def play(bot, update, args):  # DONE
+def play(bot, update, args):
+
+    """
+    Play the bet online.
+    """
+
+    available = utl.get_preds_available_to_play()
+    pending_txt = utl.remove_not_confirmed_before_play()
+    too_late_txt = utl.remove_too_late_before_play()
+    if not available:
+        message = f'{pending_txt}\n{too_late_txt}\n\nNessun pronostico attivo'
+        bot.send_message(chat_id=cfg.GROUP_ID, text=message)
+
+#     chat_id = update.message.chat_id
 #
-# 	"""
-# 	Play the bet online.
-# 	"""
+#     euros = bf.check_if_input_is_correct(args)
+#     if type(euros) == str:
+#         return bot.send_message(chat_id=chat_id, text=euros)
 #
-# 	chat_id = update.message.chat_id
+#     # Check if there is any bet which has not been confirmed by any user
+#     warn = bf.one_or_more_preds_are_not_confirmed()
+#     if warn:
+#         return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=warn)
 #
-# 	euros = bf.check_if_input_is_correct(args)
-# 	if type(euros) == str:
-# 		return bot.send_message(chat_id=chat_id, text=euros)
+#     # Check if there is any bet to play and, if yes, select the id
+#     try:
+#         bet_id = dbf.db_select(
+#                 table='bets',
+#                 columns_in=['bet_id'],
+#                 where='bet_status = "Pending"')[0]
+#     except IndexError:
+#         return bot.send_message(chat_id=chat_id, text='No bets to play.')
 #
-# 	# Check if there is any bet which has not been confirmed by any user
-# 	warn = bf.one_or_more_preds_are_not_confirmed()
-# 	if warn:
-# 		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=warn)
-#
-# 	# Check if there is any bet to play and, if yes, select the id
-# 	try:
-# 		bet_id = dbf.db_select(
-# 				table='bets',
-# 				columns_in=['bet_id'],
-# 		        where='bet_status = "Pending"')[0]
-# 	except IndexError:
-# 		return bot.send_message(chat_id=chat_id, text='No bets to play.')
-#
-# 	# Check whether there are matches already started
+#     # Check whether there are matches already started
 # TODO change for match_already_started()
-# 	late = bf.check_if_too_late(bet_id)
-# 	if late:
-# 		return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
+#     late = bf.check_if_too_late(bet_id)
+#     if late:
+#         return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=late)
 #
-# 	# Log in
-# 	sent = bot.send_message(chat_id=cfg.GROUP_ID, text='Matches added: 0')
+#     # Log in
+#     sent = bot.send_message(chat_id=cfg.GROUP_ID, text='Matches added: 0')
 #
-# 	# To identify the message
-# 	mess_id = sent.message_id
+#     # To identify the message
+#     mess_id = sent.message_id
 #
 #   TODO change for connect_to()
-# 	browser = sf.go_to_lottomatica()
+#     browser = sf.go_to_lottomatica()
 #
-# 	# This message will be updated during the process to keep track of all
-# 	# the steps
-# 	dynamic_message = 'Matches added: {}'
+#     # This message will be updated during the process to keep track of all
+#     # the steps
+#     dynamic_message = 'Matches added: {}'
 #
-# 	# Create a list with all the preds to play
-# 	matches_to_play = dbf.db_select(table='to_play')
+#     # Create a list with all the preds to play
+#     matches_to_play = dbf.db_select(table='to_play')
 #
-# 	# Add all the preds to the basket and update the message inside the chat
-# 	for i, (tm1, tm2, field, bet, url) in enumerate(matches_to_play):
+#     # Add all the preds to the basket and update the message inside the chat
+#     for i, (tm1, tm2, field, bet, url) in enumerate(matches_to_play):
 #
-# 		browser = sf.connect_to(some_url=url, browser=browser)
+#         browser = sf.connect_to(some_url=url, browser=browser)
 #
-# 		# First time we refresh the page to close the cookies bar.
-# 		# browser.refresh() does not work
-# 		if not i:
-# 			browser = sf.connect_to(some_url=url, browser=browser)
+#         # First time we refresh the page to close the cookies bar.
+#         # browser.refresh() does not work
+#         if not i:
+#             browser = sf.connect_to(some_url=url, browser=browser)
 #
-# 		basket_msg = sf.add_bet_to_basket(
-# 				browser, (field, bet), i, dynamic_message)
-# 		logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
+#         basket_msg = sf.add_bet_to_basket(
+#                 browser, (field, bet), i, dynamic_message)
+#         logger.info('PLAY - {}-{}  {} added'.format(tm1, tm2, bet))
 #
-# 		bot.edit_message_text(
-# 				chat_id=cfg.GROUP_ID, message_id=mess_id, text=basket_msg)
+#         bot.edit_message_text(
+#                 chat_id=cfg.GROUP_ID, message_id=mess_id, text=basket_msg)
 #
-# 	bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id, text='Logging')
-# 	browser = sf.login(browser=browser)
-# 	logger.info('PLAY - Logged')
-# 	bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id, text='Logged')
+#     bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id, text='Logging')
+#     browser = sf.login(browser=browser)
+#     logger.info('PLAY - Logged')
+#     bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id, text='Logged')
 #
-# 	# Insert the amount to bet
-# 	sf.insert_euros(browser, euros)
+#     # Insert the amount to bet
+#     sf.insert_euros(browser, euros)
 #
-# 	# Money left before playing the bet
-# 	money_before = sf.money(browser)
+#     # Money left before playing the bet
+#     money_before = sf.money(browser)
 #
-# 	# Click the button to place the bet
-# 	sf.click_scommetti(browser)
-# 	time.sleep(10)
+#     # Click the button to place the bet
+#     sf.click_scommetti(browser)
+#     time.sleep(10)
 #
-# 	# Money after clicking the button
-# 	money_after = sf.money(browser)
+#     # Money after clicking the button
+#     money_after = sf.money(browser)
 #
-# 	# Verify money has the new value. If not, refresh the value and check again
-# 	# up to 1000 times
-# 	c = count(1)
-# 	while next(c) < 1000 and money_after != (money_before - euros):
-# 		# sf.refresh_money(browser)
-# 		browser.refresh()
-# 		time.sleep(2)
-# 		money_after = sf.money(browser)
+#     # Verify money has the new value. If not, refresh the value and check again
+#     # up to 1000 times
+#     c = count(1)
+#     while next(c) < 1000 and money_after != (money_before - euros):
+#         # sf.refresh_money(browser)
+#         browser.refresh()
+#         time.sleep(2)
+#         money_after = sf.money(browser)
 #
-# 	if money_after == money_before - euros:
+#     if money_after == money_before - euros:
 #
-# 		logger.info('PLAY - Bet has been played.')
+#         logger.info('PLAY - Bet has been played.')
 #
-# 		# Update bet table
-# 		dbf.db_update(
-# 				table='bets',
-# 				columns=['bet_date', 'bet_euros', 'bet_status'],
-# 				values=[datetime.datetime.now(), euros, 'Placed'],
-# 				where='bet_status = "Pending"')
+#         # Update bet table
+#         dbf.db_update(
+#                 table='bets',
+#                 columns=['bet_date', 'bet_euros', 'bet_status'],
+#                 values=[datetime.datetime.now(), euros, 'Placed'],
+#                 where='bet_status = "Pending"')
 #
-# 		# Empty table with bets
-# 		dbf.empty_table(table='to_play')
+#         # Empty table with bets
+#         dbf.empty_table(table='to_play')
 #
-# 		# Print the summary
-# 		msg = create_summary(when='after', euros=euros)
-# 		msg += '\nMoney left: <b>{}</b>'.format(money_after)
-# 		bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
-# 	else:
-# 		msg = 'Money left did not change, try again the command /play.'
-# 		bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
+#         # Print the summary
+#         msg = create_summary(when='after', euros=euros)
+#         msg += '\nMoney left: <b>{}</b>'.format(money_after)
+#         bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
+#     else:
+#         msg = 'Money left did not change, try again the command /play.'
+#         bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
 #
-# 	browser.quit()
+#     browser.quit()
 
 
 def remind(bot, update):
@@ -674,7 +681,7 @@ match_handler = CommandHandler('match', match, pass_args=True)
 matiz_handler = CommandHandler('matiz', matiz)
 # new_quotes_handler = CommandHandler('new_quotes', new_quotes, pass_args=True)
 night_quotes_handler = CommandHandler('night_quotes', night_quotes)
-# play_handler = CommandHandler('play', play, pass_args=True)
+play_handler = CommandHandler('play', play, pass_args=True)
 remind_handler = CommandHandler('remind', remind)
 # score_handler = CommandHandler('score', score, pass_args=True)
 series_handler = CommandHandler('series', series)
@@ -699,7 +706,7 @@ cfg.DISPATCHER.add_handler(get_handler)
 cfg.DISPATCHER.add_handler(confirm_handler)
 cfg.DISPATCHER.add_handler(cancel_handler)
 cfg.DISPATCHER.add_handler(delete_handler)
-# cfg.DISPATCHER.add_handler(play_handler)
+cfg.DISPATCHER.add_handler(play_handler)
 # cfg.DISPATCHER.add_handler(update_handler)
 cfg.DISPATCHER.add_handler(summary_handler)
 # cfg.DISPATCHER.add_handler(score_handler)

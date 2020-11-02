@@ -305,7 +305,7 @@ def get_pending_bet_id() -> int:
     return pending[0] if pending else 0
 
 
-def get_placed_but_open_bet_details():
+def get_placed_but_open_bet_details() -> list:
 
     bet_ids = dbf.db_select(
             table='bets',
@@ -313,6 +313,18 @@ def get_placed_but_open_bet_details():
             where='status = "Placed" AND result = "Unknown"')
 
     return bet_ids
+
+
+def get_preds_available_to_play() -> list:
+
+    preds = dbf.db_select(table='to_play', columns=['*'], where='')
+    available = []
+    dt_now = datetime.datetime.now()
+    for pred_id, url, dt, field, bet in preds:
+        if str_to_dt(dt) > dt_now:
+            available.append((url, field, bet))
+
+    return available
 
 
 def get_quotes_prod(bet_id: int) -> float:
@@ -414,7 +426,7 @@ def match_is_out_of_range(match_date: datetime) -> bool:
     return True if hours_diff > cfg.HOURS_RANGE else False
 
 
-def matches_per_day(weekday):
+def matches_per_day(weekday: str) -> str:
 
     """
     Return a message containing all the matches scheduled for that day.
@@ -519,6 +531,26 @@ def remove_expired_match_quotes() -> None:
             dbf.db_delete(table='quotes', where=f'match = {match_id}')
 
 
+def remove_not_confirmed_before_play() -> str:
+    bet_id = get_pending_bet_id()
+    if not bet_id:
+        return ''
+
+    where = f'bet_id = {bet_id} AND status = "Not Confirmed"'
+
+    pending = dbf.db_select(table='predictions',
+                            columns=['team1', 'team2'],
+                            where=where)
+
+    dbf.db_delete(table='predictions', where=where)
+
+    pend_message = ''
+    for team1, team2 in pending:
+        pend_message += f'{team1}-{team2} eliminata perché non confermata.\n'
+
+    return pend_message
+
+
 def remove_pending_same_match(nickname: str):
 
     team1, team2 = dbf.db_select(
@@ -533,22 +565,44 @@ def remove_pending_same_match(nickname: str):
                   where=f'{cond1} AND {cond2} AND {cond3}')
 
 
+def remove_too_late_before_play() -> str:
+    preds = dbf.db_select(table='to_play', columns=['*'], where='')
+    too_late_ids = []
+    dt_now = datetime.datetime.now()
+    for pred_id, url, dt, field, bet in preds:
+        if str_to_dt(dt) <= dt_now:
+            too_late_ids.append(pred_id)
+
+    too_late_message = ''
+    for pred_id in too_late_ids:
+        team1, team2 = dbf.db_select(table='predictions',
+                                     columns=['team1', 'team2'],
+                                     where=f'id = {pred_id}')[0]
+        too_late_message += f'{team1}-{team2} già iniziata.\n'
+
+        dbf.db_delete(table='to_play', where=f'pred_id = {pred_id}')
+        dbf.db_delete(table='predictions', where=f'id = {pred_id}')
+    remove_bet_without_preds()
+
+    return too_late_message
+
+
 def str_to_dt(dt_as_string: str) -> datetime:
     return datetime.datetime.strptime(dt_as_string, '%Y-%m-%d %H:%M:%S')
 
 
-def time_needed(start):
+def time_needed(start: time) -> (int, int):
     end = time.time() - start
     mins = int(end // 60)
     secs = round(end % 60)
     return mins, secs
 
 
-def update_to_play_table(nickname: str, bet_id: int):
+def update_to_play_table(nickname: str, bet_id: int) -> None:
 
-    pred_id, team1, team2, bet_alias = dbf.db_select(
+    pred_id, dt, team1, team2, bet_alias = dbf.db_select(
             table='predictions',
-            columns=['id', 'team1', 'team2', 'bet_alias'],
+            columns=['id', 'date', 'team1', 'team2', 'bet_alias'],
             where=f'user = "{nickname}" AND bet_id = {bet_id}')[-1]
 
     field_bet = dbf.db_select(table='fields',
@@ -558,8 +612,8 @@ def update_to_play_table(nickname: str, bet_id: int):
 
     *_, url = get_match_details(team_name=team1)[0]
     dbf.db_insert(table='to_play',
-                  columns=['pred_id', 'url', 'field', 'bet'],
-                  values=[pred_id, url, field, bet])
+                  columns=['pred_id', 'url', 'date', 'field', 'bet'],
+                  values=[pred_id, url, dt, field, bet])
 
 
 def weekday_to_dt(isoweekday: int) -> datetime:
