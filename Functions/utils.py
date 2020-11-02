@@ -455,6 +455,23 @@ def nothing_pending(nickname: str) -> bool:
     return True if not pending else False
 
 
+def prediction_to_delete(nickname: str) -> int:
+
+    bet_id = get_pending_bet_id()
+    if not bet_id:
+        return 0
+
+    cond1 = f'bet_id = {bet_id}'
+    cond2 = f'user = "{nickname}"'
+    cond3 = 'status = "Confirmed"'
+    confirmed = dbf.db_select(
+            table='predictions',
+            columns=['id'],
+            where=f'{cond1} AND {cond2} AND {cond3}')
+
+    return 0 if not confirmed else confirmed[-1]
+
+
 def quote_outside_limits(nickname: str) -> bool:
 
     """

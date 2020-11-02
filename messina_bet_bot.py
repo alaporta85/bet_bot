@@ -111,56 +111,38 @@ def confirm(bot, update):
         return False#play(bot, update, ['5'])
 
 
-# def delete(bot, update):  # DONE
-#
-# 	"""
-# 	Delete the 'Confirmed' match from 'predictions' table.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-# 	user = utl.get_nickname(update)
-#
-# 	# Check if there is any 'Pending' bet
-# 	try:
-# 		bet_id = dbf.db_select(
-# 				table='bets',
-# 				columns_in=['bet_id'],
-# 		        where='bet_status = "Pending"')[0]
-# 	except IndexError:
-# 		return bot.send_message(chat_id=chat_id, text='No open bets.')
-#
-# 	# Check if user has a match to delete
-# 	try:
-# 		match_to_delete = dbf.db_select(
-# 				table='predictions',
-# 				columns_in=['pred_id'],
-# 				where=('pred_bet = {} AND pred_user = "{}" AND ' +
-# 				       'pred_status = "Confirmed"').format(bet_id, user))[0]
-# 	except IndexError:
-# 		return bot.send_message(chat_id=chat_id,
-# 		                        text='{}, no match to delete.'.format(user))
-#
-# 	# Update the database
-# 	bf.update_to_play_table(user, bet_id, 'delete')
-# 	dbf.db_delete(
-# 			table='predictions',
-# 			where='pred_id = {}'.format(match_to_delete))
-#
-# 	# Check if this was the only match of the bet and, if yes, delete the bet
-# 	# in the 'bet' table
-# 	conf_bets_left = dbf.db_select(
-# 			table='predictions',
-# 			columns_in=['pred_id'],
-# 			where='pred_status = "Confirmed" AND pred_bet = {}'.format(bet_id))
-#
-# 	if not conf_bets_left:
-# 		dbf.db_delete(
-# 				table='bets',
-# 		        where='bet_id = {}'.format(bet_id))
-#
-# 	return bot.send_message(
-# 			chat_id=chat_id, text='{}, bet deleted.'.format(user))
+def delete(bot, update):
+
+    """
+    Delete the 'Confirmed' match from 'predictions' table.
+    """
+
+    chat_id = update.message.chat_id
+    user = utl.get_nickname(update)
+
+    if utl.wrong_chat(chat_id=chat_id):
+        message_id = update.message.message_id
+        bot.deleteMessage(chat_id=chat_id, message_id=message_id)
+        return bot.send_message(chat_id=utl.get_user_chat_id(update),
+                                text='Usa questo gruppo per i comandi.')
+
+    pred_to_delete = utl.prediction_to_delete(nickname=user)
+    if not pred_to_delete:
+        return bot.send_message(chat_id=chat_id,
+                                text='Nessun pronostico da eliminare')
+
+    dbf.db_delete(table='predictions', where=f'id = {pred_to_delete}')
+
+    dbf.db_delete(table='to_play', where=f'pred_id = {pred_to_delete}')
+
+    utl.remove_bet_without_preds()
+
+    bot.send_message(chat_id=chat_id, text='Pronostico eliminato')
+
+    # Send summary in group chat
+    summary = utl.create_summary_pending_bet()
+    return bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
+                            text=f'Pronostico eliminato.\n\n{summary}')
 
 
 def fischia(bot, update):
@@ -683,7 +665,7 @@ cake_handler = CommandHandler('cake', cake)
 bici_handler = CommandHandler('bici', bike)
 cancel_handler = CommandHandler('cancel', cancel)
 confirm_handler = CommandHandler('confirm', confirm)
-# delete_handler = CommandHandler('delete', delete)
+delete_handler = CommandHandler('delete', delete)
 fischia_handler = CommandHandler('fischia', fischia)
 get_handler = CommandHandler('get', get, pass_args=True)
 # info_handler = CommandHandler('info', info)
@@ -704,8 +686,8 @@ summary_handler = CommandHandler('summary', summary)
 
 # Nightly quotes updating
 update_quotes = cfg.UPDATER.job_queue
-# update_quotes.run_repeating(night_quotes, 86400,
-#                             first=datetime.time(1, 00, 00))
+update_quotes.run_repeating(night_quotes, 86400,
+                            first=datetime.time(1, 00, 00))
 
 update_tables = cfg.UPDATER.job_queue
 # update_tables.run_repeating(update_results, 86400,
@@ -716,7 +698,7 @@ cfg.DISPATCHER.add_handler(start_handler)
 cfg.DISPATCHER.add_handler(get_handler)
 cfg.DISPATCHER.add_handler(confirm_handler)
 cfg.DISPATCHER.add_handler(cancel_handler)
-# cfg.DISPATCHER.add_handler(delete_handler)
+cfg.DISPATCHER.add_handler(delete_handler)
 # cfg.DISPATCHER.add_handler(play_handler)
 # cfg.DISPATCHER.add_handler(update_handler)
 cfg.DISPATCHER.add_handler(summary_handler)
