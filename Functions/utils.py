@@ -626,7 +626,10 @@ def update_to_play_table(nickname: str, bet_id: int) -> None:
                               where=f'alias = "{bet_alias}"')[0]
     field, bet = field_bet.split('_')
 
-    *_, url = get_match_details(team_name=team1)[0]
+    try:
+        *_, url = get_match_details(team_name=team1)[0]
+    except IndexError:
+        *_, url = get_match_details(team_name=f'*{team1}')[0]
     dbf.db_insert(table='to_play',
                   columns=['pred_id', 'url', 'date', 'field', 'bet'],
                   values=[pred_id, url, dt, field, bet])
