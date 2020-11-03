@@ -139,9 +139,9 @@ def delete(bot, update):
     bot.send_message(chat_id=chat_id, text='Pronostico eliminato')
 
     # Send summary in group chat
-    summary = utl.create_summary_pending_bet()
+    summary_updated = utl.create_summary_pending_bet()
     return bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
-                            text=f'Pronostico eliminato.\n\n{summary}')
+                            text=f'Pronostico eliminato.\n\n{summary_updated}')
 
 
 def fischia(bot, update):
@@ -373,10 +373,10 @@ def night_quotes(bot, update):
         utl.remove_expired_match_quotes()
 
         # Start scraping
-        start = time.time()
+        t0 = time.time()
         cfg.LOGGER.info('NIGHT_QUOTES - Nightly job: Updating quote...')
         sf.scrape_all_quotes()
-        mins, secs = utl.time_needed(start)
+        mins, secs = utl.time_needed(t0)
         cfg.LOGGER.info(f'NIGHT_QUOTES - Whole process took {mins}:{secs}.')
 
     else:
@@ -395,7 +395,7 @@ def play(bot, update, args):
     too_late_txt = utl.remove_too_late_before_play()
     if not available:
         message = f'{pending_txt}\n{too_late_txt}\n\nNessun pronostico attivo'
-        bot.send_message(chat_id=cfg.GROUP_ID, text=message)
+        return bot.send_message(chat_id=cfg.GROUP_ID, text=message)
 
     n_bets = len(available)
     euros = utl.euros_to_play(args)
@@ -423,8 +423,8 @@ def play(bot, update, args):
     bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                           text=live_info)
 
-#     # Money left before playing the bet
-#     money_before = sf.money(browser)
+    # Money left before playing the bet
+    money_before = sf.money(brow)
 #
 #     # Click the button to place the bet
 #     sf.click_scommetti(browser)

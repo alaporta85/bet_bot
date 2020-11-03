@@ -285,7 +285,7 @@ def get_league_url(league_name: str) -> str:
     return url
 
 
-def get_match_details(team_name: int) -> list:
+def get_match_details(team_name: str) -> list:
 
     match = dbf.db_select(
             table='matches',

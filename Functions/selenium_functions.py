@@ -555,10 +555,13 @@ def insert_euros(brow: webdriver, euros: int) -> None:
 	               'input[@ng-model="amountSelect.amount"]')
 	euros_box = brow.find_element_by_xpath(input_euros)
 	scroll_to_element(brow, euros_box)
-	euros_box.send_keys(Keys.COMMAND, 'a')
-	euros_box.send_keys(Keys.LEFT)
+	# euros_box.send_keys(Keys.COMMAND, 'a')
+	# euros_box.send_keys(Keys.LEFT)
+	# euros_box.send_keys(euros)
+	# euros_box.send_keys(Keys.DELETE)
 	euros_box.send_keys(euros)
-	euros_box.send_keys(Keys.DELETE)
+	euros_box.send_keys(Keys.ARROW_LEFT)
+	euros_box.send_keys(Keys.BACKSPACE)
 
 
 def login(brow: webdriver) -> webdriver:
@@ -601,20 +604,20 @@ def login(brow: webdriver) -> webdriver:
 	return brow
 
 
-# def money(browser):
-#
-# 	"""
-# 	Extract the text from the HTML element and return it as a float.
-# 	"""
-#
-# 	money_path = './/span[@class="user-balance ng-binding"]'
-# 	money_el = browser.find_element_by_xpath(money_path)
-#
-# 	money = None
-# 	while not money:
-# 		money = money_el.get_attribute('innerText')
-#
-# 	return float(money.replace(',', '.'))
+def money(brow: webdriver) -> float:
+
+	"""
+	Extract the text from the HTML element and return it as a float.
+	"""
+
+	money_path = './/span[@class="user-balance ng-binding"]'
+	money_el = brow.find_element_by_xpath(money_path)
+
+	money_value = None
+	while not money_value:
+		money_value = money_el.get_attribute('innerText')
+
+	return float(money_value.replace(',', '.'))
 
 
 def scroll_to_element(brow: webdriver, element: webdriver,
