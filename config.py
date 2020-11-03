@@ -7,7 +7,7 @@ with open('token.txt', 'r') as f:
 	UPDATER = Updater(token=f.readline())
 DISPATCHER = UPDATER.dispatcher
 
-DEBUG = True
+DEBUG = False
 GROUP_ID = -235014519 if not DEBUG else 67507055
 
 # SELENIUM SCRAPING
@@ -26,7 +26,7 @@ PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
 LOGGER = log.set_logging()
 
 # PLAY
-LIM_LOW = 1
+LIM_LOW = 1.8
 LIM_HIGH = 3.2
 N_BETS = 6
 DEFAULT_EUROS = 5

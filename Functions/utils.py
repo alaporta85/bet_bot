@@ -140,7 +140,7 @@ def create_list_of_matches(bet_id: int) -> str:
         hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
 
         message += (f'<b>{user}</b>:     {team1}-{team2} ({hhmm})    '
-                    f'{rawbet}      @<b>{quote}</b>\n')
+                    f'{rawbet}      @<b>{quote}</b>\n\n')
 
     return message
 
