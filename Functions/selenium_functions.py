@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from itertools import count
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -19,6 +20,7 @@ def add_bet_to_basket(brow: webdriver, field_name: str,
 	Click the bet button and add it to the basket.
 	"""
 
+	# TODO no need to open all the panels always
 	open_panels(brow)
 
 	field_bets = all_fields_and_bets(brow=brow)
@@ -420,6 +422,21 @@ def find_all_matches(brow: webdriver, league_name: str) -> [webdriver]:
 	return brow.find_elements_by_xpath(matches_path)
 
 
+def get_money_after(brow: webdriver, before: float, euros: int) -> float:
+
+	after = money(brow)
+
+	# Verify money has the new value. If not, refresh the value and check again
+	# up to 10 times
+	c = count(1)
+	while next(c) < 10 and after != (before - euros):
+		refresh_money(brow)
+		time.sleep(2)
+		after = money(brow)
+
+	return after
+
+
 def open_panels(brow: webdriver) -> None:
 
 	all_panels_path = '//div[@class="item-group ng-scope"]'
@@ -445,6 +462,16 @@ def open_panels(brow: webdriver) -> None:
 		# TODO live check field name
 
 
+def refresh_money(brow: webdriver) -> None:
+
+	refresh_path = './/user-balance-refresh-btn'
+
+	wait_clickable(brow, refresh_path)
+	refresh = brow.find_element_by_xpath(refresh_path)
+	scroll_to_element(brow, refresh)
+	refresh.click()
+
+
 def return_to_league_page(brow: webdriver) -> None:
 
 	back_path = './/a[@class="back-competition ng-scope"]'
@@ -454,25 +481,14 @@ def return_to_league_page(brow: webdriver) -> None:
 	back.click()
 
 
-# def click_scommetti(browser):
-#
-# 	"""
-# 	Click the button SCOMMETTI once logged in.
-# 	Used inside command /play.
-#
-# 	:param browser: selenium browser instance
-#
-#
-# 	:return: nothing
-#
-# 	"""
-#
-# 	button_location = './/div[@class="buttons-betslip"]'
-# 	button = browser.find_element_by_xpath(button_location)
-# 	scroll_to_element(browser, button)
-# 	time.sleep(10)
-# 	button.click()
-# 	time.sleep(20)
+def click_scommetti(brow: webdriver) -> None:
+
+	button_location = './/div[@class="buttons-betslip"]'
+	button = brow.find_element_by_xpath(button_location)
+	scroll_to_element(brow, button)
+	time.sleep(5)
+	button.click()
+	time.sleep(10)
 
 
 # def go_to_personal_area(browser):

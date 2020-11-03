@@ -4,14 +4,12 @@ import os
 import random
 import time
 import datetime
-from itertools import count
 from telegram.ext import CommandHandler
 
 import utils as utl
 import db_functions as dbf
 import selenium_functions as sf
 # from Functions import stats_functions as stf
-from Functions import logging_file as log
 # import Classes as cl
 import config as cfg
 
@@ -106,8 +104,7 @@ def confirm(bot, update):
 
     # Play the bet automatically
     if utl.autoplay():
-        # TODO activate again when "play" command is ready
-        return False#play(bot, update, ['5'])
+        return play(bot, update, [f'{cfg.DEFAULT_EUROS}'])
 
 
 def delete(bot, update):
@@ -390,6 +387,7 @@ def play(bot, update, args):
     Play the bet online.
     """
 
+    # Check matches to play
     available = utl.get_preds_available_to_play()
     pending_txt = utl.remove_not_confirmed_before_play()
     too_late_txt = utl.remove_too_late_before_play()
@@ -397,74 +395,75 @@ def play(bot, update, args):
         message = f'{pending_txt}\n{too_late_txt}\n\nNessun pronostico attivo'
         return bot.send_message(chat_id=cfg.GROUP_ID, text=message)
 
-    n_bets = len(available)
+    # Euros to bet
     euros = utl.euros_to_play(args)
 
+    # Message to update
+    n_bets = len(available)
     live_info = 'Pronostici aggiunti: {}/{}'
     mess_id = bot.send_message(chat_id=cfg.GROUP_ID,
                                text=live_info.format(0, n_bets)).message_id
 
+    # Go to main page
     brow = sf.open_browser()
     brow.get(cfg.MAIN_PAGE)
     brow.refresh()
 
+    # Add all predictions
     for i, (url, field, bet) in enumerate(available, 1):
-
         brow.get(url)
         sf.add_bet_to_basket(brow, field, bet)
         bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                               text=live_info.format(i, n_bets))
 
-    # Insert the amount to bet
-    sf.insert_euros(brow, euros)
 
+    # Login
     brow = sf.login(brow=brow)
     live_info = f'Pronostici aggiunti: {n_bets}/{n_bets}\n\nLogged in'
     bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                           text=live_info)
 
-    # Money left before playing the bet
+    # Insert euros to bet
+    sf.insert_euros(brow, euros)
+
+    # Budget before playing
     money_before = sf.money(brow)
-#
-#     # Click the button to place the bet
-#     sf.click_scommetti(browser)
-#     time.sleep(10)
-#
-#     # Money after clicking the button
-#     money_after = sf.money(browser)
-#
-#     # Verify money has the new value. If not, refresh the value and check again
-#     # up to 1000 times
-#     c = count(1)
-#     while next(c) < 1000 and money_after != (money_before - euros):
-#         # sf.refresh_money(browser)
-#         browser.refresh()
-#         time.sleep(2)
-#         money_after = sf.money(browser)
-#
-#     if money_after == money_before - euros:
-#
-#         logger.info('PLAY - Bet has been played.')
-#
-#         # Update bet table
-#         dbf.db_update(
-#                 table='bets',
-#                 columns=['bet_date', 'bet_euros', 'bet_status'],
-#                 values=[datetime.datetime.now(), euros, 'Placed'],
-#                 where='bet_status = "Pending"')
-#
-#         # Empty table with bets
-#         dbf.empty_table(table='to_play')
-#
-#         # Print the summary
-#         msg = create_summary(when='after', euros=euros)
-#         msg += '\nMoney left: <b>{}</b>'.format(money_after)
-#         bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
-#     else:
-#         msg = 'Money left did not change, try again the command /play.'
-#         bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
-#
-#     browser.quit()
+
+    # Place bet
+    sf.click_scommetti(brow)
+
+    # Budget after playing
+    money_after = sf.get_money_after(brow, before=money_before, euros=euros)
+
+    if money_after == money_before - euros:
+        cfg.LOGGER.info('PLAY - Bet has been played.')
+
+        bet_id = utl.get_pending_bet_id()
+
+        # TODO select real prize from website
+        prize = utl.get_quotes_prod(bet_id=bet_id)
+
+        # Update bet table
+        dbf.db_update(
+                table='bets',
+                columns=['date', 'euros', 'status'],
+                values=[datetime.datetime.now(), euros, 'Placed'],
+                where=f'id = {bet_id}')
+
+        # Empty table with bets
+        dbf.empty_table(table='to_play')
+
+        # Print the summary
+        msg = 'Scommessa giocata correttamente.\n\n'
+        msg += utl.create_list_of_matches(bet_id=bet_id)
+        msg += f'\nVincita: <b>{prize} €</b>\n\n\n'
+        msg += f'\nBudget aggiornato: <b>{567} €</b>'
+        bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
+    else:
+        msg = 'Non è stato possibile giocare la scommessa.'
+        bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
+
+    brow.quit()
 
 
 def remind(bot, update):

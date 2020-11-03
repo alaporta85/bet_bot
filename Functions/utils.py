@@ -170,7 +170,7 @@ def create_summary_placed_bets() -> str:
             message += create_list_of_matches(bet_id)
             message += f'{message}\nVincita: <b>{prize} €</b>\n\n\n'
         return message
-    return ''
+    return 'Nessuna scommessa attiva'
 
 
 def datetime_to_time(matches: list) -> list:
@@ -348,7 +348,7 @@ def get_quotes_prod(bet_id: int) -> float:
     quotes = dbf.db_select(table='predictions',
                            columns=['quote'],
                            where=f'bet_id = {bet_id}')
-    return np.prod(np.array(quotes))
+    return round(np.prod(np.array(quotes)), 1)
 
 
 def get_role(update) -> str:
