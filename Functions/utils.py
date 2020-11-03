@@ -248,6 +248,19 @@ def get_bet_quote(match_id: int, bet_name: str) -> float:
     return quote[0] if quote else 0.0
 
 
+def get_bets_to_update() -> list:
+
+    bets = dbf.db_select(table='bets',
+                         columns=['id', 'date'],
+                         where='status = "Placed" AND result = "Unknown"')
+    bets.sort(key=lambda x: x[0], reverse=True)
+
+    if not bets:
+        cfg.LOGGER.info('UPDATE - No bets must be updated')
+
+    return bets
+
+
 def get_confirmed_matches(league_name: str) -> list:
 
     bet_id = get_pending_bet_id()

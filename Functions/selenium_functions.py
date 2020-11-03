@@ -481,7 +481,7 @@ def return_to_league_page(brow: webdriver) -> None:
 	back.click()
 
 
-def click_scommetti(brow: webdriver) -> None:
+def place_bet(brow: webdriver) -> None:
 
 	button_location = './/div[@class="buttons-betslip"]'
 	button = brow.find_element_by_xpath(button_location)
@@ -491,74 +491,48 @@ def click_scommetti(brow: webdriver) -> None:
 	time.sleep(10)
 
 
-# def go_to_personal_area(browser):
-#
-# 	"""
-# 	Used in update_results() function to navigate until the personal area
-# 	after the login.
-# 	"""
-#
-# 	try:
-# 		area_pers_path1 = './/a[@title="Profilo"]'
-# 		wait_clickable(browser, area_pers_path1)
-# 		area_pers_button1 = browser.find_element_by_xpath(area_pers_path1)
-# 		area_pers_button1.click()
-#
-# 	except (TimeoutException, ElementNotInteractableException):
-#
-# 		cfg.logger.info('GO TO PERSONAL AREA - Unable to go to '
-# 		                'section: AREA PERSONALE.')
-# 		browser.refresh()
-# 		time.sleep(3)
-# 		return go_to_personal_area(browser)
+def open_profile_history(brow: webdriver) -> None:
+
+	path = './/a[@title="Movimenti e giocate"]'
+	wait_clickable(brow, path)
+	button = brow.find_element_by_xpath(path)
+	button.click()
+	time.sleep(5)
 
 
-# def go_to_placed_bets(browser, LIMIT_2):
-#
-# 	"""
-# 	Used in update_results() function to navigate until the page containing
-# 	all the past bets.
-# 	"""
-#
-# 	FILTER = 'Ultimi 3 Mesi'
-#
-# 	try:
-# 		placed_bets_path = './/a[@title="Movimenti e giocate"]'
-# 		wait_clickable(browser, placed_bets_path)
-# 		placed_bets_button = browser.find_element_by_xpath(placed_bets_path)
-# 		placed_bets_button.click()
-# 		time.sleep(5)
-#
-# 		date_filters_path = ('.//div[@id="movement-filters"]/' +
-# 							 'div[@id="games-filter"]//' +
-# 							 'label[@class="radio-inline"]')
-# 		wait_visible(browser, date_filters_path)
-# 		date_filters_list = browser.find_elements_by_xpath(date_filters_path)
-# 		for afilter in date_filters_list:
-# 			new_filter = afilter.text
-# 			if new_filter == FILTER:
-# 				scroll_to_element(browser, afilter)
-# 				afilter.click()
-# 				break
-#
-# 		mostra_path = ('.//div[@class="btn-group btn-group-justified"]' +
-# 					   '/a[@class="btn button-submit"]')
-# 		wait_clickable(browser, mostra_path)
-# 		mostra_button = browser.find_element_by_xpath(mostra_path)
-# 		scroll_to_element(browser, mostra_button)
-# 		mostra_button.click()
-#
-# 	except (TimeoutException, ElementNotInteractableException):
-#
-# 		if LIMIT_2 < 3:
-# 			cfg.logger.info('GO TO PLACED BETS - Unable to go to '
-# 			                'section: MOVIMENTI E GIOCATE.')
-# 			browser.refresh()
-# 			time.sleep(3)
-# 			return go_to_placed_bets(browser, LIMIT_2 + 1)
-# 		else:
-# 			raise ConnectionError('GO TO PLACED BETS - Unable to go to '
-# 								  'section: MOVIMENTI E GIOCATE.')
+def open_profile_options(brow: webdriver) -> None:
+
+	path = './/a[@title="Profilo"]'
+	wait_clickable(brow, path)
+	button = brow.find_element_by_xpath(path)
+	button.click()
+	time.sleep(5)
+
+
+def set_time_filter(brow: webdriver) -> None:
+
+	path = ('.//div[@id="movement-filters"]/div[@id="games-filter"]' +
+	        '//label[@class="radio-inline"]')
+	wait_visible(brow, path)
+
+	all_filters = brow.find_elements_by_xpath(path)
+
+	right_filter = [f for f in all_filters if
+	                f.get_attribute('innerText') == cfg.BETS_FILTER][0]
+	right_filter.click()
+	time.sleep(5)
+
+
+def show_bets_history(brow: webdriver) -> None:
+
+	path = ('.//div[@class="btn-group btn-group-justified"]' +
+				   '/a[@class="btn button-submit"]')
+	wait_clickable(brow, path)
+
+	button = brow.find_element_by_xpath(path)
+	scroll_to_element(brow, button)
+	button.click()
+	time.sleep(5)
 
 
 def insert_euros(brow: webdriver, euros: int) -> None:

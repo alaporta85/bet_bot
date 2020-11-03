@@ -430,7 +430,7 @@ def play(bot, update, args):
     money_before = sf.money(brow)
 
     # Place bet
-    sf.click_scommetti(brow)
+    sf.place_bet(brow)
 
     # Budget after playing
     money_after = sf.get_money_after(brow, before=money_before, euros=euros)
@@ -568,48 +568,37 @@ def summary(bot, update):
     return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 
 
-# def update_results(bot, update):
-#
-# 	"""
-# 	Once all matches in the bet are concluded, update the database.
-#
-# 	"""
-#
-# 	ref_list = dbf.db_select(
-# 			table='bets',
-# 			columns_in=['bet_id', 'bet_date'],
-# 			where='bet_status = "Placed" AND bet_result = "Unknown"')
-# 	ref_list.sort(key=lambda x: x[0], reverse=True)
-# 	logger.info('UPDATE - Selecting Placed bets...')
-#
-# 	if not ref_list:
-# 		logger.info('UPDATE - No bets must be updated')
-# 		return bot.send_message(chat_id=update.message.chat_id,
-# 		                        text='No bets to update.')
-#
-# 	try:
-#   TODO change for connect_to()
-# 		browser = sf.go_to_lottomatica()
-# 	except ConnectionError as e:
-# 		return bot.send_message(chat_id=update.message.chat_id, text=e)
-# 	time.sleep(3)
-#
-# 	sf.login(browser)
-# 	time.sleep(3)
-#
-# 	try:
-# 		sf.go_to_personal_area(browser)
-#
-# 		sf.go_to_placed_bets(browser, 0)
-#
-# 		bets_updated = sf.analyze_main_table(browser, ref_list)
-#
-# 	except ConnectionError as e:
-# 		browser.quit()
-# 		return bot.send_message(chat_id=update.message.chat_id, text=str(e))
-#
-# 	browser.quit()
-#
+def update_results(bot, update):
+
+    """
+    Once all matches in the bet are concluded, update the database.
+    """
+
+    bets = utl.get_bets_to_update()
+    if not bets:
+        return bot.send_message(chat_id=update.message.chat_id,
+                                text='Nessuna scommessa da aggiornare.')
+
+    # Go to main page
+    brow = sf.open_browser()
+    brow.get(cfg.MAIN_PAGE)
+    brow.refresh()
+
+    # Login
+    sf.login(brow)
+
+    sf.open_profile_options(brow)
+
+    sf.open_profile_history(brow)
+
+    sf.set_time_filter(brow)
+
+    sf.show_bets_history(brow)
+
+    bets_updated = sf.analyze_main_table(brow, bets)
+
+    brow.quit()
+
 # 	if bets_updated:
 # 		dt = datetime.datetime.now()
 # 		last_update = '*Last update:x    {}/{}/{} at {}:{}'.format(
@@ -624,6 +613,7 @@ def summary(bot, update):
 # 		logger.info('UPDATE - Database updated correctly.')
 # 	else:
 # 		logger.info('No completed bets were found.')
+
 
 cake_handler = CommandHandler('cake', cake)
 bici_handler = CommandHandler('bici', bike)
