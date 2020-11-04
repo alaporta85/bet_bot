@@ -408,8 +408,8 @@ def play(bot, update, args):
     brow = sf.open_browser()
     brow.get(cfg.MAIN_PAGE)
     time.sleep(5)
-    brow.refresh()
-    time.sleep(5)
+    # brow.refresh()
+    # time.sleep(5)
 
     # Add all predictions
     for i, (url, field, bet) in enumerate(available, 1):

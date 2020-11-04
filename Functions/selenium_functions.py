@@ -463,6 +463,7 @@ def open_panels(brow: webdriver) -> None:
 		panel_name = button.text
 
 		if panel_name.strip().lower() not in cfg.PANELS_TO_USE:
+			time.sleep(2)
 			continue
 
 		WebDriverWait(
@@ -470,7 +471,7 @@ def open_panels(brow: webdriver) -> None:
 				EC.element_to_be_clickable((By.LINK_TEXT, panel_name)))
 		if 'active' not in button.get_attribute('class'):
 			button.find_element_by_xpath('.//a').click()
-			time.sleep(1)
+			time.sleep(2)
 
 		# TODO live check field name
 
