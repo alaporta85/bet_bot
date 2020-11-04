@@ -258,7 +258,7 @@ def get_bets_to_update() -> list:
     if not bets:
         cfg.LOGGER.info('UPDATE - No bets must be updated')
 
-    return bets
+    return reversed(bets)
 
 
 def get_confirmed_matches(league_name: str) -> list:
@@ -483,6 +483,9 @@ def matches_per_day(weekday: str) -> str:
             message += f'{hhmm} {team1}-{team2}\t\t{q1} {qx} {q2}\n'
         message += '\n\n\n'
 
+    if not message:
+        message = 'Nessun match trovato.'
+
     return message
 
 
@@ -616,8 +619,8 @@ def remove_too_late_before_play() -> str:
     return too_late_message
 
 
-def str_to_dt(dt_as_string: str) -> datetime:
-    return datetime.datetime.strptime(dt_as_string, '%Y-%m-%d %H:%M:%S')
+def str_to_dt(dt_as_string: str, style: str = '%Y-%m-%d %H:%M:%S') -> datetime:
+    return datetime.datetime.strptime(dt_as_string, style)
 
 
 def time_needed(start: time) -> (int, int):

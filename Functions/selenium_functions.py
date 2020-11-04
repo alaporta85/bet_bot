@@ -113,94 +113,75 @@ def add_bet_to_basket(brow: webdriver, field_name: str,
 # 	return 1
 
 
-# def analyze_main_table(browser, ref_list):
-#
-# 	"""
-# 	Used in update_results() function to drive the browser to the personal
-# 	area in the 'MOVIMENTI E GIOCATE' section and call the function
-# 	analyze_details_table for each bet not updated yet.
-# 	"""
-#
-# 	bets_updated = 0
-#
-# 	table_path = './/table[@id="tabellaRisultatiTransazioni"]'
-# 	wait_visible(browser, table_path)
-# 	bets_list = browser.find_elements_by_xpath(table_path +
-# 											   '//tr[@class="ng-scope"]')
-#
-# 	updated = []
-# 	for ref_bet in ref_list:
-# 		ref_id = ref_bet[0]
-# 		details_db = dbf.db_select(
-# 				table='predictions',
-# 				columns_in=['pred_team1', 'pred_team2'],
-# 				where='pred_bet = {}'.format(ref_id))
-# 		ref_date = '/'.join(list(reversed(ref_bet[1][:10].split('-'))))
-#
-# 		for bet in bets_list:
-#
-# 			color = bet.find_element_by_xpath(
-# 					'.//td[contains(@class,"state state")]')\
-# 				.get_attribute('class')
-#
-# 			if 'blue' not in color:
-#
-# 				date = bet.find_element_by_xpath(
-# 						'.//td[@class="ng-binding"]').text[:10]
-#
-# 				if date == ref_date and date in updated:
-# 					updated.remove(date)
-# 					continue
-#
-# 				elif date == ref_date and date not in updated:
-# 					updated.append(date)
-#
-# 					new_status = bet.find_element_by_xpath(
-# 							'.//translate-label[@key-default=' +
-# 							'"statement.state"]').text
-#
-# 					if new_status == 'Vincente':
-# 						new_status = 'WINNING'
-# 					elif new_status == 'Non Vincente':
-# 						new_status = 'LOSING'
-#
-# 					main_window = browser.current_window_handle
-# 					details = bet.find_element_by_xpath('.//a')
-# 					scroll_to_element(browser, details)
-# 					details.click()
-# 					time.sleep(3)
-#
-# 					new_window = browser.window_handles[-1]
-# 					browser.switch_to_window(new_window)
-# 					time.sleep(1)
-#
-# 					new_table_path = './/table[@class="bet-detail"]'
-# 					wait_visible(browser, new_table_path)
-# 					new_bets_list = browser.find_elements_by_xpath(
-# 							new_table_path + '//tr[@class="ng-scope"]')
-#
-# 					details_web = []
-# 					for new_bet in new_bets_list:
-# 						match = new_bet.find_element_by_xpath(
-# 							'.//td[6]').text
-# 						team1 = dbf.select_team(match.split(' - ')[0])
-# 						team2 = dbf.select_team(match.split(' - ')[1])
-# 						details_web.append((team1, team2))
-# 					if set(details_db) - set(details_web):
-# 						browser.close()
-# 						browser.switch_to_window(main_window)
-# 						continue
-#
-# 					bets_updated += analyze_details_table(browser, ref_id,
-# 														  new_status)
-#
-# 					browser.close()
-#
-# 					browser.switch_to_window(main_window)
-# 					break
-#
-#
-# 	return bets_updated
+def analyze_main_table(brow: webdriver, bets_to_update: list):
+
+	bets_list = filter_by_color(brow)
+
+	bets_list = filter_by_date(web_bets=bets_list, db_bets=bets_to_update)
+
+	# for bet_id, date in bets_to_update:
+	# 	teams = dbf.db_select(table='predictions',
+	# 	                      columns=['team1', 'team2'],
+	# 	                      where=f'pred_bet = {bet_id}')
+	#
+	# 	for bet in bets_list:
+	#
+	# 		date = bet.find_element_by_xpath(
+	# 				'.//td[@class="ng-binding"]').text[:10]
+	#
+	# 		if date == ref_date and date in updated:
+	# 			updated.remove(date)
+	# 			continue
+	#
+	# 		elif date == ref_date and date not in updated:
+	# 			updated.append(date)
+	#
+	# 			new_status = bet.find_element_by_xpath(
+	# 					'.//translate-label[@key-default=' +
+	# 					'"statement.state"]').text
+	#
+	# 			if new_status == 'Vincente':
+	# 				new_status = 'WINNING'
+	# 			elif new_status == 'Non Vincente':
+	# 				new_status = 'LOSING'
+	#
+	# 			main_window = browser.current_window_handle
+	# 			details = bet.find_element_by_xpath('.//a')
+	# 			scroll_to_element(browser, details)
+	# 			details.click()
+	# 			time.sleep(3)
+	#
+	# 			new_window = browser.window_handles[-1]
+	# 			browser.switch_to_window(new_window)
+	# 			time.sleep(1)
+	#
+	# 			new_table_path = './/table[@class="bet-detail"]'
+	# 			wait_visible(browser, new_table_path)
+	# 			new_bets_list = browser.find_elements_by_xpath(
+	# 					new_table_path + '//tr[@class="ng-scope"]')
+	#
+	# 			details_web = []
+	# 			for new_bet in new_bets_list:
+	# 				match = new_bet.find_element_by_xpath(
+	# 					'.//td[6]').text
+	# 				team1 = dbf.select_team(match.split(' - ')[0])
+	# 				team2 = dbf.select_team(match.split(' - ')[1])
+	# 				details_web.append((team1, team2))
+	# 			if set(details_db) - set(details_web):
+	# 				browser.close()
+	# 				browser.switch_to_window(main_window)
+	# 				continue
+	#
+	# 			bets_updated += analyze_details_table(browser, ref_id,
+	# 												  new_status)
+	#
+	# 			browser.close()
+	#
+	# 			browser.switch_to_window(main_window)
+	# 			break
+	#
+	#
+	# return bets_updated
 
 
 def extract_all_bets_from_container(bets_container: webdriver) -> [webdriver]:
@@ -273,6 +254,37 @@ def extract_teams_names(brow: webdriver, league_name: str) -> (str, str):
 		team2 = '*' + team2
 
 	return team1.strip(), team2.strip()
+
+
+def filter_by_color(brow: webdriver) -> list:
+
+	table_path = './/table[@id="tabellaRisultatiTransazioni"]'
+	wait_visible(brow, table_path)
+	bets_list = brow.find_elements_by_xpath(table_path +
+	                                        '//tr[@class="ng-scope"]')
+
+	color_path = './/td[contains(@class,"state state")]'
+	filtered = []
+	for bet in bets_list:
+		c = bet.find_element_by_xpath(color_path).get_attribute('class')
+		if 'blue' not in c:
+			filtered.append(bet)
+
+	return filtered
+
+
+def filter_by_date(web_bets: [webdriver], db_bets: [tuple]) -> [webdriver]:
+
+	db_dates = [utl.str_to_dt(d) for _, d in db_bets]
+
+	filtered = []
+	path = './/td[@class="ng-binding"]'
+	for bet in web_bets:
+		date = bet.find_element_by_xpath(path).text[:10]
+		if date in db_dates:
+			filtered.append(bet)
+
+	return filtered
 
 
 def open_browser() -> webdriver:

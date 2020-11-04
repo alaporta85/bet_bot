@@ -598,24 +598,24 @@ def update_results(bot, update):
 
     sf.show_bets_history(brow)
 
-    bets_updated = sf.analyze_main_table(brow, bets)
+    # bets_updated = sf.analyze_main_table(brow, bets)
 
     brow.quit()
 
-# 	if bets_updated:
-# 		dt = datetime.datetime.now()
-# 		last_update = '*Last update:x    {}/{}/{} at {}:{}'.format(
-# 				dt.day, dt.month, dt.year, dt.hour, dt.minute)
-# 		dbf.empty_table(table='last_results_update')
-# 		dbf.db_insert(table='last_results_update',
-# 		              columns=['message'],
-# 		              values=[last_update])
-# 		cl.bets, cl.preds = cl.update_bets_preds()
-# 		cl.players = {name: cl.Player(name) for name in cl.partecipants}
-# 		cl.stats = cl.Stats()
-# 		logger.info('UPDATE - Database updated correctly.')
-# 	else:
-# 		logger.info('No completed bets were found.')
+    # if bets_updated:
+    # 	dt = datetime.datetime.now()
+    # 	last_update = '*Last update:x    {}/{}/{} at {}:{}'.format(
+    # 			dt.day, dt.month, dt.year, dt.hour, dt.minute)
+    # 	dbf.empty_table(table='last_results_update')
+    # 	dbf.db_insert(table='last_results_update',
+    # 	              columns=['message'],
+    # 	              values=[last_update])
+    # 	cl.bets, cl.preds = cl.update_bets_preds()
+    # 	cl.players = {name: cl.Player(name) for name in cl.partecipants}
+    # 	cl.stats = cl.Stats()
+    # 	logger.info('UPDATE - Database updated correctly.')
+    # else:
+    # 	logger.info('No completed bets were found.')
 
 
 cake_handler = CommandHandler('cake', cake)
