@@ -418,16 +418,17 @@ def match_already_chosen(nickname: str) -> bool:
 
     bet_id = get_pending_bet_id()
 
-    team1, team2 = dbf.db_select(
+    team1, team2, league = dbf.db_select(
             table='predictions',
-            columns=['team1', 'team2'],
+            columns=['team1', 'team2', 'league'],
             where=f'user = "{nickname}" AND status = "Not Confirmed"')[0]
 
     duplicate = dbf.db_select(
             table='predictions',
             columns=['id'],
             where=(f'bet_id = {bet_id} AND team1 = "{team1}" AND ' +
-                   f'team2 = "{team2}" AND status = "Confirmed"'))
+                   f'team2 = "{team2}" AND league = "{league}" AND' +
+                   ' status = "Confirmed"'))
 
     return True if duplicate else False
 
@@ -632,9 +633,9 @@ def time_needed(start: time) -> (int, int):
 
 def update_to_play_table(nickname: str, bet_id: int) -> None:
 
-    pred_id, dt, team1, team2, bet_alias = dbf.db_select(
+    pred_id, dt, team1, team2, league, bet_alias = dbf.db_select(
             table='predictions',
-            columns=['id', 'date', 'team1', 'team2', 'bet_alias'],
+            columns=['id', 'date', 'team1', 'team2', 'league', 'bet_alias'],
             where=f'user = "{nickname}" AND bet_id = {bet_id}')[-1]
 
     field_bet = dbf.db_select(table='fields',
@@ -642,10 +643,9 @@ def update_to_play_table(nickname: str, bet_id: int) -> None:
                               where=f'alias = "{bet_alias}"')[0]
     field, bet = field_bet.split('_')
 
-    try:
-        *_, url = get_match_details(team_name=team1)[0]
-    except IndexError:
-        *_, url = get_match_details(team_name=f'*{team1}')[0]
+    team1 = team1 if league != 'CHAMPIONS LEAGUE' else f'*{team1}'
+    *_, url = get_match_details(team_name=team1)[0]
+
     dbf.db_insert(table='to_play',
                   columns=['pred_id', 'url', 'date', 'field', 'bet'],
                   values=[pred_id, url, dt, field, bet])
