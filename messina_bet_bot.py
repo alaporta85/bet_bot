@@ -407,7 +407,9 @@ def play(bot, update, args):
     # Go to main page
     brow = sf.open_browser()
     brow.get(cfg.MAIN_PAGE)
+    time.sleep(5)
     brow.refresh()
+    time.sleep(5)
 
     # Add all predictions
     for i, (url, field, bet) in enumerate(available, 1):
@@ -415,7 +417,6 @@ def play(bot, update, args):
         sf.add_bet_to_basket(brow, field, bet)
         bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                               text=live_info.format(i, n_bets))
-
 
     # Login
     brow = sf.login(brow=brow)
@@ -582,7 +583,9 @@ def update_results(bot, update):
     # Go to main page
     brow = sf.open_browser()
     brow.get(cfg.MAIN_PAGE)
+    time.sleep(5)
     brow.refresh()
+    time.sleep(5)
 
     # Login
     sf.login(brow)
@@ -636,7 +639,7 @@ sotm_handler = CommandHandler('sotm', sotm)
 start_handler = CommandHandler('start', start)
 # stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
-# update_handler = CommandHandler('update', update_results)
+update_handler = CommandHandler('update', update_results)
 
 # Nightly quotes updating
 update_quotes = cfg.UPDATER.job_queue
@@ -654,7 +657,7 @@ cfg.DISPATCHER.add_handler(confirm_handler)
 cfg.DISPATCHER.add_handler(cancel_handler)
 cfg.DISPATCHER.add_handler(delete_handler)
 cfg.DISPATCHER.add_handler(play_handler)
-# cfg.DISPATCHER.add_handler(update_handler)
+cfg.DISPATCHER.add_handler(update_handler)
 cfg.DISPATCHER.add_handler(summary_handler)
 # cfg.DISPATCHER.add_handler(score_handler)
 cfg.DISPATCHER.add_handler(cake_handler)

@@ -518,7 +518,8 @@ def set_time_filter(brow: webdriver) -> None:
 	all_filters = brow.find_elements_by_xpath(path)
 
 	right_filter = [f for f in all_filters if
-	                f.get_attribute('innerText') == cfg.BETS_FILTER][0]
+	                f.get_attribute('innerText').strip() == cfg.BETS_FILTER][0]
+	scroll_to_element(brow, right_filter)
 	right_filter.click()
 	time.sleep(5)
 
