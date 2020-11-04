@@ -576,6 +576,7 @@ def update_results(bot, update):
     """
 
     bets = utl.get_bets_to_update()
+    bets = True
     if not bets:
         return bot.send_message(chat_id=update.message.chat_id,
                                 text='Nessuna scommessa da aggiornare.')
@@ -598,7 +599,7 @@ def update_results(bot, update):
 
     sf.show_bets_history(brow)
 
-    # bets_updated = sf.analyze_main_table(brow, bets)
+    bets_updated = sf.analyze_main_table(brow, bets)
 
     brow.quit()
 

@@ -275,13 +275,14 @@ def filter_by_color(brow: webdriver) -> list:
 
 def filter_by_date(web_bets: [webdriver], db_bets: [tuple]) -> [webdriver]:
 
-	db_dates = [utl.str_to_dt(d) for _, d in db_bets]
+	db_dates = [utl.str_to_dt(d).date() for _, d in db_bets]
 
 	filtered = []
 	path = './/td[@class="ng-binding"]'
 	for bet in web_bets:
-		date = bet.find_element_by_xpath(path).text[:10]
-		if date in db_dates:
+		dt = bet.find_element_by_xpath(path).text[:10]
+		dt = utl.str_to_dt(dt, '%d/%m/%Y').date()
+		if dt in db_dates:
 			filtered.append(bet)
 
 	return filtered
