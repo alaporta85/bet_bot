@@ -418,14 +418,14 @@ def play(bot, update, args):
         bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                               text=live_info.format(i, n_bets))
 
+    # Insert euros to bet
+    sf.insert_euros(brow, euros)
+
     # Login
     brow = sf.login(brow=brow)
     live_info = f'Pronostici aggiunti: {n_bets}/{n_bets}\n\nLogged in'
     bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                           text=live_info)
-
-    # Insert euros to bet
-    sf.insert_euros(brow, euros)
 
     # Budget before playing
     money_before = sf.money(brow)
@@ -457,8 +457,8 @@ def play(bot, update, args):
         # Print the summary
         msg = 'Scommessa giocata correttamente.\n\n'
         msg += utl.create_list_of_matches(bet_id=bet_id)
-        msg += f'\nVincita: <b>{prize} €</b>\n\n\n'
-        msg += f'\nBudget aggiornato: <b>{567} €</b>'
+        msg += f'\nVincita: <b>{prize*euros} €</b>\n\n\n'
+        msg += f'\nBudget aggiornato: <b>{money_after} €</b>'
         bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
     else:
         msg = 'Non è stato possibile giocare la scommessa.'
