@@ -163,12 +163,12 @@ def create_summary_pending_bet() -> str:
 
 def create_summary_placed_bets() -> str:
 
-    bet_ids = get_placed_but_open_bet_details()
+    bet_ids = get_placed_but_open_bet_ids()
     if bet_ids:
         message = 'Scommesse ancora aperte:\n\n'
-        for bet_id, prize in bet_ids:
+        for bet_id in bet_ids:
             message += create_list_of_matches(bet_id)
-            message += f'{message}\nVincita: <b>{prize} €</b>\n\n\n'
+            message += f'\n{" "*20}{"*"*20}'
         return message
     return 'Nessuna scommessa attiva'
 
@@ -334,11 +334,11 @@ def get_pending_bet_id() -> int:
     return pending[0] if pending else 0
 
 
-def get_placed_but_open_bet_details() -> list:
+def get_placed_but_open_bet_ids() -> list:
 
     bet_ids = dbf.db_select(
             table='bets',
-            columns=['id', 'prize'],
+            columns=['id'],
             where='status = "Placed" AND result = "Unknown"')
 
     return bet_ids
@@ -346,12 +346,13 @@ def get_placed_but_open_bet_details() -> list:
 
 def get_preds_available_to_play() -> list:
 
-    preds = dbf.db_select(table='to_play', columns=['*'], where='')
-    available = []
     dt_now = datetime.datetime.now()
-    for pred_id, url, dt, field, bet in preds:
+    preds = dbf.db_select(table='to_play', columns=['*'], where='')
+
+    available = []
+    for _, url, dt, panel, field, bet in preds:
         if str_to_dt(dt) > dt_now:
-            available.append((url, field, bet))
+            available.append((url, panel, field, bet))
 
     return available
 
@@ -599,10 +600,11 @@ def remove_pending_same_match(nickname: str):
 
 
 def remove_too_late_before_play() -> str:
+
     preds = dbf.db_select(table='to_play', columns=['*'], where='')
     too_late_ids = []
     dt_now = datetime.datetime.now()
-    for pred_id, url, dt, field, bet in preds:
+    for pred_id, _, dt, *_ in preds:
         if str_to_dt(dt) <= dt_now:
             too_late_ids.append(pred_id)
 
@@ -644,11 +646,16 @@ def update_to_play_table(nickname: str, bet_id: int) -> None:
     field, bet = field_bet.split('_')
 
     team1 = team1 if league != 'CHAMPIONS LEAGUE' else f'*{team1}'
-    *_, url = get_match_details(team_name=team1)[0]
+    match_id, *_, url = get_match_details(team_name=team1)[0]
+
+    panel = dbf.db_select(
+            table='quotes',
+            columns=['panel'],
+            where=f'match = {match_id} AND bet = "{field_bet}"')[0]
 
     dbf.db_insert(table='to_play',
-                  columns=['pred_id', 'url', 'date', 'field', 'bet'],
-                  values=[pred_id, url, dt, field, bet])
+                  columns=['pred_id', 'url', 'date', 'panel', 'field', 'bet'],
+                  values=[pred_id, url, dt, panel, field, bet])
 
 
 def weekday_to_dt(isoweekday: int) -> datetime:

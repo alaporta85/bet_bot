@@ -408,13 +408,11 @@ def play(bot, update, args):
     brow = sf.open_browser()
     brow.get(cfg.MAIN_PAGE)
     time.sleep(5)
-    # brow.refresh()
-    # time.sleep(5)
 
     # Add all predictions
-    for i, (url, field, bet) in enumerate(available, 1):
+    for i, (url, panel, field, bet) in enumerate(available, 1):
         brow.get(url)
-        sf.add_bet_to_basket(brow, field, bet)
+        sf.add_bet_to_basket(brow, panel, field, bet)
         bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                               text=live_info.format(i, n_bets))
 

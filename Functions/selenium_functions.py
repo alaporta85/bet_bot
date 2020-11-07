@@ -13,17 +13,16 @@ import config as cfg
 import utils as utl
 
 
-def add_bet_to_basket(brow: webdriver, field_name: str,
-                      bet_name: str) -> webdriver:
+def add_bet_to_basket(brow: webdriver, panel_name: str,
+                      field_name: str, bet_name: str) -> webdriver:
 
 	"""
 	Click the bet button and add it to the basket.
 	"""
 
-	# TODO no need to open all the panels always
-	open_panels(brow)
+	_, panel = open_panels(brow=brow, specific_panel=panel_name)[0]
 
-	field_bets = all_fields_and_bets(brow=brow)
+	field_bets = all_fields_and_bets(panel=panel)
 
 	bets_container = [b for f, b in field_bets if f == field_name][0]
 
@@ -378,27 +377,28 @@ def insert_quotes(brow: webdriver, last_index: int) -> None:
 	Insert the quotes in the database.
 	"""
 
-	open_panels(brow)
+	panels = open_panels(brow=brow, specific_panel='')
 
 	# Associate each field with its corresponding bets
 	already_added = []
-	fields_bets = all_fields_and_bets(brow)
-	for field_name, bets in fields_bets:
+	for p_name, p in panels:
+		fields_bets = all_fields_and_bets(p)
+		for field_name, bets in fields_bets:
 
-		all_bets = extract_bet_info(bets_container=bets)
-		for bet_name, quote in all_bets:
-			full_name = f'{field_name}_{bet_name}'
-			if full_name in already_added:
-				continue
+			all_bets = extract_bet_info(bets_container=bets)
+			for bet_name, quote in all_bets:
+				full_name = f'{field_name}_{bet_name}'
+				if full_name in already_added:
+					continue
 
-			dbf.db_insert(
-					table='quotes',
-					columns=['match', 'bet', 'quote'],
-					values=[last_index, full_name, quote])
-			already_added.append(full_name)
+				dbf.db_insert(
+						table='quotes',
+						columns=['match', 'panel', 'bet', 'quote'],
+						values=[last_index, p_name, full_name, quote])
+				already_added.append(full_name)
 
 
-def all_fields_and_bets(brow: webdriver) -> [(str, webdriver)]:
+def all_fields_and_bets(panel: webdriver) -> [(str, webdriver)]:
 
 	# Select all fields we want to scrape
 	fields_in_db = dbf.db_select(table='fields',
@@ -408,10 +408,10 @@ def all_fields_and_bets(brow: webdriver) -> [(str, webdriver)]:
 	fields_names = [f for i in fields_in_db for f, _ in (i.split('_'),)]
 	fields_names = set(fields_names)
 
-	all_fields_path = '//div[@class="market-info"]/div'
-	all_bets_path = '//div[@class="market-selections"]'
-	fields = brow.find_elements_by_xpath(all_fields_path)
-	bets = brow.find_elements_by_xpath(all_bets_path)
+	all_fields_path = './/div[@class="market-info"]/div'
+	all_bets_path = './/div[@class="market-selections"]'
+	fields = panel.find_elements_by_xpath(all_fields_path)
+	bets = panel.find_elements_by_xpath(all_bets_path)
 
 	field_bets = []
 	for field, bet_group in zip(fields, bets):
@@ -450,30 +450,38 @@ def get_money_after(brow: webdriver, before: float, euros: int) -> float:
 	return after
 
 
-def open_panels(brow: webdriver) -> None:
+def open_panels(brow: webdriver, specific_panel: str = '') -> list:
 
 	all_panels_path = '//div[@class="item-group ng-scope"]'
 	wait_visible(brow, all_panels_path)
 	all_panels = brow.find_elements_by_xpath(all_panels_path)
 
 	panel_name_path = './/div[contains(@class, "group-name")]'
-	for panel in all_panels:
-		button = panel.find_element_by_xpath(panel_name_path)
-		scroll_to_element(brow, button)
-		panel_name = button.text
+	buttons = [p.find_element_by_xpath(panel_name_path) for p in all_panels]
 
-		if panel_name.strip().lower() not in cfg.PANELS_TO_USE:
-			time.sleep(2)
-			continue
+	# When playing the bet only the right panel is opened
+	if specific_panel:
+		pairs = [(all_panels[x], buttons[x]) for x in range(len(buttons)) if
+		         buttons[x].get_attribute('innerText').strip().lower() ==
+		         specific_panel]
 
+	# while when scraping quotes all the valid panels are opened
+	else:
+		pairs = [(all_panels[x], buttons[x]) for x in range(len(buttons)) if
+		         buttons[x].get_attribute('innerText').strip().lower() in
+		         cfg.PANELS_TO_USE]
+
+	for _, b in pairs:
+		scroll_to_element(brow, b)
+		panel_name = b.text
 		WebDriverWait(
 				brow, cfg.WAIT).until(
 				EC.element_to_be_clickable((By.LINK_TEXT, panel_name)))
-		if 'active' not in button.get_attribute('class'):
-			button.find_element_by_xpath('.//a').click()
-			time.sleep(2)
+		if 'active' not in b.get_attribute('class'):
+			b.find_element_by_xpath('.//a').click()
+			time.sleep(1)
 
-		# TODO live check field name
+	return [(b.get_attribute('innerText').strip().lower(), p) for p, b in pairs]
 
 
 def refresh_money(brow: webdriver) -> None:
