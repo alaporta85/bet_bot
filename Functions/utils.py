@@ -367,10 +367,14 @@ def get_quotes_prod(bet_id: int) -> float:
 
 def get_role(update) -> str:
 
-    name = update.message.from_user.first_name
-    role = dbf.db_select(table='people',
-                         columns=['role'],
-                         where=f'name = "{name}"')[0]
+    try:
+        name = update.message.from_user.first_name
+        role = dbf.db_select(table='people',
+                             columns=['role'],
+                             where=f'name = "{name}"')[0]
+    except AttributeError:
+        role = 'Admin'
+
     return role
 
 

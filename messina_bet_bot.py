@@ -360,12 +360,7 @@ def night_quotes(bot, update):
     Fill the db with the new quotes for all leagues.
     """
 
-    try:
-        role = utl.get_role(update)
-    except AttributeError:
-        role = 'Admin'
-
-    if role == 'Admin':
+    if utl.get_role(update) == 'Admin':
 
         utl.remove_expired_match_quotes()
 
