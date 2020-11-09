@@ -9,8 +9,8 @@ from telegram.ext import CommandHandler
 import utils as utl
 import db_functions as dbf
 import selenium_functions as sf
-from Functions import stats_functions as stf
 import Classes as cl
+from Functions import stats_functions as stf
 import config as cfg
 
 
@@ -561,10 +561,11 @@ def update_results(bot, update):
     """
 
     bets = utl.get_bets_to_update()
-    bets = True
     if not bets:
+        msg ='Nessuna scommessa da aggiornare.'
+        cfg.LOGGER.info(msg)
         return bot.send_message(chat_id=update.message.chat_id,
-                                text='Nessuna scommessa da aggiornare.')
+                                text=msg)
 
     # Go to main page
     brow = sf.open_browser()
@@ -584,24 +585,21 @@ def update_results(bot, update):
 
     sf.show_bets_history(brow)
 
-    bets_updated = sf.analyze_main_table(brow, bets)
+    sf.update_database(brow, bets)
 
     brow.quit()
 
-    # if bets_updated:
-    # 	dt = datetime.datetime.now()
-    # 	last_update = '*Last update:x    {}/{}/{} at {}:{}'.format(
-    # 			dt.day, dt.month, dt.year, dt.hour, dt.minute)
-    # 	dbf.empty_table(table='last_results_update')
-    # 	dbf.db_insert(table='last_results_update',
-    # 	              columns=['message'],
-    # 	              values=[last_update])
-    # 	cl.bets, cl.preds = cl.update_bets_preds()
-    # 	cl.players = {name: cl.Player(name) for name in cl.partecipants}
-    # 	cl.stats = cl.Stats()
-    # 	logger.info('UPDATE - Database updated correctly.')
-    # else:
-    # 	logger.info('No completed bets were found.')
+    dt = datetime.datetime.now()
+    last_update = f'*Last update:\n\t\t{dt.day}/{dt.month}/{dt.year} at {dt.hour}:{dt.minute}'
+    dbf.empty_table(table='last_results_update')
+    dbf.db_insert(table='last_results_update',
+                  columns=['message'],
+                  values=[last_update])
+    cl.bets = cl.get_bets_as_df()
+    cl.preds = cl.get_preds_as_df()
+    cl.players = {name: cl.Player(name) for name in cl.players}
+    cl.stats = cl.Stats()
+    cfg.LOGGER.info('UPDATE - Database aggiornato correttamente.')
 
 
 cake_handler = CommandHandler('cake', cake)

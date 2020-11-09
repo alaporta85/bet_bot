@@ -1,5 +1,7 @@
 from Functions import db_functions as dbf
 import config as cfg
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.image as image
 from datetime import datetime
 import numpy as np

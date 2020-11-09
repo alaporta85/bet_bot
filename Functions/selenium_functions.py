@@ -112,75 +112,105 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 # 	return 1
 
 
-def analyze_main_table(brow: webdriver, bets_to_update: list):
+def get_bet_status(bet: webdriver) -> str:
+
+	text = bet.find_elements_by_xpath('.//td')[2].text
+	if text == 'Vincente':
+		return 'WINNING'
+	elif text == 'Non Vincente':
+		return 'LOSING'
+	else:
+		return ''
+
+
+def open_details(brow: webdriver, bet: webdriver) -> tuple:
+
+	details = bet.find_element_by_xpath('.//a')
+	scroll_to_element(brow, details)
+	details.click()
+	time.sleep(3)
+
+	new_window = brow.window_handles[-1]
+	brow.switch_to_window(new_window)
+	time.sleep(1)
+
+	return new_window, brow
+
+
+def cross_check_teams(table: webdriver, bets_db: list) -> (int, tuple):
+
+	preds_list = table.find_elements_by_xpath('.//tr[@class="ng-scope"]')
+	teams_web = []
+	preds_details = []
+	for pred in preds_list:
+		match = pred.find_element_by_xpath('.//td[6]').text
+		team1, team2 = match.strip().split(' - ')
+		quote = float(pred.find_element_by_xpath('.//td[10]').text)
+		result = pred.find_element_by_xpath('.//td[11]').text
+		label_element = pred.find_element_by_xpath(
+				'.//div[contains(@class,"ng-scope")]')
+		label = label_element.get_attribute('ng-switch-when')
+
+		teams_web.append(team1)
+		teams_web.append(team2)
+		preds_details.append((team1, team2, quote, result, label))
+	teams_web.sort()
+
+	for bet_db_id, _ in bets_db:
+		teams_db = dbf.db_select(table='predictions',
+								 columns=['team1', 'team2'],
+								 where=f'bet_id = {bet_db_id}')
+		teams_db = [t for i in teams_db for t in i]
+		teams_db.sort()
+		if teams_web == teams_db:
+			return bet_db_id, preds_details
+
+
+def get_prize(brow: webdriver) -> float:
+
+	prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
+				   'pull-right pull-down"]')
+
+	prize_el = brow.find_elements_by_xpath(prize_table + '//tr/td')[7]
+	prize_value = prize_el.text[:-1].replace('.', '').replace(',', '.')
+	return float(prize_value)
+
+
+def update_database(brow: webdriver, bets_to_update: list):
 
 	bets_list = filter_by_color(brow)
 
 	bets_list = filter_by_date(web_bets=bets_list, db_bets=bets_to_update)
 
-	# for bet_id, date in bets_to_update:
-	# 	teams = dbf.db_select(table='predictions',
-	# 	                      columns=['team1', 'team2'],
-	# 	                      where=f'pred_bet = {bet_id}')
-	#
-	# 	for bet in bets_list:
-	#
-	# 		date = bet.find_element_by_xpath(
-	# 				'.//td[@class="ng-binding"]').text[:10]
-	#
-	# 		if date == ref_date and date in updated:
-	# 			updated.remove(date)
-	# 			continue
-	#
-	# 		elif date == ref_date and date not in updated:
-	# 			updated.append(date)
-	#
-	# 			new_status = bet.find_element_by_xpath(
-	# 					'.//translate-label[@key-default=' +
-	# 					'"statement.state"]').text
-	#
-	# 			if new_status == 'Vincente':
-	# 				new_status = 'WINNING'
-	# 			elif new_status == 'Non Vincente':
-	# 				new_status = 'LOSING'
-	#
-	# 			main_window = browser.current_window_handle
-	# 			details = bet.find_element_by_xpath('.//a')
-	# 			scroll_to_element(browser, details)
-	# 			details.click()
-	# 			time.sleep(3)
-	#
-	# 			new_window = browser.window_handles[-1]
-	# 			browser.switch_to_window(new_window)
-	# 			time.sleep(1)
-	#
-	# 			new_table_path = './/table[@class="bet-detail"]'
-	# 			wait_visible(browser, new_table_path)
-	# 			new_bets_list = browser.find_elements_by_xpath(
-	# 					new_table_path + '//tr[@class="ng-scope"]')
-	#
-	# 			details_web = []
-	# 			for new_bet in new_bets_list:
-	# 				match = new_bet.find_element_by_xpath(
-	# 					'.//td[6]').text
-	# 				team1 = dbf.select_team(match.split(' - ')[0])
-	# 				team2 = dbf.select_team(match.split(' - ')[1])
-	# 				details_web.append((team1, team2))
-	# 			if set(details_db) - set(details_web):
-	# 				browser.close()
-	# 				browser.switch_to_window(main_window)
-	# 				continue
-	#
-	# 			bets_updated += analyze_details_table(browser, ref_id,
-	# 												  new_status)
-	#
-	# 			browser.close()
-	#
-	# 			browser.switch_to_window(main_window)
-	# 			break
-	#
-	#
-	# return bets_updated
+	for bet in bets_list:
+
+		status = get_bet_status(bet=bet)
+		if not status:
+			continue
+
+		main_window = brow.current_window_handle
+		new_window, brow = open_details(brow=brow, bet=bet)
+
+		path = './/table[@class="bet-detail"]'
+		wait_visible(brow, path)
+		details = brow.find_element_by_xpath(path)
+
+		bet_id, preds = cross_check_teams(table=details, bets_db=bets_to_update)
+
+		for tm1, tm2, quote, result, label in preds:
+			dbf.db_update(table='predictions',
+						  columns=['quote', 'result', 'label'],
+						  values=[quote, result, label],
+						  where=f'bet_id = {bet_id} AND team1 = "{tm1}" AND team2 = "{tm2}"')
+
+		prize = get_prize(brow=brow)
+		dbf.db_update(table='bets',
+					  columns=['prize', 'result'],
+					  values=[prize, status],
+					  where=f'id = {bet_id}')
+
+		brow.close()
+		brow.switch_to_window(main_window)
 
 
 def extract_all_bets_from_container(bets_container: webdriver) -> [webdriver]:

@@ -258,7 +258,7 @@ def get_bets_to_update() -> list:
     if not bets:
         cfg.LOGGER.info('UPDATE - No bets must be updated')
 
-    return reversed(bets)
+    return bets
 
 
 def get_confirmed_matches(league_name: str) -> list:

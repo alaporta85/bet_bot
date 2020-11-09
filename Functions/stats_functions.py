@@ -1,9 +1,9 @@
-import Classes as cl
+from Classes import stats
 from itertools import groupby
 
 
 def abs_perc():
-    return f'<i>Pronostici vinti</i>: <b>{cl.stats.win_preds}%</b>\n\n'
+    return f'<i>Pronostici vinti</i>: <b>{stats.win_preds}%</b>\n\n'
 
 
 def create_message(win_data: list, lose_data: list,
@@ -45,7 +45,7 @@ def create_message(win_data: list, lose_data: list,
 
 
 def money():
-    return f'<i>Bilancio</i>: <b>{cl.stats.money}€</b>\n\n'
+    return f'<i>Bilancio</i>: <b>{stats.money}€</b>\n\n'
 
 
 def stats_on_bets():
@@ -54,23 +54,23 @@ def stats_on_bets():
     Return a message showing the bets which have been guessed and failed
     the most together with their percentages.
     """
-    win = cl.stats.win_bets
-    lose = cl.stats.lose_bets
+    win = stats.win_bets
+    lose = stats.lose_bets
 
     return create_message(win_data=win, lose_data=lose,
                           category='Scommesse', first_n=2) + '\n\n'
 
 
 def stats_on_combos():
-    return f'<i>Combo vincenti</i>: <b>{cl.stats.win_combos}%</b>\n\n'
+    return f'<i>Combo vincenti</i>: <b>{stats.win_combos}%</b>\n\n'
 
 
 def stats_on_quotes():
 
-    quote, user = cl.stats.highest_win_quote
+    quote, user = stats.highest_win_quote
     message1 = f'<i>Miglior quota vincente</i>: <b>{quote}</b> ({user})'
 
-    quote, user = cl.stats.lowest_los_quote
+    quote, user = stats.lowest_los_quote
     message2 = f'<i>Peggior quota sbagliata</i>: <b>{quote}</b> ({user})'
 
     return f'{message1}\n{message2}\n\n'
@@ -82,8 +82,8 @@ def stats_on_teams():
     Return a message showing the teams which have been guessed and failed
     the most together with their percentages.
     """
-    win = cl.stats.win_teams
-    lose = cl.stats.lose_teams
+    win = stats.win_teams
+    lose = stats.lose_teams
 
     return create_message(win_data=win, lose_data=lose,
                           category='Squadre', first_n=2) + '\n\n'
