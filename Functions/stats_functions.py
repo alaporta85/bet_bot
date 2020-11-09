@@ -2,7 +2,7 @@ from Classes import stats
 from itertools import groupby
 
 
-def abs_perc():
+def abs_perc() -> str:
     return f'<i>Pronostici vinti</i>: <b>{stats.win_preds}%</b>\n\n'
 
 
@@ -44,11 +44,11 @@ def create_message(win_data: list, lose_data: list,
     return f'{message1}\n{message2}'
 
 
-def money():
+def money() -> str:
     return f'<i>Bilancio</i>: <b>{stats.money}€</b>\n\n'
 
 
-def stats_on_bets():
+def stats_on_bets() -> str:
 
     """
     Return a message showing the bets which have been guessed and failed
@@ -61,11 +61,11 @@ def stats_on_bets():
                           category='Scommesse', first_n=2) + '\n\n'
 
 
-def stats_on_combos():
+def stats_on_combos() -> str:
     return f'<i>Combo vincenti</i>: <b>{stats.win_combos}%</b>\n\n'
 
 
-def stats_on_quotes():
+def stats_on_quotes() -> str:
 
     quote, user = stats.highest_win_quote
     message1 = f'<i>Miglior quota vincente</i>: <b>{quote}</b> ({user})'
@@ -76,7 +76,7 @@ def stats_on_quotes():
     return f'{message1}\n{message2}\n\n'
 
 
-def stats_on_teams():
+def stats_on_teams() -> str:
 
     """
     Return a message showing the teams which have been guessed and failed

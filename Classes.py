@@ -79,8 +79,8 @@ class Stats(object):
 		self.money = money_bal()
 		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
-		# for i in cfg.YEARS:
-		# 	score(i)
+		for i in cfg.YEARS:
+			score(i)
 		cake()
 		series()
 		stats_of_the_month()

@@ -434,14 +434,14 @@ def play(bot, update, args):
 
         bet_id = utl.get_pending_bet_id()
 
-        # TODO select real prize from website
         prize = utl.get_quotes_prod(bet_id=bet_id)
 
         # Update bet table
+        dt = datetime.datetime.now().replace(microsecond=0)
         dbf.db_update(
                 table='bets',
                 columns=['date', 'euros', 'status'],
-                values=[datetime.datetime.now(), euros, 'Placed'],
+                values=[dt, euros, 'Placed'],
                 where=f'id = {bet_id}')
 
         # Empty table with bets
@@ -562,7 +562,7 @@ def update_results(bot, update):
 
     bets = utl.get_bets_to_update()
     if not bets:
-        msg ='Nessuna scommessa da aggiornare.'
+        msg = 'Nessuna scommessa da aggiornare.'
         cfg.LOGGER.info(msg)
         return bot.send_message(chat_id=update.message.chat_id,
                                 text=msg)
@@ -590,7 +590,8 @@ def update_results(bot, update):
     brow.quit()
 
     dt = datetime.datetime.now()
-    last_update = f'*Last update:\n\t\t{dt.day}/{dt.month}/{dt.year} at {dt.hour}:{dt.minute}'
+    last_update = (f'*Last update:\n   {dt.day}/{dt.month}/{dt.year} ' +
+                   f'at {dt.hour}:{dt.minute}')
     dbf.empty_table(table='last_results_update')
     dbf.db_insert(table='last_results_update',
                   columns=['message'],
@@ -631,8 +632,8 @@ update_quotes.run_repeating(night_quotes, 86400,
                             first=datetime.time(1, 00, 00))
 
 update_tables = cfg.UPDATER.job_queue
-# update_tables.run_repeating(update_results, 86400,
-# 							first=datetime.time(3, 00, 00))
+update_tables.run_repeating(update_results, 86400,
+                            first=datetime.time(3, 00, 00))
 
 cfg.DISPATCHER.add_handler(start_handler)
 # cfg.DISPATCHER.add_handler(info_handler)

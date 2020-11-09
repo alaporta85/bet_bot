@@ -2,7 +2,6 @@ import time
 from datetime import datetime
 from itertools import count
 from selenium.common.exceptions import TimeoutException
-from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -35,81 +34,6 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 			time.sleep(5)
 
 	return brow
-
-
-# def analyze_details_table(browser, ref_id, new_status):
-#
-# 	"""
-# 	Used in analyze_main_table function. It first checks if all the matches
-# 	inside the bet are concluded. If yes, update the column bet_result in
-# 	the table 'bet' and the columns 'pred_result' and pred_label in the
-# 	table 'predictions' of the database.
-#
-# 	"""
-#
-# 	prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
-# 				   'pull-right pull-down"]')
-# 	prize_element = browser.find_elements_by_xpath(prize_table +
-# 												   '//tr/td')[7]
-# 	prize_value = float(prize_element.text[:-1].replace('.', '').
-# 	                    replace(',', '.'))
-#
-# 	dbf.db_update(
-# 			table='bets',
-# 			columns=['bet_prize'],
-# 			values=[prize_value],
-# 			where='bet_id = {}'.format(ref_id))
-#
-# 	new_table_path = './/table[@class="bet-detail"]'
-# 	wait_visible(browser, new_table_path)
-# 	new_bets_list = browser.find_elements_by_xpath(
-# 			new_table_path + '//tr[@class="ng-scope"]')
-#
-# 	# Count the matches inside the bet which are already concluded
-# 	matches_completed = 0
-# 	for new_bet in new_bets_list:
-# 		label_element = new_bet.find_element_by_xpath(
-# 			'.//div[contains(@class,"ng-scope")]')
-# 		label = label_element.get_attribute('ng-switch-when')
-# 		if label == 'WINNING' or label == 'LOSING':
-# 			matches_completed += 1
-#
-# 	# If not all of them are concluded code stops here
-# 	if matches_completed != len(new_bets_list):
-# 		cfg.logger.info('Bet with id {} is still incomplete'.format(ref_id))
-# 		return 0
-#
-# 	cfg.logger.info('Updating bet with id: {}'.format(ref_id))
-# 	for new_bet in new_bets_list:
-# 		match = new_bet.find_element_by_xpath('.//td[6]').text
-# 		team1 = dbf.select_team(match.split(' - ')[0])
-# 		team2 = dbf.select_team(match.split(' - ')[1])
-# 		label_element = new_bet.find_element_by_xpath(
-# 				'.//div[contains(@class,"ng-scope")]')
-# 		label = label_element.get_attribute('ng-switch-when')
-# 		quote = float(new_bet.find_element_by_xpath('.//td[10]').text)
-# 		result = new_bet.find_element_by_xpath('.//td[11]').text
-#
-# 		match_id = dbf.db_select(
-# 				table='bets INNER JOIN predictions on pred_bet = bet_id',
-# 				columns_in=['pred_id'],
-# 				where=('bet_id = {} AND pred_team1 = "{}" AND ' +
-# 				       'pred_team2 = "{}"').
-# 				format(ref_id, team1, team2))[0]
-#
-# 		dbf.db_update(
-# 				table='bets',
-# 				columns=['bet_result'],
-# 				values=[new_status],
-# 				where='bet_id = {}'.format(ref_id))
-#
-# 		dbf.db_update(
-# 				table='predictions',
-# 				columns=['pred_quote', 'pred_result', 'pred_label'],
-# 				values=[quote, result, label],
-# 				where='pred_id = {}'.format(match_id))
-#
-# 	return 1
 
 
 def get_bet_status(bet: webdriver) -> str:
@@ -201,7 +125,8 @@ def update_database(brow: webdriver, bets_to_update: list):
 			dbf.db_update(table='predictions',
 						  columns=['quote', 'result', 'label'],
 						  values=[quote, result, label],
-						  where=f'bet_id = {bet_id} AND team1 = "{tm1}" AND team2 = "{tm2}"')
+						  where=(f'bet_id = {bet_id} AND ' +
+						         f'team1 = "{tm1}" AND team2 = "{tm2}"'))
 
 		prize = get_prize(brow=brow)
 		dbf.db_update(table='bets',
