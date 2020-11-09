@@ -7,7 +7,7 @@ with open('token.txt', 'r') as f:
 	UPDATER = Updater(token=f.readline())
 DISPATCHER = UPDATER.dispatcher
 
-DEBUG = False
+DEBUG = True
 GROUP_ID = -235014519 if not DEBUG else 67507055
 
 # SELENIUM SCRAPING
@@ -33,3 +33,6 @@ DEFAULT_EUROS = 5
 
 # UPDATING
 BETS_FILTER = 'Ultimi 3 Mesi'
+
+# SCORE
+YEARS = ['general', '2017-2018', '2018-2019', '2019-2020']

@@ -10,7 +10,7 @@ def update_fields(url):
 	fields_in_db = dbf.db_select(table='fields',
 	                             columns=['name'],
 	                             where='')
-
+	# TODO open_panels() changed
 	sf.open_panels(brow)
 
 	fields_bets = sf.all_fields_and_bets(brow)

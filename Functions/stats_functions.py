@@ -1,64 +1,51 @@
-from Functions import db_functions as dbf
-from itertools import groupby
-import matplotlib
-matplotlib.use('Agg')
 import Classes as cl
-
-colors = dbf.db_select(table='colors', columns_out=['color_id'])
-colors_dict = {el[0]: el[1] for el in colors}
-partecipants = [el for el in colors_dict]
+from itertools import groupby
 
 
 def abs_perc():
-
-    """Return a message showing the percentage of WINNING bets."""
-
-    return '<i>WINNING matches</i>: <b>{}%</b>\n\n'.format(cl.stats.win_preds)
+    return f'<i>Pronostici vinti</i>: <b>{cl.stats.win_preds}%</b>\n\n'
 
 
-def create_message(integer, list1, list2, astring):
+def create_message(win_data: list, lose_data: list,
+                   category: str, first_n: int) -> str:
     win_to_print = []
     lose_to_print = []
 
     counter = 0
-    for i, g in groupby(list1, lambda x: x[0]):
-        if counter < integer:
-            lst = list(g)
-            teams = '/'.join([el[1] for el in lst])
-            win_to_print.append((i, teams))
-            counter += len(lst)
+    for i, g in groupby(win_data, lambda x: x[0]):
+        if counter < first_n:
+            _, names = zip(*g)
+            names = '/'.join(names)
+            win_to_print.append((i, names))
+            counter += len(names)
         else:
             counter = 0
             break
 
-    for i, g in groupby(list2, lambda x: x[0]):
-        if counter < integer:
-            lst = list(g)
-            teams = '/'.join([el[1] for el in lst])
-            lose_to_print.append((i, teams))
-            counter += len(lst)
+    for i, g in groupby(lose_data, lambda x: x[0]):
+        if counter < first_n:
+            _, names = zip(*g)
+            names = '/'.join(names)
+            lose_to_print.append((i, names))
+            counter += len(names)
         else:
             break
 
-    message1 = '<i>WINNING {}</i>: '.format(astring)
-    message2 = '<i>LOSING {}</i>: '.format(astring)
-
-    for perc, teams in win_to_print:
-        message1 += '<b>{}</b>({}%), '.format(teams, perc)
+    message1 = f'<i>{category} più azzeccate</i>: '
+    for perc, names in win_to_print:
+        message1 += f'<b>{names}</b>({perc}%), '
     message1 = message1[:-2]
 
-    for perc, teams in lose_to_print:
-        message2 += '<b>{}</b>({}%), '.format(teams, perc)
+    message2 = f'<i>{category} più sbagliate</i>: '
+    for perc, names in lose_to_print:
+        message2 += f'<b>{names}</b>({perc}%), '
     message2 = message2[:-2]
 
-    return '{}\n{}'.format(message1, message2)
+    return f'{message1}\n{message2}'
 
 
 def money():
-
-    """Return a message showing the money balance."""
-
-    return '<i>Money balance</i>: <b>{}</b>\n\n'.format(cl.stats.money)
+    return f'<i>Bilancio</i>: <b>{cl.stats.money}€</b>\n\n'
 
 
 def stats_on_bets():
@@ -70,33 +57,23 @@ def stats_on_bets():
     win = cl.stats.win_bets
     lose = cl.stats.lose_bets
 
-    return create_message(2, win, lose, 'bets') + '\n\n'
+    return create_message(win_data=win, lose_data=lose,
+                          category='Scommesse', first_n=2) + '\n\n'
 
 
 def stats_on_combos():
-
-    """Return a message showing the percentage of WINNING combos."""
-
-    return '<i>WINNING combos</i>: <b>{}%</b>\n\n'.format(cl.stats.win_combos)
+    return f'<i>Combo vincenti</i>: <b>{cl.stats.win_combos}%</b>\n\n'
 
 
 def stats_on_quotes():
 
-    """
-    Return a message showing the highest WINNING and lowest LOSING quotes
-    together with the user who played them.
-    """
-
-    message1 = '<i>Highest WINNING quote</i>: <b>{}</b> ({})'
-    message2 = '<i>Lowest LOSING quote</i>: <b>{}</b> ({})'
-
     quote, user = cl.stats.highest_win_quote
-    message1 = message1.format(quote, user)
+    message1 = f'<i>Miglior quota vincente</i>: <b>{quote}</b> ({user})'
 
     quote, user = cl.stats.lowest_los_quote
-    message2 = message2.format(quote, user)
+    message2 = f'<i>Peggior quota sbagliata</i>: <b>{quote}</b> ({user})'
 
-    return message1 + '\n' + message2 + '\n\n'
+    return f'{message1}\n{message2}\n\n'
 
 
 def stats_on_teams():
@@ -108,4 +85,5 @@ def stats_on_teams():
     win = cl.stats.win_teams
     lose = cl.stats.lose_teams
 
-    return create_message(2, win, lose, 'teams') + '\n\n'
+    return create_message(win_data=win, lose_data=lose,
+                          category='Squadre', first_n=2) + '\n\n'

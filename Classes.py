@@ -1,4 +1,5 @@
 from Functions import db_functions as dbf
+import config as cfg
 import matplotlib.image as image
 from datetime import datetime
 import numpy as np
@@ -76,8 +77,8 @@ class Stats(object):
 		self.money = money_bal()
 		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
-		for i in ['GENERAL', '2017-2018', '2018-2019', '2019-2020']:
-			score(i)
+		# for i in cfg.YEARS:
+		# 	score(i)
 		cake()
 		series()
 		stats_of_the_month()
@@ -249,7 +250,7 @@ def quotes_rec() -> tuple:
 
 def score(which) -> None:
 
-	if which == 'GENERAL':
+	if which == 'general':
 		year1, year2 = 2017, 2030
 	else:
 		year1, year2 = which.split('-')

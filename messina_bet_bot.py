@@ -9,8 +9,8 @@ from telegram.ext import CommandHandler
 import utils as utl
 import db_functions as dbf
 import selenium_functions as sf
-# from Functions import stats_functions as stf
-# import Classes as cl
+from Functions import stats_functions as stf
+import Classes as cl
 import config as cfg
 
 
@@ -472,30 +472,27 @@ def remind(bot, update):
     return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
 
 
-# def score(bot, update, args):  # DONE
-#
-# 	"""
-# 	Send the bar plot of the score.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	if not args:
-# 		return bot.send_photo(chat_id=chat_id,
-# 		                      photo=open('score_2019-2020.png', 'rb'))
-# 	elif args[0] == 'general':
-# 		return bot.send_photo(chat_id=chat_id,
-# 		                      photo=open('score_GENERAL.png', 'rb'))
-# 	else:
-# 		try:
-# 			return bot.send_photo(
-# 					chat_id=chat_id,
-# 					photo=open('score_{}.png'.format(args[0]), 'rb'))
-# 		except FileNotFoundError:
-# 			return bot.send_message(
-# 					chat_id=chat_id,
-# 					text='Wrong format. Ex: 2017-2018 or "general"')
+def score(bot, update, args):
+
+    """
+    Send the bar plot of the score.
+    """
+
+    chat_id = update.message.chat_id
+
+    if not args:
+        return bot.send_photo(chat_id=chat_id,
+                              photo=open(f'score_{cfg.YEARS[-1]}.png', 'rb'))
+
+    year = args[0]
+    try:
+        return bot.send_photo(
+                chat_id=chat_id,
+                photo=open(f'score_{year}.png', 'rb'))
+    except FileNotFoundError:
+        return bot.send_message(
+                chat_id=chat_id,
+                text='Formato incorrecto. Ex: 2017-2018 or "general"')
 
 
 def send_log(bot, update):
@@ -529,26 +526,21 @@ def start(bot, update):
     return bot.send_message(chat_id=chat_id, text="Iannelli suca")
 
 
-# def stats(bot, update):  # DONE
-#
-# 	"""
-# 	Send some stats.
-#
-# 	"""
-#
-# 	chat_id = update.message.chat_id
-#
-# 	message_money = stf.money()
-# 	message_perc = stf.abs_perc()
-# 	message_teams = stf.stats_on_teams()
-# 	message_bets = stf.stats_on_bets()
-# 	message_quotes = stf.stats_on_quotes()
-# 	message_combos = stf.stats_on_combos()
-#
-# 	fin_mess = (message_money + message_perc + message_teams +
-# 	            message_bets + message_quotes + message_combos)
-#
-# 	return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=fin_mess)
+def stats(bot, update):
+
+    chat_id = update.message.chat_id
+
+    message_money = stf.money()
+    message_perc = stf.abs_perc()
+    message_teams = stf.stats_on_teams()
+    message_bets = stf.stats_on_bets()
+    message_quotes = stf.stats_on_quotes()
+    message_combos = stf.stats_on_combos()
+
+    fin_mess = (message_money + message_perc + message_teams +
+                message_bets + message_quotes + message_combos)
+
+    return bot.send_message(parse_mode='HTML', chat_id=chat_id, text=fin_mess)
 
 
 def summary(bot, update):
@@ -627,11 +619,11 @@ matiz_handler = CommandHandler('matiz', matiz)
 night_quotes_handler = CommandHandler('night_quotes', night_quotes)
 play_handler = CommandHandler('play', play, pass_args=True)
 remind_handler = CommandHandler('remind', remind)
-# score_handler = CommandHandler('score', score, pass_args=True)
+score_handler = CommandHandler('score', score, pass_args=True)
 series_handler = CommandHandler('series', series)
 sotm_handler = CommandHandler('sotm', sotm)
 start_handler = CommandHandler('start', start)
-# stats_handler = CommandHandler('stats', stats)
+stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_results)
 
@@ -653,11 +645,11 @@ cfg.DISPATCHER.add_handler(delete_handler)
 cfg.DISPATCHER.add_handler(play_handler)
 cfg.DISPATCHER.add_handler(update_handler)
 cfg.DISPATCHER.add_handler(summary_handler)
-# cfg.DISPATCHER.add_handler(score_handler)
+cfg.DISPATCHER.add_handler(score_handler)
 cfg.DISPATCHER.add_handler(cake_handler)
 cfg.DISPATCHER.add_handler(bici_handler)
 cfg.DISPATCHER.add_handler(series_handler)
-# cfg.DISPATCHER.add_handler(stats_handler)
+cfg.DISPATCHER.add_handler(stats_handler)
 cfg.DISPATCHER.add_handler(sotm_handler)
 cfg.DISPATCHER.add_handler(match_handler)
 # cfg.DISPATCHER.add_handler(new_quotes_handler)
