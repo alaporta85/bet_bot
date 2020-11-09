@@ -76,11 +76,11 @@ class Stats(object):
 		self.money = money_bal()
 		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
-		# for i in ['GENERAL', '2017-2018', '2018-2019', '2019-2020']:
-		# 	score(i)
-		# cake()
+		for i in ['GENERAL', '2017-2018', '2018-2019', '2019-2020']:
+			score(i)
+		cake()
 		series()
-		# stats_of_the_month()
+		stats_of_the_month()
 
 
 def cake() -> None:
@@ -317,7 +317,7 @@ def score(which) -> None:
 	plt.gcf().clear()
 
 
-def series():
+def series() -> None:
 
 	def insert_arrows() -> None:
 		for i, e in enumerate(names):
@@ -392,112 +392,83 @@ def series():
 	plt.gcf().clear()
 
 
-# def stats_of_the_month():
-#
-# 	"""Best and Worst of every month based on the index."""
-#
-# 	def lmb1():
-# 		return lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S').year
-#
-# 	def lmb2():
-# 		return lambda x: datetime.strptime(x, '%Y-%m-%d %H:%M:%S').month
-#
-# 	def plot(dict1, dict2, current_month):
-#
-# 		win = [(name, len(dict1[name])) for name in partecipants]
-# 		win.sort(key=lambda x: x[1], reverse=True)
-#
-# 		names = [el[0] for el in win]
-# 		lose = [(name, len(dict2[name])) for name in names]
-#
-# 		abs_max = max(max([el[1] for el in win]), max([el[1] for el in lose]))
-#
-# 		fig, ax = plt.subplots()
-# 		fig.set_size_inches(13, 6)
-# 		ax.spines['top'].set_visible(False)
-# 		ax.spines['right'].set_visible(False)
-# 		bar_width = 0.45
-# 		bars1 = plt.bar([x - bar_width / 2 for x in range(5)],
-# 		                [el[1] for el in win],
-# 		                bar_width, color='g')
-# 		bars2 = plt.bar([x + bar_width / 2 for x in range(5)],
-# 		                [el[1] for el in lose], bar_width, color='r')
-#
-# 		plt.xticks(range(5), names, fontsize=25)
-# 		plt.yticks(range(abs_max + 1), fontsize=16)
-# 		plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
-#
-# 		for x in range(5):
-# 			dict1[names[x]].reverse()
-# 			message = '\n'.join(dict1[names[x]][:3])
-#
-# 			plt.text(bars1[x].get_x() + bars1[x].get_width() / 2,
-# 			         bars1[x].get_height() + 0.05, message, ha='center',
-# 			         va='bottom', fontsize=15)
-#
-# 		for x in range(5):
-# 			dict2[names[x]].reverse()
-# 			message = '\n'.join(dict2[names[x]][:3])
-#
-# 			plt.text(bars2[x].get_x() + bars2[x].get_width() / 2,
-# 			         bars2[x].get_height() + 0.05, message, ha='center',
-# 			         va='bottom', fontsize=15)
-#
-# 		# data = [(el[0], round(el[1] / maximum, 3)) for el in current_month]
-# 		# data.sort(key=lambda x: x[1], reverse=True)
-# 		# current_winner = '{}: {}'.format(data[0][0], data[0][1])
-# 		#
-# 		# plt.text(.85, .88, current_winner, horizontalalignment='left',
-# 		#          transform=ax.transAxes, fontweight='bold', fontsize=18)
-# 		#
-# 		# others = ['{}: {}'.format(el[0], el[1], 3) for el in data[1:]]
-# 		#
-# 		# plt.text(.82, .65, '\n'.join(others), horizontalalignment='left',
-# 		#          transform=ax.transAxes, style='italic', fontsize=16)
-# 		#
-# 		# plt.plot([.83, .83], [1, .6], 'k-', lw=3, transform=ax.transAxes)
-# 		# plt.plot([.83, 1], [.6, .6], 'k-', lw=3, transform=ax.transAxes)
-#
-# 		plt.savefig('sotm.png', dpi=120, bbox_inches='tight')
-# 		plt.gcf().clear()
-#
-# 	dict_win = {name: [] for name in partecipants}
-# 	dict_lose = {name: [] for name in partecipants}
-#
-# 	df1 = preds.copy()
-# 	df1['Year'] = df1['Date'].apply(lmb1())
-# 	df1['Month'] = df1['Date'].apply(lmb2())
-# 	df1 = df1[['Bet', 'User', 'Quote', 'Label', 'Year', 'Month']]
-# 	df1.set_index(['Year', 'Month'], inplace=True)
-# 	for i, g in df1.groupby(df1.index):
-# 		temp = []
-# 		for name in partecipants:
-# 			temp.append((name, compute_indices(g, name)[-1]))
-# 		maximum = max([el[1] for el in temp])
-# 		minimum = min([el[1] for el in temp])
-#
-# 		winners = [el[0] for el in temp if el[1] == maximum]
-# 		losers = [el[0] for el in temp if el[1] == minimum]
-#
-# 		for name in winners:
-# 			yy = datetime.strptime(''.join([str(m) for m in i]),
-# 			                       '%Y%m').strftime('%y')
-#
-# 			mm = datetime.strptime(''.join([str(m) for m in i]),
-# 			                       '%Y%m').strftime('%b')
-#
-# 			dict_win[name].append(mm + "'" + yy)
-#
-# 		for name in losers:
-# 			yy = datetime.strptime(''.join([str(m) for m in i]),
-# 			                       '%Y%m').strftime('%y')
-#
-# 			mm = datetime.strptime(''.join([str(m) for m in i]),
-# 			                       '%Y%m').strftime('%b')
-#
-# 			dict_lose[name].append(mm + "'" + yy)
-#
-# 	plot(dict_win, dict_lose, temp)
+def stats_of_the_month() -> None:
+
+	"""Best and Worst of every month based on the index."""
+
+	def plot(winners: dict, losers: dict):
+
+		win = [(name, len(winners[name])) for name in winners]
+		win.sort(key=lambda x: x[1], reverse=True)
+
+		names, n_win = zip(*win)
+
+		lose = [(name, len(losers[name])) for name in names]
+		_, n_lose = zip(*lose)
+
+		plot_height = max(max(n_win), max(n_lose))
+
+		fig, ax = plt.subplots(figsize=(13, 6))
+		ax.spines['top'].set_visible(False)
+		ax.spines['right'].set_visible(False)
+		bar_width = 0.45
+		bars1 = plt.bar([x - bar_width/2 for x in range(5)], n_win,
+		                bar_width, color='g')
+		bars2 = plt.bar([x + bar_width/2 for x in range(5)], n_lose,
+		                bar_width, color='r')
+
+		plt.xticks(range(5), names, fontsize=25)
+		plt.yticks(range(plot_height + 1), fontsize=16)
+		plt.tick_params(axis='x', which='both', bottom=False, labelbottom=True)
+
+		for x in range(5):
+			winners[names[x]].reverse()
+			message = '\n'.join(winners[names[x]][:3])
+
+			plt.text(bars1[x].get_x() + bars1[x].get_width()/2,
+			         bars1[x].get_height() + 0.05, message, ha='center',
+			         va='bottom', fontsize=15)
+
+		for x in range(5):
+			losers[names[x]].reverse()
+			message = '\n'.join(losers[names[x]][:3])
+
+			plt.text(bars2[x].get_x() + bars2[x].get_width() / 2,
+			         bars2[x].get_height() + 0.05, message, ha='center',
+			         va='bottom', fontsize=15)
+
+		plt.savefig('sotm.png', dpi=120, bbox_inches='tight')
+		plt.gcf().clear()
+
+	dict_win = {name: [] for name in players}
+	dict_lose = {name: [] for name in players}
+
+	tmp = preds.copy()
+	tmp['year'] = tmp['date'].apply(lambda x: x.year)
+	tmp['month'] = tmp['date'].apply(lambda x: x.month)
+	tmp = tmp[['bet_id', 'user', 'quote', 'label', 'year', 'month']]
+	for i, g in tmp.groupby(['year', 'month']):
+		y, m = i
+		y = datetime.strptime(str(y), '%Y').strftime('%y')
+		m = datetime.strptime(str(m), '%m').strftime('%b')
+
+		data = []
+		for name in players:
+			data.append((name, compute_index(g, name)))
+
+		maximum = max([el[1] for el in data])
+		minimum = min([el[1] for el in data])
+
+		winners = [el[0] for el in data if el[1] == maximum]
+		losers = [el[0] for el in data if el[1] == minimum]
+
+		for name in winners:
+			dict_win[name].append(f"{m} '{y}")
+
+		for name in losers:
+			dict_lose[name].append(f"{m} '{y}")
+
+	plot(dict_win, dict_lose)
 
 
 def stats_on_teams_or_bets(which: str) -> list:
