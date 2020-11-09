@@ -16,9 +16,9 @@ class Player(object):
 		# self.ratio = f'{len(self.quotes_win)}/{self.bets_played}'
 		# self.perc = round(len(self.quotes_win) / self.bets_played * 100, 1)
 		# self.mean_quote = round(self.quotes_win[1:-1].mean(), 2)
-		# self.best_series = self.set_series('WINNING')
-		# self.worst_series = self.set_series('LOSING')
-		# self.current_series = self.set_series('CURRENT')
+		self.best_series = self.set_series('WINNING')
+		self.worst_series = self.set_series('LOSING')
+		self.current_series = self.set_series('CURRENT')
 		self.cake = self.set_cake_value()
 
 	def quotes_win_lose(self):
@@ -76,10 +76,10 @@ class Stats(object):
 		self.money = money_bal()
 		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
-		for i in ['GENERAL', '2017-2018', '2018-2019', '2019-2020']:
-			score(i)
-		cake()
-		# series()
+		# for i in ['GENERAL', '2017-2018', '2018-2019', '2019-2020']:
+		# 	score(i)
+		# cake()
+		series()
 		# stats_of_the_month()
 
 
@@ -317,81 +317,81 @@ def score(which) -> None:
 	plt.gcf().clear()
 
 
-# def series():
-#
-# 	def insert_arrows():
-# 		for i, e in enumerate(names):
-# 			if i in green_arrows:
-# 				from_w = i - bar_width
-# 				to_w = i
-# 				from_h = series_pos[i] + abs_max / 200
-# 				to_h = series_pos[i] + abs_max / 10
-# 				ax.imshow(im1, aspect='auto',
-# 				          extent=(from_w, to_w, from_h, to_h),
-# 				          zorder=-1)
-#
-# 			elif i in red_arrows:
-# 				from_w = i
-# 				to_w = i + bar_width
-# 				from_h = series_neg[i] + abs_max / 200
-# 				to_h = series_neg[i] + abs_max / 10
-# 				ax.imshow(im2, aspect='auto',
-# 				          extent=(from_w, to_w, from_h, to_h),
-# 				          zorder=-1)
-#
-# 	def insert_lines():
-# 		current_series = [players[nm].current_series for nm in names]
-# 		for i, g in enumerate(current_series):
-# 			if i not in green_arrows + red_arrows:
-# 				value, label = g
-# 				if label == 'WINNING':
-# 					xmin = i - bar_width
-# 					xmax = i
-# 				else:
-# 					xmin = i
-# 					xmax = i + bar_width
-#
-# 				ax.hlines(y=value, xmin=xmin, xmax=xmax,
-# 				          linewidth=3, color='black')
-#
-# 	series_pos = sorted([(name, players[name].best_series) for name in
-# 						 partecipants], key=lambda x: x[1][0], reverse=True)
-# 	green_arrows = [i for i, g in enumerate(series_pos) if g[1][1] == 'Ongoing']
-# 	names = [el[0] for el in series_pos]
-# 	series_pos = [el[1][0] for el in series_pos]
-#
-# 	series_neg = [players[name].worst_series for name in names]
-# 	red_arrows = [i for i, g in enumerate(series_neg) if g[1] == 'Ongoing']
-# 	series_neg = [el[0] for el in series_neg]
-# 	abs_max = max((max(series_pos), max(series_neg)))
-#
-# 	bar_width = 0.4
-# 	fig, ax = plt.subplots()
-# 	fig.set_size_inches(10, 7)
-# 	im1 = image.imread('Images/green_arrow.png')
-# 	im2 = image.imread('Images/red_arrow.png')
-#
-# 	insert_arrows()
-# 	insert_lines()
-#
-# 	plt.bar([x - bar_width / 2 for x in range(5)], series_pos, bar_width,
-# 			color='g')
-#
-# 	plt.bar([x + bar_width/2 for x in range(5)], series_neg, bar_width,
-# 			color='r')
-#
-# 	plt.xticks(range(5), names, fontsize=17)
-# 	plt.yticks(fontsize=15)
-# 	ax.spines['right'].set_visible(False)
-# 	ax.spines['top'].set_visible(False)
-# 	ax.spines['bottom'].set_visible(False)
-# 	plt.tick_params(axis='x', bottom=False)
-# 	plt.ylim(0, abs_max)
-#
-# 	plt.savefig('series.png', dpi=120, bbox_inches='tight')
-# 	plt.gcf().clear()
-#
-#
+def series():
+
+	def insert_arrows() -> None:
+		for i, e in enumerate(names):
+			if i in green_arrows:
+				from_w = i - bar_width
+				to_w = i
+				from_h = series_pos[i] + plot_height / 200
+				to_h = series_pos[i] + plot_height / 10
+				ax.imshow(green_icon, aspect='auto',
+				          extent=(from_w, to_w, from_h, to_h),
+				          zorder=-1)
+
+			elif i in red_arrows:
+				from_w = i
+				to_w = i + bar_width
+				from_h = series_neg[i] + plot_height / 200
+				to_h = series_neg[i] + plot_height / 10
+				ax.imshow(red_icon, aspect='auto',
+				          extent=(from_w, to_w, from_h, to_h),
+				          zorder=-1)
+
+	def insert_lines():
+		current_series = [players[nm].current_series for nm in names]
+		for i, g in enumerate(current_series):
+			if i not in green_arrows + red_arrows:
+				value, label = g
+				if label == 'WINNING':
+					xmin = i - bar_width
+					xmax = i
+				else:
+					xmin = i
+					xmax = i + bar_width
+
+				ax.hlines(y=value, xmin=xmin, xmax=xmax,
+				          linewidth=3, color='black')
+
+	series_pos = [(name, players[name].best_series) for name in players]
+	series_pos.sort(key=lambda x: x[1][0], reverse=True)
+	green_arrows = [i for i, g in enumerate(series_pos) if g[1][1] == 'Ongoing']
+	names, data = zip(*series_pos)
+	series_pos, _ = zip(*data)
+
+	series_neg = [players[name].worst_series for name in names]
+	red_arrows = [i for i, g in enumerate(series_neg) if g[1] == 'Ongoing']
+	series_neg, _ = zip(*series_neg)
+
+	plot_height = max((max(series_pos), max(series_neg)))
+
+	bar_width = 0.4
+	fig, ax = plt.subplots(figsize=(10, 7))
+	green_icon = image.imread('Images/green_arrow.png')
+	red_icon = image.imread('Images/red_arrow.png')
+
+	insert_arrows()
+	insert_lines()
+
+	plt.bar([x - bar_width / 2 for x in range(5)], series_pos, bar_width,
+			color='g')
+
+	plt.bar([x + bar_width/2 for x in range(5)], series_neg, bar_width,
+			color='r')
+
+	plt.xticks(range(5), names, fontsize=17)
+	plt.yticks(fontsize=15)
+	ax.spines['right'].set_visible(False)
+	ax.spines['top'].set_visible(False)
+	ax.spines['bottom'].set_visible(False)
+	plt.tick_params(axis='x', bottom=False)
+	plt.ylim(0, plot_height)
+
+	plt.savefig('series.png', dpi=120, bbox_inches='tight')
+	plt.gcf().clear()
+
+
 # def stats_of_the_month():
 #
 # 	"""Best and Worst of every month based on the index."""
