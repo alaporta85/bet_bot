@@ -3,6 +3,7 @@
 !*.py
 !*.db
 !.gitignore
+!requirements.txt
 
 !/Messages/*
 !/Mazzarri/*
