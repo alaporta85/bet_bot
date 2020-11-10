@@ -262,7 +262,7 @@ def scrape_all_quotes() -> None:
 		start = time.time()
 		browser = scrape_league_quotes(brow=browser, league_name=league)
 		m, s = utl.time_needed(start)
-		cfg.LOGGER.info(f'FILL DB WITH QUOTES - {league} updated: {m}:{s}')
+		cfg.LOGGER.info(f'FILL DB WITH QUOTES - {league} aggiornata: {m}:{s}')
 
 	browser.quit()
 

@@ -366,10 +366,10 @@ def night_quotes(bot, update):
 
         # Start scraping
         t0 = time.time()
-        cfg.LOGGER.info('NIGHT_QUOTES - Nightly job: Updating quote...')
+        cfg.LOGGER.info('NIGHT_QUOTES - Aggiornando quote...')
         sf.scrape_all_quotes()
         mins, secs = utl.time_needed(t0)
-        cfg.LOGGER.info(f'NIGHT_QUOTES - Whole process took {mins}:{secs}.')
+        cfg.LOGGER.info(f'NIGHT_QUOTES - Tempo totale -> {mins}:{secs}.')
 
     else:
         chat_id = update.message.chat_id
