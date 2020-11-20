@@ -256,7 +256,7 @@ def get_bets_to_update() -> list:
     bets.sort(key=lambda x: x[0], reverse=True)
 
     if not bets:
-        cfg.LOGGER.info('UPDATE - No bets must be updated')
+        cfg.LOGGER.info('Nessuna scommessa da aggiornare.')
 
     return bets
 

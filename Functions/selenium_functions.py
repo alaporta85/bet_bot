@@ -383,8 +383,7 @@ def find_all_matches(brow: webdriver, league_name: str) -> [webdriver]:
 	try:
 		wait_clickable(brow, matches_path)
 	except TimeoutException:
-		cfg.LOGGER.info('ALL MATCHES MISSING - MATCHES ' +
-		                f'for {league_name} missing.')
+		cfg.LOGGER.info(f'Nessun match trovato per {league_name}.')
 		return []
 
 	return brow.find_elements_by_xpath(matches_path)
@@ -564,7 +563,6 @@ def login(brow: webdriver) -> webdriver:
 	accedi.click()
 	time.sleep(20)
 
-	cfg.LOGGER.info('PLAY - Logged')
 	return brow
 
 

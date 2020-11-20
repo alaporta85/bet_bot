@@ -2,6 +2,7 @@ import os
 from telegram.ext import Updater
 from Functions import logging_file as log
 
+
 # TELEGRAM BOT
 with open('token.txt', 'r') as f:
 	UPDATER = Updater(token=f.readline())
