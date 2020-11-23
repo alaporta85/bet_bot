@@ -29,7 +29,7 @@ LOGGER = log.set_logging()
 # PLAY
 LIM_LOW = 1.8
 LIM_HIGH = 3.2
-N_BETS = 6
+N_BETS = 5
 DEFAULT_EUROS = 5
 
 # UPDATING

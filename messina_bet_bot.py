@@ -9,8 +9,8 @@ from telegram.ext import CommandHandler
 import utils as utl
 import db_functions as dbf
 import selenium_functions as sf
-# import Classes as cl
-# import stats_functions as stf
+import Classes as cl
+import stats_functions as stf
 import config as cfg
 
 
@@ -563,7 +563,6 @@ def update_results(bot, update):
     bets = utl.get_bets_to_update()
     if not bets:
         msg = 'Nessuna scommessa da aggiornare.'
-        print(msg)
         return bot.send_message(chat_id=update.message.chat_id,
                                 text=msg)
 
