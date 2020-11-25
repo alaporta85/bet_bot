@@ -15,15 +15,20 @@ def add_short_names(matches: list) -> list:
 
     new_format = []
     for hhmm, team1, team2, q1, qx, q2 in matches:
-        short1 = dbf.db_select(table='teams',
-                               columns=['short'],
-                               where=f'name = "{team1}"')[0]
-        short2 = dbf.db_select(table='teams',
-                               columns=['short'],
-                               where=f'name = "{team2}"')[0]
+        # short1 = dbf.db_select(table='teams',
+        #                        columns=['short'],
+        #                        where=f'name = "{team1}"')[0]
+        # short2 = dbf.db_select(table='teams',
+        #                        columns=['short'],
+        #                        where=f'name = "{team2}"')[0]
+        #
+        # short1 = short1.replace('*', '')
+        # short2 = short2.replace('*', '')
 
-        short1 = short1.replace('*', '')
-        short2 = short2.replace('*', '')
+        team1 = team1.replace(' ', '')
+        team2 = team2.replace(' ', '')
+        short1 = team1[1:4] if '*' in team1 else team1[:3]
+        short2 = team2[1:4] if '*' in team2 else team2[:3]
 
         new_format.append((hhmm, short1, short2, q1, qx, q2))
 

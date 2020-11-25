@@ -601,6 +601,9 @@ def update_results(bot, update):
     cl.stats = cl.Stats()
     cfg.LOGGER.info('UPDATE - Database aggiornato correttamente.')
 
+    bot.send_photo(chat_id=cfg.GROUP_ID,
+                   photo=open(f'score_{cfg.YEARS[-1]}.png', 'rb'))
+
 
 cake_handler = CommandHandler('cake', cake)
 bici_handler = CommandHandler('bici', bike)
