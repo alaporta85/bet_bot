@@ -264,10 +264,10 @@ def score(which) -> None:
 
 	names = [name for name in players]
 	indices = np.array([compute_index(tmp, name) for name in names])
-	indices = normalize_indices(raw_indices=indices)
 	data = sorted(zip(names, indices), key=lambda x: x[1], reverse=True)
 
 	names, indices = zip(*data)
+	indices = normalize_indices(raw_indices=indices)
 
 	ratio = [get_user_ratio(tmp, name) for name in names]
 	perc = [get_user_perc(tmp, name) for name in names]
