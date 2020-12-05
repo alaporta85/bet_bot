@@ -14,14 +14,14 @@ import stats_functions as stf
 import config as cfg
 
 
-def cake(bot, update):
-    chat_id = update.message.chat_id
-    return bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
-
-
 def bike(bot, update):
     chat_id = update.message.chat_id
     return bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
+
+
+def cake(bot, update):
+    chat_id = update.message.chat_id
+    return bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
 
 
 def cancel(bot, update, text: str = ''):
@@ -156,8 +156,9 @@ def fischia(bot, update):
 def get(bot, update, args: list):
 
     """
-    /get team     -> Return all quotes of the match, if found
-    /get team_bet -> Return the requested quote, if found
+    /get team       -> Return all quotes of the match, if found
+    /get team_bet   -> Return the requested quote, if found
+    /get team_quote -> Return all the bets with the specified quote, if found
     """
 
     chat_id = update.message.chat_id
@@ -175,6 +176,8 @@ def get(bot, update, args: list):
         return bot.send_message(chat_id=chat_id, text=message)
 
     team = utl.fix_team_name(text.split('_')[0])
+    # TODO fix when team name in league is different from the one in matches.
+    # ZENIT SAN PIETROBURGO vs FK ZENIT SAN PIETROBURGO
     if not team:
         return bot.send_message(chat_id=chat_id,
                                 text='Squadra non riconosciuta')
