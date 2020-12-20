@@ -9,8 +9,8 @@ from telegram.ext import CommandHandler
 import utils as utl
 import db_functions as dbf
 import selenium_functions as sf
-import Classes as cl
-import stats_functions as stf
+# import Classes as cl
+# import stats_functions as stf
 import config as cfg
 
 
@@ -629,7 +629,7 @@ sotm_handler = CommandHandler('sotm', sotm)
 start_handler = CommandHandler('start', start)
 stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
-update_handler = CommandHandler('update', update_results)
+update_handler= CommandHandler('update', update_results)
 
 # Nightly quotes updating
 update_quotes = cfg.UPDATER.job_queue
