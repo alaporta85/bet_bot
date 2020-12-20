@@ -10,6 +10,7 @@ DISPATCHER = UPDATER.dispatcher
 
 DEBUG = False
 GROUP_ID = -235014519 if not DEBUG else 67507055
+TESTAZZA_ID = 67507055
 
 # SELENIUM SCRAPING
 MAIN_PAGE = 'https://www.lottomatica.it/scommesse/avvenimenti'

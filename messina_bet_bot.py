@@ -9,8 +9,8 @@ from telegram.ext import CommandHandler
 import utils as utl
 import db_functions as dbf
 import selenium_functions as sf
-# import Classes as cl
-# import stats_functions as stf
+import Classes as cl
+import stats_functions as stf
 import config as cfg
 
 
@@ -373,6 +373,11 @@ def night_quotes(bot, update):
         sf.scrape_all_quotes()
         mins, secs = utl.time_needed(t0)
         cfg.LOGGER.info(f'NIGHT_QUOTES - Tempo totale -> {mins}:{secs}.')
+
+        missing_fields = utl.notify_inactive_fields()
+        if missing_fields:
+            return bot.send_message(chat_id=cfg.TESTAZZA_ID,
+                                    text=missing_fields)
 
     else:
         chat_id = update.message.chat_id

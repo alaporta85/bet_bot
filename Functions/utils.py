@@ -510,6 +510,28 @@ def nothing_pending(nickname: str) -> bool:
     return True if not pending else False
 
 
+def notify_inactive_fields() -> str:
+    all_fields = dbf.db_select(table='fields',
+                               columns=['name'],
+                               where='')
+    all_fields = [f.split('_')[0] for f in all_fields]
+
+    fields_found = dbf.db_select(table='quotes',
+                               columns=['bet'],
+                               where='')
+    fields_found = [f.split('_')[0] for f in fields_found]
+
+    missing = set(all_fields) - set(fields_found)
+
+    if missing:
+        missing = sorted(list(missing))
+
+        message = "\n\t\t\t- ".join(missing)
+        return f'Scommesse mancanti:\n\n\t\t\t- {message}'
+    else:
+        return ''
+
+
 def prediction_to_delete(nickname: str) -> int:
 
     bet_id = get_pending_bet_id()
