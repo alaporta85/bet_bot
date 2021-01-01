@@ -130,6 +130,7 @@ def create_list_of_matches(bet_id: int) -> str:
     Create a list of the matches inside the bet.
     """
 
+    # TODO add "Confirmed" condition
     matches = dbf.db_select(
             table='predictions',
             columns=['user', 'date', 'team1', 'team2', 'bet_alias', 'quote'],

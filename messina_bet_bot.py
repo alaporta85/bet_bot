@@ -636,12 +636,15 @@ stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
 update_handler= CommandHandler('update', update_results)
 
-# Nightly quotes updating
+# TODO add job to clean outdated matches in all tables
+
+# Scrape quotes
 update_quotes = cfg.UPDATER.job_queue
 update_quotes.run_repeating(night_quotes,
                             interval=86400,
                             first=datetime.time(1, 00, 00))
 
+# Update results
 update_tables = cfg.UPDATER.job_queue
 update_tables.run_repeating(update_results,
                             interval=86400,
