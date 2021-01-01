@@ -240,6 +240,26 @@ def get(bot, update, args: list):
     return bot.send_message(chat_id=chat_id, text=message)
 
 
+def get_rid_outdated_matches(bot, update) -> None:
+
+    preds_to_remove = dbf.db_select(table='to_play',
+                                    columns=['pred_id', 'date'],
+                                    where='')
+
+    preds_to_remove = [(pred_id, utl.str_to_dt(dt_as_string=pred_dt)) for
+                       pred_id, pred_dt in preds_to_remove]
+
+    preds_to_remove = [pred_id for pred_id, pred_dt in preds_to_remove
+                       if pred_dt < datetime.datetime.now()]
+
+    for pred_id in preds_to_remove:
+        dbf.db_delete(table='to_play', where=f'pred_id={pred_id}')
+        dbf.db_delete(table='predictions',
+                      where=f'id={pred_id} AND result IS NULL')
+
+    utl.remove_bet_without_preds()
+
+
 # def info(bot, update):
 #
 #     # TODO rewrite message
@@ -634,9 +654,13 @@ sotm_handler = CommandHandler('sotm', sotm)
 start_handler = CommandHandler('start', start)
 stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
-update_handler= CommandHandler('update', update_results)
+update_handler = CommandHandler('update', update_results)
 
-# TODO add job to clean outdated matches in all tables
+# Get rid of outdated matches too late to play
+outdated_matches = cfg.UPDATER.job_queue
+outdated_matches.run_repeating(get_rid_outdated_matches,
+                               interval=86400,
+                               first=datetime.time(0, 45, 00))
 
 # Scrape quotes
 update_quotes = cfg.UPDATER.job_queue
