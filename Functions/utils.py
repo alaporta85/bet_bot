@@ -130,11 +130,10 @@ def create_list_of_matches(bet_id: int) -> str:
     Create a list of the matches inside the bet.
     """
 
-    # TODO add "Confirmed" condition
     matches = dbf.db_select(
             table='predictions',
             columns=['user', 'date', 'team1', 'team2', 'bet_alias', 'quote'],
-            where=f'bet_id = {bet_id}')
+            where=f'bet_id = {bet_id} AND status="Confirmed"')
 
     # Sort matches by datetime
     matches = sorted(matches, key=lambda x: x[1])
@@ -142,7 +141,7 @@ def create_list_of_matches(bet_id: int) -> str:
     message = ''
     for user, dt, team1, team2, rawbet, quote in matches:
         # Extract the time
-        dt = datetime.datetime.strptime(dt, '%Y-%m-%d %H:%M:%S')
+        dt = str_to_dt(dt_as_string=dt)
         hhmm = str(dt.hour).zfill(2) + ':' + str(dt.minute).zfill(2)
 
         message += (f'<b>{user}</b>:     {team1}-{team2} ({hhmm})    '
@@ -159,7 +158,7 @@ def create_summary_pending_bet() -> str:
 
     bet_id = get_pending_bet_id()
     if bet_id:
-        message = create_list_of_matches(bet_id)
+        message = create_list_of_matches(bet_id=bet_id)
         quotes_prod = get_quotes_prod(bet_id)
         prize = round(quotes_prod*cfg.DEFAULT_EUROS, 1)
         last_line = f'\n\nVincita con {cfg.DEFAULT_EUROS}€: <b>{prize}</b>'
@@ -173,7 +172,7 @@ def create_summary_placed_bets() -> str:
     if bet_ids:
         message = 'Scommesse ancora aperte:\n\n'
         for bet_id in bet_ids:
-            message += create_list_of_matches(bet_id)
+            message += create_list_of_matches(bet_id=bet_id)
             message += f'\n{" "*20}{"*"*20}'
         return message
     return 'Nessuna scommessa attiva'
