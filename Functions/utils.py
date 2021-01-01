@@ -11,19 +11,8 @@ import config as cfg
 
 def add_short_names(matches: list) -> list:
 
-    # TODO use jaccard
-
     new_format = []
     for hhmm, team1, team2, q1, qx, q2 in matches:
-        # short1 = dbf.db_select(table='teams',
-        #                        columns=['short'],
-        #                        where=f'name = "{team1}"')[0]
-        # short2 = dbf.db_select(table='teams',
-        #                        columns=['short'],
-        #                        where=f'name = "{team2}"')[0]
-        #
-        # short1 = short1.replace('*', '')
-        # short2 = short2.replace('*', '')
 
         team1 = team1.replace(' ', '')
         team2 = team2.replace(' ', '')
