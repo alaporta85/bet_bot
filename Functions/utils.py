@@ -96,7 +96,7 @@ def autoplay() -> bool:
     bet_id = get_pending_bet_id()
     preds = dbf.db_select(table='predictions',
                           columns=['id'],
-                          where=f'bet_id = {bet_id}')
+                          where=f'bet_id = {bet_id} AND status = "Confirmed"')
     return True if len(preds) == cfg.N_BETS else False
 
 
@@ -160,9 +160,10 @@ def create_summary_placed_bets() -> str:
     bet_ids = get_placed_but_open_bet_ids()
     if bet_ids:
         message = 'Scommesse ancora aperte:\n\n'
+        # TODO add prize in message
         for bet_id in bet_ids:
             message += create_list_of_matches(bet_id=bet_id)
-            message += f'\n{" "*20}{"*"*20}'
+            message += f'\n{" "*20}{"*"*20}\n\n'
         return message
     return 'Nessuna scommessa attiva'
 
