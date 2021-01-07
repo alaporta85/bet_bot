@@ -254,8 +254,17 @@ def get_rid_outdated_matches(bot, update) -> None:
 
     for pred_id in preds_to_remove:
         dbf.db_delete(table='to_play', where=f'pred_id={pred_id}')
-        dbf.db_delete(table='predictions',
-                      where=f'id={pred_id} AND result IS NULL')
+
+        bet_id = dbf.db_select(table='predictions',
+                               columns=['bet_id'],
+                               where=f'id = {pred_id}')[0]
+        bet_status = dbf.db_select(table='bets',
+                                   columns=['status'],
+                                   where=f'id = {bet_id}')[0]
+
+        if bet_status == 'Pending':
+            dbf.db_delete(table='predictions',
+                          where=f'id={pred_id}')
 
     utl.remove_bet_without_preds()
 

@@ -396,7 +396,7 @@ def get_money_after(brow: webdriver, before: float, euros: int) -> float:
 	# Verify money has the new value. If not, refresh the value and check again
 	# up to 10 times
 	c = count(1)
-	while next(c) < 10 and after != (before - euros):
+	while next(c) < 30 and after != (before - euros):
 		refresh_money(brow)
 		time.sleep(2)
 		after = money(brow)
