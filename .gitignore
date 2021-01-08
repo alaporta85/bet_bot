@@ -4,11 +4,11 @@
 !.gitignore
 !requirements.txt
 
-!/Messages/*
-!/Mazzarri/*
-!Images/*
-!logs_config/*
-!simulations/*
+!/Messages/
+!/Mazzarri/
+!/Images/
+!/logs_config/
+!/simulations/
 
 !matiz.png
 !bici.mp3
