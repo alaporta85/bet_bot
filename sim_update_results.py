@@ -133,17 +133,6 @@ def add_expired_quotes() -> None:
 					  values=[date, tm1, tm2, lg, bet_alias, quote])
 
 
-def random_goals():
-	ids = dbf.db_select(table='simulations', columns=['id'], where='')
-	for i in ids:
-		goals = np.random.randint(low=0, high=3, size=4)
-		dbf.db_update(table='simulations',
-		              columns=['goals_tm1_pt', 'goals_tm2_pt',
-		                       'goals_tm1_st', 'goals_tm2_st'],
-		              values=goals,
-		              where=f'id = {i}')
-
-
 def pred_is_correct(pred_id: int) -> bool:
 
 	pred, tm1_pt, tm2_pt, tm1_st, tm2_st = dbf.db_select(
@@ -199,7 +188,3 @@ def add_labels() -> None:
 		              columns=['label'],
 		              values=[label],
 		              where=f'id = {pred_id}')
-
-
-# add_expired_quotes()
-# add_labels()

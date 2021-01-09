@@ -38,3 +38,8 @@ BETS_FILTER = 'Ultimi 3 Mesi'
 
 # SCORE
 YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021']
+
+# SCRAPING
+URL = 'https://www.diretta.it'
+LEAGUES = ['ITALIA: Serie A', 'OLANDA: Eredivisie', 'GERMANIA: Bundesliga',
+		   'SPAGNA: LaLiga', 'FRANCIA: Ligue 1', 'INGHILTERRA: Premier League']

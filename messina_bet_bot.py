@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 
 import os
-import random
 import time
+import random
 import datetime
 from telegram.ext import CommandHandler
 
 import utils as utl
+import config as cfg
 import db_functions as dbf
-import selenium_functions as sf
+import sim_update_results as sur
+import sim_scrape_results as ssr
 import Classes as cl
 import stats_functions as stf
-import config as cfg
+import selenium_functions as sf
 
 
 def bike(bot, update):
@@ -532,6 +534,16 @@ def score(bot, update, args):
                 text='Formato incorrecto. Ex: 2017-2018 or "general"')
 
 
+def scrape_all_results(bot, update):
+
+    sur.add_expired_quotes()
+
+    ssr.scrape_results()
+
+    sur.add_labels()
+    print('done')
+
+
 def send_log(bot, update):
     chat_id = update.message.chat_id
     return bot.send_document(chat_id=chat_id,
@@ -664,6 +676,12 @@ start_handler = CommandHandler('start', start)
 stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_results)
+
+# Save today quotes and scrape results
+scraping = cfg.UPDATER.job_queue
+scraping.run_repeating(scrape_all_results,
+                       interval=86400,
+                       first=datetime.time(0, 25, 00))
 
 # Get rid of outdated matches too late to play
 outdated_matches = cfg.UPDATER.job_queue
