@@ -4,7 +4,6 @@ import db_functions as dbf
 from itertools import product
 
 
-
 def esito_1x2(goals_tm1: int, goals_tm2: int, tempo: str) -> list:
 
 	t = f' {tempo}' if tempo else tempo
@@ -109,7 +108,7 @@ def add_expired_quotes() -> None:
 	matches = dbf.db_select(table='matches', columns=['id', 'date'], where='')
 
 	now_dt = datetime.datetime.now()
-	past_matches = [str(i) for i, dt in matches if str_to_dt(dt) > now_dt]
+	past_matches = [str(i) for i, dt in matches if str_to_dt(dt) < now_dt]
 
 	all_options = dbf.db_select(table='quotes',
 	                            columns=['match', 'bet', 'quote'],
@@ -200,3 +199,7 @@ def add_labels() -> None:
 		              columns=['label'],
 		              values=[label],
 		              where=f'id = {pred_id}')
+
+
+# add_expired_quotes()
+# add_labels()
