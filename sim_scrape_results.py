@@ -85,16 +85,16 @@ def matches_info(match_elem: webdriver) -> list:
 
 	info = match_elem.text
 	if 'Posticipata' in info:
-		status, tm1, _, tm2 = info.split('\n')
-		return [status, tm1, '', '', tm2, '']
+		_, tm1, _, tm2 = info.split('\n')
+		return ['', tm1, '', '', tm2, '']
 
 	try:
 		status, tm1, ggtm1, _, ggtm2, tm2, pt = info.split('\n')
 	except ValueError:
-		return []
+		return ['', '', '', '', '', '']
 
 	if status != 'Finale':
-		return []
+		return ['', tm1, '', '', tm2, '']
 
 	return [status, tm1, ggtm1, ggtm2, tm2, pt]
 
@@ -121,8 +121,6 @@ def scrape_results() -> None:
 
 			for match in matches:
 				match_info = matches_info(match_elem=match)
-				if not match_info:
-					continue
 
 				status, tm1, ggtm1, ggtm2, tm2, pt = match_info
 
@@ -134,7 +132,7 @@ def scrape_results() -> None:
 					# TODO do something
 					continue
 
-				if status == 'Posticipata':
+				if status != 'Finale':
 					dbf.db_delete(table='simulations',
 					              where=(f'team1 = "{team1}" AND '
 					                     f'team2 = "{team2}"'))

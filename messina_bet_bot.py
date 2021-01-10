@@ -541,7 +541,7 @@ def scrape_all_results(bot, update):
     ssr.scrape_results()
 
     sur.add_labels()
-    print('done')
+    print('DONE')
 
 
 def send_log(bot, update):
@@ -678,16 +678,16 @@ summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_results)
 
 # Save today quotes and scrape results
-scraping = cfg.UPDATER.job_queue
-scraping.run_repeating(scrape_all_results,
-                       interval=86400,
-                       first=datetime.time(0, 25, 00))
+# scraping = cfg.UPDATER.job_queue
+# scraping.run_repeating(scrape_all_results,
+#                        interval=86400,
+#                        first=datetime.time(23, 32, 30))
 
 # Get rid of outdated matches too late to play
 outdated_matches = cfg.UPDATER.job_queue
 outdated_matches.run_repeating(get_rid_outdated_matches,
                                interval=86400,
-                               first=datetime.time(0, 45, 00))
+                               first=datetime.time(22, 30, 00))
 
 # Scrape quotes
 update_quotes = cfg.UPDATER.job_queue
@@ -710,7 +710,7 @@ cfg.DISPATCHER.add_handler(delete_handler)
 cfg.DISPATCHER.add_handler(play_handler)
 cfg.DISPATCHER.add_handler(update_handler)
 cfg.DISPATCHER.add_handler(summary_handler)
-cfg.DISPATCHER.add_handler(score_handler)
+# cfg.DISPATCHER.add_handler(score_handler)
 cfg.DISPATCHER.add_handler(cake_handler)
 cfg.DISPATCHER.add_handler(bici_handler)
 cfg.DISPATCHER.add_handler(series_handler)
