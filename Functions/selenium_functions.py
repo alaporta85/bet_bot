@@ -88,6 +88,9 @@ def cross_check_teams(table: webdriver, bets_db: list) -> (int, tuple):
 		teams_db.sort()
 		if teams_web == teams_db:
 			return bet_db_id, preds_details
+		else:
+			continue
+	return 0, []
 
 
 def get_prize(brow: webdriver) -> float:
@@ -120,6 +123,10 @@ def update_database(brow: webdriver, bets_to_update: list):
 		details = brow.find_element_by_xpath(path)
 
 		bet_id, preds = cross_check_teams(table=details, bets_db=bets_to_update)
+		if not bet_id:
+			brow.close()
+			brow.switch_to_window(main_window)
+			continue
 
 		for tm1, tm2, quote, result, label in preds:
 			dbf.db_update(table='predictions',
