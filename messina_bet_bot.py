@@ -11,8 +11,8 @@ import config as cfg
 import db_functions as dbf
 import sim_update_results as sur
 import sim_scrape_results as ssr
-# import Classes as cl
-# import stats_functions as stf
+import Classes as cl
+import stats_functions as stf
 import selenium_functions as sf
 
 
@@ -536,9 +536,9 @@ def score(bot, update, args):
 
 def scrape_all_results(bot, update):
 
-    # sur.add_expired_quotes()
-    #
-    # ssr.scrape_results()
+    sur.add_expired_quotes()
+
+    ssr.scrape_results()
 
     sur.add_labels()
     print('DONE')
@@ -678,10 +678,10 @@ summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_results)
 
 # Save today quotes and scrape results
-# scraping = cfg.UPDATER.job_queue
-# scraping.run_repeating(scrape_all_results,
-#                        interval=86400,
-#                        first=datetime.time(23, 32, 00))
+scraping = cfg.UPDATER.job_queue
+scraping.run_repeating(scrape_all_results,
+                       interval=86400,
+                       first=datetime.time(22, 15, 00))
 
 # Get rid of outdated matches too late to play
 outdated_matches = cfg.UPDATER.job_queue
@@ -690,10 +690,10 @@ outdated_matches.run_repeating(get_rid_outdated_matches,
                                first=datetime.time(22, 30, 00))
 
 # Scrape quotes
-update_quotes = cfg.UPDATER.job_queue
-update_quotes.run_repeating(night_quotes,
-                            interval=86400,
-                            first=datetime.time(1, 00, 00))
+# update_quotes = cfg.UPDATER.job_queue
+# update_quotes.run_repeating(night_quotes,
+#                             interval=86400,
+#                             first=datetime.time(1, 00, 00))
 
 # Update results
 update_tables = cfg.UPDATER.job_queue
