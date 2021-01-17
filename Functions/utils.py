@@ -91,6 +91,24 @@ def all_bets_per_team(team_name: str) -> str:
     return message_standard, message_combo
 
 
+def all_preds_are_complete(list_of_bets: list) -> list:
+
+    dt = datetime.datetime.now()
+    completed_bets = []
+    for bet_id, bet_date in list_of_bets:
+        preds = dbf.db_select(table='predictions',
+                              columns=['date'],
+                              where=f'bet_id = {bet_id}')
+        preds = [str_to_dt(d) for d in preds]
+
+        still_to_play = [1 for pred_date in preds if pred_date > dt]
+
+        if not sum(still_to_play):
+            completed_bets.append((bet_id, bet_date))
+
+    return completed_bets
+
+
 def autoplay() -> bool:
 
     bet_id = get_pending_bet_id()
@@ -249,6 +267,8 @@ def get_bets_to_update() -> list:
                          columns=['id', 'date'],
                          where='status = "Placed" AND result = "Unknown"')
     bets.sort(key=lambda x: x[0], reverse=True)
+
+    bets = all_preds_are_complete(list_of_bets=bets)
 
     if not bets:
         cfg.LOGGER.info('Nessuna scommessa da aggiornare.')
