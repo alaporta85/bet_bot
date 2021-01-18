@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from itertools import combinations
 import seaborn as sns
 sns.set()
 
@@ -25,11 +26,15 @@ def day_balance(n_trials: int, euros_per_bet: int, list_of_bets: list):
     return money_won - money_played, perc_winning
 
 
-def run_simulation(datafr: pd.DataFrame, n_days: int, n_bets_per_day: int,
-                   n_preds_per_bet: int, n_trials: int, euros_per_bet: int,
-                   quotes_to_test: np.array, use_combo: bool):
+def quote_simulation(n_days: int, n_bets_per_day: int, n_preds_per_bet: int,
+                     n_trials: int, euros_per_bet: int,
+                     quotes_to_test: np.array, tolerance: float,
+                     use_combo: bool):
 
-    df = datafr.copy()
+    cols = ['date', 'team1', 'team2', 'league', 'bet_alias', 'quote', 'label']
+    data = dbf.db_select(table='simulations', columns=cols, where='')
+    df = pd.DataFrame(data, columns=cols)
+
     if not use_combo:
         df = df[~df['bet_alias'].str.contains('+', regex=False)].copy()
     df.replace({'WINNING': 1, 'LOSING': 0}, inplace=True)
@@ -46,7 +51,6 @@ def run_simulation(datafr: pd.DataFrame, n_days: int, n_bets_per_day: int,
         q = quotes_to_test[i]
         ax = axes[i]
 
-        tolerance = .1
         cond1 = df['quote'] >= q - tolerance
         cond2 = df['quote'] <= q + tolerance
         filt_data = df.loc[cond1 & cond2, ['quote', 'label']].values
@@ -74,19 +78,39 @@ def run_simulation(datafr: pd.DataFrame, n_days: int, n_bets_per_day: int,
                      fontsize=15)
 
 
-# N_DAYS = 100
-# N_BETS_PER_DAY = 3
-# N_PREDS_PER_BET = 3
-# EUROS_PER_BET = 3
-# N_TRIALS = 100
-# USE_COMBO = True
-# QUOTES_TO_TEST = np.arange(2.6, 3.1, .2)
-#
-# cols = ['date', 'team1', 'team2', 'league', 'bet_alias', 'quote', 'label']
-# data = dbf.db_select(table='simulations', columns=cols, where='')
-# data = pd.DataFrame(data, columns=cols)
-#
-# run_simulation(datafr=data, n_days=N_DAYS, n_bets_per_day=N_BETS_PER_DAY,
-#                n_preds_per_bet=N_PREDS_PER_BET, n_trials=N_TRIALS,
-#                euros_per_bet=EUROS_PER_BET, quotes_to_test=QUOTES_TO_TEST,
-#                use_combo=USE_COMBO)
+def system_simulation(combs_to_play: list, euros_per_bet: int):
+
+    bet_ids = dbf.db_select(table='bets',
+                            columns=['id'],
+                            where='result != "Unknown"')
+
+    all_bets = [dbf.db_select(table='predictions',
+                              columns=['quote', 'label'],
+                              where=f'bet_id = {b_id}') for b_id in bet_ids]
+    all_bets = [[(q, 1) if lb == 'WINNING' else (q, 0) for q, lb in bet]
+                for bet in all_bets]
+
+    bets_as_system = []
+    for i, bet in enumerate(all_bets, 1):
+        win = 0
+        n_combs = 0
+        for j in range(1, len(bet)+1):
+            if j not in combs_to_play:
+                continue
+            comb = list(combinations(bet, j))
+            for c in comb:
+                win += np.prod(np.array(c).flatten())*euros_per_bet
+                n_combs += 1
+
+        bets_as_system.append(win - n_combs*euros_per_bet)
+
+    a = [sum(bets_as_system[:i]) for i in range(1, len(bets_as_system)+1)]
+    plt.plot(a)
+    return
+
+
+# run_simulation(n_days=100, n_bets_per_day=3, n_preds_per_bet=3, n_trials=100,
+#                euros_per_bet=3, quotes_to_test=np.arange(2.6, 3.1, .2),
+#                tolerance=.1, use_combo=True)
+
+system_simulation(combs_to_play=[5], euros_per_bet=2)

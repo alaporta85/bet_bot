@@ -676,6 +676,7 @@ start_handler = CommandHandler('start', start)
 stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_results)
+scrape_handler = CommandHandler('scrape', scrape_all_results)
 
 # Save today quotes and scrape results
 scraping = cfg.UPDATER.job_queue
@@ -690,10 +691,10 @@ outdated_matches.run_repeating(get_rid_outdated_matches,
                                first=datetime.time(22, 30, 00))
 
 # Scrape quotes
-# update_quotes = cfg.UPDATER.job_queue
-# update_quotes.run_repeating(night_quotes,
-#                             interval=86400,
-#                             first=datetime.time(1, 00, 00))
+update_quotes = cfg.UPDATER.job_queue
+update_quotes.run_repeating(night_quotes,
+                            interval=86400,
+                            first=datetime.time(1, 00, 00))
 
 # Update results
 update_tables = cfg.UPDATER.job_queue
@@ -723,6 +724,7 @@ cfg.DISPATCHER.add_handler(log_handler)
 cfg.DISPATCHER.add_handler(remind_handler)
 cfg.DISPATCHER.add_handler(matiz_handler)
 cfg.DISPATCHER.add_handler(fischia_handler)
+cfg.DISPATCHER.add_handler(scrape_handler)
 
 cfg.UPDATER.start_polling()
 cfg.LOGGER.info('Bet_Bot started.')
