@@ -117,7 +117,11 @@ def add_expired_quotes() -> None:
 	all_options = [i for i in all_options if i[1] != 'GOAL/NO GOAL_GOAL']
 	all_options = [i for i in all_options if i[1] != 'GOAL/NO GOAL_NOGOAL']
 
-	for match_id, bet, quote in all_options:
+	for i, data in enumerate(all_options, 1):
+
+		print(f'\r{i}/{len(all_options)}', end='')
+
+		match_id, bet, quote = data
 
 		bet_alias = dbf.db_select(table='fields',
 		                          columns=['alias'],
@@ -182,7 +186,9 @@ def add_labels() -> None:
 	pred_ids = dbf.db_select(table='simulations',
 	                         columns=['id'],
 	                         where='label IS NULL')
-	for pred_id in pred_ids:
+	for i, pred_id in enumerate(pred_ids, 1):
+		print(f'\r{i}/{len(pred_ids)}', end='')
+
 		label = 'WINNING' if pred_is_correct(pred_id=pred_id) else 'LOSING'
 		dbf.db_update(table='simulations',
 		              columns=['label'],

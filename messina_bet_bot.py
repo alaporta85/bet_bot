@@ -11,8 +11,8 @@ import config as cfg
 import db_functions as dbf
 import sim_update_results as sur
 import sim_scrape_results as ssr
-# import Classes as cl
-# import stats_functions as stf
+import Classes as cl
+import stats_functions as stf
 import selenium_functions as sf
 
 
@@ -682,7 +682,7 @@ scrape_handler = CommandHandler('scrape', scrape_all_results)
 scraping = cfg.UPDATER.job_queue
 scraping.run_repeating(scrape_all_results,
                        interval=86400,
-                       first=datetime.time(22, 15, 00))
+                       first=datetime.time(22, 00, 00))
 
 # Get rid of outdated matches too late to play
 outdated_matches = cfg.UPDATER.job_queue
@@ -711,7 +711,7 @@ cfg.DISPATCHER.add_handler(delete_handler)
 cfg.DISPATCHER.add_handler(play_handler)
 cfg.DISPATCHER.add_handler(update_handler)
 cfg.DISPATCHER.add_handler(summary_handler)
-# cfg.DISPATCHER.add_handler(score_handler)
+cfg.DISPATCHER.add_handler(score_handler)
 cfg.DISPATCHER.add_handler(cake_handler)
 cfg.DISPATCHER.add_handler(bici_handler)
 cfg.DISPATCHER.add_handler(series_handler)
