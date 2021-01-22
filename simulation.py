@@ -9,27 +9,24 @@ from Functions import db_functions as dbf
 
 
 def all_bets_per_day(data_array: np.array, n_trials: int,
-                     n_bets: int, n_preds: int) -> list:
+                     n_preds: int) -> list:
 
     bets = np.random.randint(low=0, high=data_array.shape[0],
-                             size=n_trials*n_bets*n_preds)
-    bets = np.array(np.array_split(bets, n_trials*n_bets))
+                             size=n_trials*n_preds)
+    bets = np.array(np.array_split(bets, n_trials))
     return [data_array[bet].flatten() for bet in bets]
 
 
-def day_balance(n_trials: int, euros_per_bet: int, list_of_bets: list):
-    prizes = [np.prod(bet) for bet in list_of_bets]
+def day_balance(euros_per_bet: int, list_of_bets: list):
 
-    perc_winning = (np.array(prizes) > 0).sum() / len(prizes)*100
-    money_won = (sum(prizes)*euros_per_bet) / n_trials
-    money_played = (len(list_of_bets)*euros_per_bet / n_trials)
-    return money_won - money_played, perc_winning
+    fake_money_won = np.array([np.prod(bet) for bet in list_of_bets])
+    fake_money_won *= euros_per_bet
+
+    perc_winning = (fake_money_won > 0).sum() / len(fake_money_won)*100
+    return fake_money_won.mean(), perc_winning
 
 
-def quote_simulation(n_days: int, n_bets_per_day: int, n_preds_per_bet: int,
-                     n_trials: int, euros_per_bet: int,
-                     quotes_to_test: np.array, tolerance: float,
-                     use_combo: bool):
+def get_data(use_combo: bool) -> pd.DataFrame:
 
     cols = ['date', 'team1', 'team2', 'league', 'bet_alias', 'quote', 'label']
     data = dbf.db_select(table='simulations', columns=cols, where='')
@@ -39,12 +36,46 @@ def quote_simulation(n_days: int, n_bets_per_day: int, n_preds_per_bet: int,
         df = df[~df['bet_alias'].str.contains('+', regex=False)].copy()
     df.replace({'WINNING': 1, 'LOSING': 0}, inplace=True)
 
+    return df
+
+
+def get_money_and_prizes():
+    money_bet = dbf.db_select(table='bets',
+                              columns=['euros', 'prize', 'result'],
+                              where='status = "Placed"')
+
+    euros, prizes, labels = zip(*money_bet)
+
+    euros = np.array(euros)
+    labels = [True if i == 'WINNING' else False for i in labels]
+    prizes = np.multiply(np.array(prizes), np.array(labels))
+    return euros[euros > 0], prizes[euros > 0]
+
+
+def get_trend(euros_played: np.array, euros_won: np.array):
+    balance = euros_won - euros_played
+    return [sum(balance[:i]) for i in range(1, len(balance)+1)]
+
+
+def quote_simulation(n_preds_per_bet: int,
+                     n_trials: int, quotes_to_test: np.array, tolerance: float,
+                     use_combo: bool):
+
+    real_money_bet, real_money_won = get_money_and_prizes()
+    real_trend = get_trend(euros_played=real_money_bet,
+                           euros_won=real_money_won)
+    n_bets = len(real_trend)
+    euros_per_bet = real_money_bet.sum() / n_bets
+
+    df = get_data(use_combo=use_combo)
+
     n_figs = quotes_to_test.shape[0]
     cols = 3
     rows = n_figs//cols if not n_figs % cols else n_figs//cols + 1
     _, axes = plt.subplots(rows, cols, figsize=(25, 4*rows))
     axes = axes.flatten()
 
+    fake_money_bet = [euros_per_bet for _ in range(1, n_bets+1)]
     for i in range(n_figs):
         print(f'\rFigure: {i+1}/{n_figs}', end='')
 
@@ -55,25 +86,24 @@ def quote_simulation(n_days: int, n_bets_per_day: int, n_preds_per_bet: int,
         cond2 = df['quote'] <= q + tolerance
         filt_data = df.loc[cond1 & cond2, ['quote', 'label']].values
 
-        day_balances = []
-        cumulative_balances = []
+        fake_money_won = []
         win_perc = []
-        for _ in range(n_days):
+        for _ in range(n_bets):
             day_bets = all_bets_per_day(data_array=filt_data,
                                         n_trials=n_trials,
-                                        n_bets=n_bets_per_day,
                                         n_preds=n_preds_per_bet)
 
-            day_bal, day_perc = day_balance(n_trials=n_trials,
-                                            euros_per_bet=euros_per_bet,
-                                            list_of_bets=day_bets)
+            day_money_won, day_perc = day_balance(euros_per_bet=euros_per_bet,
+                                                  list_of_bets=day_bets)
 
-            day_balances.append(day_bal)
-            cumulative_balances.append(sum(day_balances))
+            fake_money_won.append(day_money_won)
             win_perc.append(day_perc)
 
-        ax.plot(cumulative_balances)
-        ax.set_title((f'Quota: {q: .1f}. '
+        fake_trend = get_trend(euros_played=np.array(fake_money_bet),
+                               euros_won=np.array(fake_money_won))
+        ax.plot(fake_trend)
+        ax.plot(real_trend, alpha=.3)
+        ax.set_title((f'Quota: {q: .2f}. '
                       f'Win: {np.array(win_perc).mean(): .1f} %'),
                      fontsize=15)
 
@@ -106,11 +136,16 @@ def system_simulation(combs_to_play: list, euros_per_bet: int):
 
     a = [sum(bets_as_system[:i]) for i in range(1, len(bets_as_system)+1)]
     plt.plot(a)
+
+    wins = np.array([np.prod(i) for i in all_bets])
+    wins = np.argwhere(wins > 0)
+    for w in wins:
+        plt.axvline(x=w, c='r', alpha=.3)
     return
 
 
-# run_simulation(n_days=100, n_bets_per_day=3, n_preds_per_bet=3, n_trials=100,
-#                euros_per_bet=3, quotes_to_test=np.arange(2.6, 3.1, .2),
-#                tolerance=.1, use_combo=True)
+# quote_simulation(n_preds_per_bet=2, n_trials=3,
+#                  quotes_to_test=np.arange(1.4, 3.1, .2),
+#                  tolerance=.1, use_combo=True)
 
-system_simulation(combs_to_play=[5], euros_per_bet=2)
+# system_simulation(combs_to_play=[2, 3], euros_per_bet=2)
