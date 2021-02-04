@@ -89,7 +89,8 @@ def matches_info(match_elem: webdriver) -> list:
 		return ['', tm1, '', '', tm2, '']
 
 	try:
-		status, tm1, ggtm1, _, ggtm2, tm2, pt = info.split('\n')
+		# status, tm1, ggtm1, _, ggtm2, tm2, pt = info.split('\n')
+		status, tm1, tm2, ggtm1, _, ggtm2, pt = info.split('\n')
 	except ValueError:
 		return ['', '', '', '', '', '']
 

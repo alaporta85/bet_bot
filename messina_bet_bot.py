@@ -541,7 +541,6 @@ def scrape_all_results(bot, update):
     ssr.scrape_results()
 
     sur.add_labels()
-    print('DONE')
 
 
 def send_log(bot, update):
