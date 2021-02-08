@@ -85,7 +85,8 @@ def matches_info(match_elem: webdriver) -> list:
 
 	info = match_elem.text
 	if 'Posticipata' in info:
-		_, tm1, _, tm2 = info.split('\n')
+		# _, tm1, _, tm2 = info.split('\n')
+		_, tm1, tm2, _ = info.split('\n')
 		return ['', tm1, '', '', tm2, '']
 
 	try:
