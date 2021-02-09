@@ -11,8 +11,8 @@ import config as cfg
 import db_functions as dbf
 import sim_update_results as sur
 import sim_scrape_results as ssr
-# import Classes as cl
-# import stats_functions as stf
+import Classes as cl
+import stats_functions as stf
 import selenium_functions as sf
 
 
