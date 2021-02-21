@@ -15,20 +15,21 @@ def click_expander(browser: webdriver, header: webdriver) -> None:
 
 def close_all_headers(browser: webdriver) -> webdriver:
 
-	top = active_top_headers(browser)
-	notop = active_notop_headers(browser)
+	to_collapse_path = './/div[contains(@class, "collapse")]'
+	to_collapse = browser.find_elements_by_xpath(to_collapse_path)
 
-	for active_header in top + notop:
-		click_expander(browser, active_header)
+	for icon in to_collapse:
+		sf.scroll_to_element(browser, icon)
+		icon.click()
 
 
 def active_notop_headers(browser: webdriver) -> list:
-	headers_path = './/div[@class="event__header"]'
+	headers_path = './/div[contains(@class, "event__header event")]'
 	return browser.find_elements_by_xpath(headers_path)
 
 
 def active_top_headers(browser: webdriver) -> list:
-	headers_path = './/div[@class="event__header top"]'
+	headers_path = './/div[contains(@class, "event__header top event")]'
 	return browser.find_elements_by_xpath(headers_path)
 
 
@@ -106,8 +107,8 @@ def scrape_results() -> None:
 	brow = sf.open_browser()
 	brow.get(cfg.URL)
 
-	top_headers = active_top_headers(browser=brow)
 	close_all_headers(browser=brow)
+	top_headers = active_top_headers(browser=brow)
 
 	for top_header in top_headers:
 

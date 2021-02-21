@@ -194,6 +194,10 @@ def system_simulation(combs_to_play: list, euros_per_bet: int):
     return
 
 
+# df = get_data(use_combo=True)
+# plot_quote_distr(datafr=df, q_sep=5.0, fine_step=.2, coarse_step=2.0)
+
+
 # quote_simulation(n_trials=100, quotes_to_test=np.arange(1.4, 3.1, .2),
 #                  tolerance=.1, use_combo=True)
 
