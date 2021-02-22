@@ -50,9 +50,10 @@ def get_data(use_combo: bool) -> pd.DataFrame:
 
 
 def get_money_and_prizes():
-    money_bet = dbf.db_select(table='bets',
-                              columns=['euros', 'prize', 'result'],
-                              where='status = "Placed"')
+    money_bet = dbf.db_select(
+            table='bets',
+            columns=['euros', 'prize', 'result'],
+            where='status = "Placed" AND result != "Unknown"')
 
     euros, prizes, labels = zip(*money_bet)
 
@@ -147,7 +148,54 @@ def quote_simulation(n_trials: int, quotes_to_test: np.array,
         ax.legend()
 
 
-def system_simulation(combs_to_play: list, euros_per_bet: int):
+# def system_simulation(combs_to_play: list, euros_per_bet: int):
+#
+#     bet_ids = dbf.db_select(table='bets',
+#                             columns=['id'],
+#                             where='result != "Unknown" AND euros > 0')
+#
+#     all_bets = [dbf.db_select(table='predictions',
+#                               columns=['quote', 'label'],
+#                               where=f'bet_id = {b_id}') for b_id in bet_ids]
+#     all_bets = [[(q, 1) if lb == 'WINNING' else (q, 0) for q, lb in bet]
+#                 for bet in all_bets]
+#
+#     bets_as_system = []
+#     for i, bet in enumerate(all_bets, 1):
+#
+#         size = len(bet)
+#         win = 0
+#         n_combs = 0
+#         for j in range(1, size+1):
+#             if j not in combs_to_play and j != size:
+#                 continue
+#             comb = list(combinations(bet, j))
+#             for c in comb:
+#                 win += np.prod(np.array(c).flatten())*euros_per_bet
+#                 n_combs += 1
+#
+#         bets_as_system.append(win - n_combs*euros_per_bet)
+#
+#
+#     _, ax = plt.subplots(figsize=(25, 6))
+#     bal = [sum(bets_as_system[:i]) for i in range(1, len(bets_as_system)+1)]
+#     plt.plot(bal)
+#
+#     # Money played and money won for real, day by day
+#     real_mn_bet, real_mn_won = get_money_and_prizes()
+#
+#     # Day by day balance
+#     real_trend = get_trend(euros_played=real_mn_bet, euros_won=real_mn_won)
+#     plt.plot(real_trend)
+#
+#     wins = np.array([np.prod(i) for i in all_bets])
+#     wins = np.argwhere(wins > 0)
+#     for w in wins:
+#         plt.axvline(x=w, c='r', alpha=.3)
+#     return
+
+
+def system_simulation(combs_to_play: dict):
 
     bet_ids = dbf.db_select(table='bets',
                             columns=['id'],
@@ -164,16 +212,17 @@ def system_simulation(combs_to_play: list, euros_per_bet: int):
 
         size = len(bet)
         win = 0
-        n_combs = 0
-        for j in range(1, len(bet)+1):
-            if j not in combs_to_play and j != size:
+        played = 0
+        for j in range(1, size+1):
+            if j not in combs_to_play:# and j != size:
                 continue
+            euros_per_bet = combs_to_play[j]
             comb = list(combinations(bet, j))
             for c in comb:
                 win += np.prod(np.array(c).flatten())*euros_per_bet
-                n_combs += 1
+                played += euros_per_bet
 
-        bets_as_system.append(win - n_combs*euros_per_bet)
+        bets_as_system.append(win - played)
 
 
     _, ax = plt.subplots(figsize=(25, 6))
@@ -201,4 +250,6 @@ def system_simulation(combs_to_play: list, euros_per_bet: int):
 # quote_simulation(n_trials=100, quotes_to_test=np.arange(1.4, 3.1, .2),
 #                  tolerance=.1, use_combo=True)
 
-# system_simulation(combs_to_play=[5], euros_per_bet=5)
+# system_simulation(combs_to_play={2: 5,
+#                                  3: 5,
+#                                  4: 5})
