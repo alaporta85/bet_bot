@@ -82,7 +82,11 @@ def db_update(table: str, columns: list, values: list, where: str):
     db, c = start_db()
 
     vals = ', '.join([f'{c}="{v}"' for c, v in zip(columns, values)])
-    query = f'UPDATE {table} SET {vals} WHERE {where}'
+
+    if where:
+        query = f'UPDATE {table} SET {vals} WHERE {where}'
+    else:
+        query = f'UPDATE {table} SET {vals}'
 
     c.execute(query)
     db.commit()

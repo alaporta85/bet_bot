@@ -674,6 +674,13 @@ def time_needed(start: time) -> (int, int):
     return mins, secs
 
 
+def update_budget(budget: float) -> None:
+    dbf.db_update(table='last_results_update',
+                  columns=['budget'],
+                  values=[budget],
+                  where='')
+
+
 def update_to_play_table(nickname: str, bet_id: int) -> None:
 
     pred_id, dt, team1, team2, league, bet_alias = dbf.db_select(

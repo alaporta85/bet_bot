@@ -398,15 +398,15 @@ def find_all_matches(brow: webdriver, league_name: str) -> [webdriver]:
 
 def get_money_after(brow: webdriver, before: float, euros: int) -> float:
 
-	after = money(brow)
+	after = get_budget(brow)
 
 	# Verify money has the new value. If not, refresh the value and check again
-	# up to 10 times
+	# up to N times
 	c = count(1)
-	while next(c) < 30 and after != (before - euros):
+	while next(c) < 100 and after != (before - euros):
 		refresh_money(brow)
 		time.sleep(2)
-		after = money(brow)
+		after = get_budget(brow)
 
 	return after
 
@@ -573,7 +573,7 @@ def login(brow: webdriver) -> webdriver:
 	return brow
 
 
-def money(brow: webdriver) -> float:
+def get_budget(brow: webdriver) -> float:
 
 	"""
 	Extract the text from the HTML element and return it as a float.

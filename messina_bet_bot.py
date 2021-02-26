@@ -21,6 +21,14 @@ def bike(bot, update):
     return bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
 
 
+def budget(bot, update):
+    chat_id = update.message.chat_id
+    budget = dbf.db_select(table='last_results_update',
+                           columns=['budget'],
+                           where='')[0]
+    return bot.send_message(chat_id=chat_id, text=f'{budget}€')
+
+
 def cake(bot, update):
     chat_id = update.message.chat_id
     return bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
@@ -460,7 +468,7 @@ def play(bot, update, args):
                           text=live_info)
 
     # Budget before playing
-    money_before = sf.money(brow)
+    money_before = sf.get_budget(brow)
 
     # Place bet
     sf.place_bet(brow)
@@ -485,6 +493,8 @@ def play(bot, update, args):
 
         # Empty table with bets
         dbf.empty_table(table='to_play')
+
+        utl.update_budget(budget=money_after)
 
         # Print the summary
         msg = 'Scommessa giocata correttamente.\n\n'
@@ -624,6 +634,9 @@ def update_results(bot, update):
     # Login
     sf.login(brow)
 
+    budget = sf.get_budget(brow)
+    utl.update_budget(budget=budget)
+
     sf.open_profile_options(brow)
 
     sf.open_profile_history(brow)
@@ -639,10 +652,10 @@ def update_results(bot, update):
     dt = datetime.datetime.now()
     last_update = (f'*Last update:\n   {dt.day}/{dt.month}/{dt.year} ' +
                    f'at {dt.hour}:{dt.minute}')
-    dbf.empty_table(table='last_results_update')
-    dbf.db_insert(table='last_results_update',
+    dbf.db_update(table='last_results_update',
                   columns=['message'],
-                  values=[last_update])
+                  values=[last_update],
+                  where='')
     cl.bets = cl.get_bets_as_df()
     cl.preds = cl.get_preds_as_df()
     cl.players = {name: cl.Player(name) for name in cl.players}
@@ -655,6 +668,7 @@ def update_results(bot, update):
 
 cake_handler = CommandHandler('cake', cake)
 bici_handler = CommandHandler('bici', bike)
+budget_handler = CommandHandler('budget', budget)
 cancel_handler = CommandHandler('cancel', cancel)
 confirm_handler = CommandHandler('confirm', confirm)
 delete_handler = CommandHandler('delete', delete)
@@ -713,6 +727,7 @@ cfg.DISPATCHER.add_handler(summary_handler)
 cfg.DISPATCHER.add_handler(score_handler)
 cfg.DISPATCHER.add_handler(cake_handler)
 cfg.DISPATCHER.add_handler(bici_handler)
+cfg.DISPATCHER.add_handler(budget_handler)
 cfg.DISPATCHER.add_handler(series_handler)
 cfg.DISPATCHER.add_handler(stats_handler)
 cfg.DISPATCHER.add_handler(sotm_handler)
