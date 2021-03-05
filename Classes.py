@@ -72,12 +72,6 @@ class Player(object):
 
 class Stats(object):
 	def __init__(self):
-		self.win_teams, self.lose_teams = stats_on_teams_or_bets('teams')
-		self.win_bets, self.lose_bets = stats_on_teams_or_bets('bets')
-		self.win_preds = winning_preds_perc()
-		self.win_combos = winning_combos_perc()
-		self.money = money_bal()
-		self.highest_win_quote, self.lowest_los_quote = quotes_rec()
 
 		for i in cfg.YEARS:
 			score(i)
@@ -222,32 +216,11 @@ def get_user_ratio(predictions: pd.DataFrame, nickname: str) -> str:
 	return f'{won}/{tot}'
 
 
-def money_bal() -> float:
-
-	prize = bets[bets['result'] == 'WINNING']['prize'].sum()
-	bet = bets['euros'].sum()
-
-	return round(prize - bet, 1)
-
-
 def normalize_indices(raw_indices: np.array) -> np.array:
 
 	norm_indices = raw_indices / np.max(raw_indices)
 	norm_indices[norm_indices <= 1e-3] = 0
 	return np.around(norm_indices, 3)
-
-
-def quotes_rec() -> tuple:
-
-	max_win = preds[preds['label'] == 'WINNING']['quote'].max()
-	win = (max_win,
-	       '/'.join(list(preds[preds['quote'] == max_win]['user'].values)))
-
-	min_lose = preds[preds['label'] == 'LOSING']['quote'].min()
-	lose = (min_lose,
-	       '/'.join(list(preds[preds['quote'] == min_lose]['user'].values)))
-
-	return win, lose
 
 
 def score(which) -> None:
@@ -474,46 +447,6 @@ def stats_of_the_month() -> None:
 	plot(dict_win, dict_lose)
 
 
-def stats_on_teams_or_bets(which: str) -> list:
-
-	def for_teams(label):
-
-		res = preds[preds['label'] == label][['team1', 'team2']]
-		res = pd.concat([res['team1'], res['team2']])
-		res = res.value_counts()
-
-		return res.to_dict()
-
-	def for_bets(label):
-
-		res = preds[preds['label'] == label]['bet_alias']
-		res = res.value_counts()
-
-		return res.to_dict()
-
-	if which == 'teams':
-		win = for_teams('WINNING')
-		lose = for_teams('LOSING')
-
-	else:
-		win = for_bets('WINNING')
-		lose = for_bets('LOSING')
-
-	total = {x: (win.get(x, 0) + lose.get(x, 0)) for x in set(win) | set(lose)}
-
-	# Teams which played x times with x<th will not be counted
-	th = 6
-	win = [(round(win[team] / total[team] * 100, 1), team) for team
-			in win if total[team] >= th]
-	win.sort(key=lambda x: x[0], reverse=True)
-
-	lose = [(round(lose[team] / total[team] * 100, 1), team) for team
-			in lose if total[team] >= th]
-	lose.sort(key=lambda x: x[0], reverse=True)
-
-	return win, lose
-
-
 def user_euros_lost(nickname: str) -> float:
 
 	# Get bets with cake
@@ -552,20 +485,6 @@ def user_euros_won(nickname: str) -> float:
 	prize_without_user = np.divide(prizes, quotes)
 
 	return np.sum(prizes) - np.sum(prize_without_user)
-
-
-def winning_combos_perc() -> float:
-
-	combo = preds[preds['bet_alias'].str.contains('+', regex=False)]
-	win_combo = combo[combo['label'] == 'WINNING'].shape[0]
-
-	return round(win_combo / combo.shape[0] * 100, 1)
-
-
-def winning_preds_perc() -> float:
-
-	win_preds = preds[preds['label'] == 'WINNING'].shape[0]
-	return round(win_preds / preds.shape[0] * 100, 1)
 
 
 bets = get_bets_as_df()

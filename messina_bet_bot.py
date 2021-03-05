@@ -11,7 +11,6 @@ import config as cfg
 import db_functions as dbf
 import sim_update_results as sur
 import sim_scrape_results as ssr
-import Classes as cl
 import stats_functions as stf
 import selenium_functions as sf
 
@@ -319,8 +318,13 @@ def match(bot, update, args):
         message = 'Inserisci il giorno. Ex: /match sab'
         return bot.send_message(chat_id=chat_id, text=message)
 
-    weekday = args[0][:3]
-    message = utl.matches_per_day(weekday=weekday)
+    dayname = args[0][:3]
+    isoweekday = utl.from_dayname_to_iso(dayname=dayname)
+    if not isoweekday:
+        message = 'Giorno non trovato'
+    else:
+        dt = utl.weekday_to_dt(isoweekday=isoweekday)
+        message = utl.matches_per_day(dt=dt)
     return bot.send_message(parse_mode='MarkdownV2', chat_id=chat_id,
                             text=f'`{message}`')
 
@@ -509,6 +513,20 @@ def play(bot, update, args):
     brow.quit()
 
 
+def qrange(bot, update, args):
+    chat_id = update.message.chat_id
+
+    if utl.qrange_input_is_wrong(args):
+        message = utl.qrange_input_is_wrong(user_input=args)
+        return bot.send_message(chat_id=chat_id, text=message)
+
+    day, *quotes = args[0].split('_')
+    quotes = [float(i.replace(',', '.')) for i in quotes]
+    qmin, qmax = sorted(quotes)
+
+    print('a')
+
+
 def remind(bot, update):
 
     """
@@ -656,19 +674,17 @@ def update_results(bot, update):
                   columns=['message'],
                   values=[last_update],
                   where='')
-    cl.bets = cl.get_bets_as_df()
-    cl.preds = cl.get_preds_as_df()
-    cl.players = {name: cl.Player(name) for name in cl.players}
-    cl.stats = cl.Stats()
+
+    os.system('python Classes.py')
     cfg.LOGGER.info('UPDATE - Database aggiornato correttamente.')
 
     bot.send_photo(chat_id=cfg.GROUP_ID,
                    photo=open(f'score_{cfg.YEARS[-1]}.png', 'rb'))
 
 
-cake_handler = CommandHandler('cake', cake)
 bici_handler = CommandHandler('bici', bike)
 budget_handler = CommandHandler('budget', budget)
+cake_handler = CommandHandler('cake', cake)
 cancel_handler = CommandHandler('cancel', cancel)
 confirm_handler = CommandHandler('confirm', confirm)
 delete_handler = CommandHandler('delete', delete)
@@ -681,21 +697,22 @@ matiz_handler = CommandHandler('matiz', matiz)
 # new_quotes_handler = CommandHandler('new_quotes', new_quotes, pass_args=True)
 night_quotes_handler = CommandHandler('night_quotes', night_quotes)
 play_handler = CommandHandler('play', play, pass_args=True)
+qrange_handler = CommandHandler('qrange', qrange, pass_args=True)
 remind_handler = CommandHandler('remind', remind)
 score_handler = CommandHandler('score', score, pass_args=True)
+scrape_handler = CommandHandler('scrape', scrape_all_results)
 series_handler = CommandHandler('series', series)
 sotm_handler = CommandHandler('sotm', sotm)
 start_handler = CommandHandler('start', start)
 stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_results)
-scrape_handler = CommandHandler('scrape', scrape_all_results)
 
 # Save today quotes and scrape results
 scraping = cfg.UPDATER.job_queue
 scraping.run_repeating(scrape_all_results,
                        interval=86400,
-                       first=datetime.time(22, 00, 00))
+                       first=datetime.time(23, 00, 00))
 
 # Get rid of outdated matches too late to play
 outdated_matches = cfg.UPDATER.job_queue
@@ -734,12 +751,14 @@ cfg.DISPATCHER.add_handler(sotm_handler)
 cfg.DISPATCHER.add_handler(match_handler)
 # cfg.DISPATCHER.add_handler(new_quotes_handler)
 cfg.DISPATCHER.add_handler(night_quotes_handler)
+cfg.DISPATCHER.add_handler(qrange_handler)
 cfg.DISPATCHER.add_handler(log_handler)
 cfg.DISPATCHER.add_handler(remind_handler)
 cfg.DISPATCHER.add_handler(matiz_handler)
 cfg.DISPATCHER.add_handler(fischia_handler)
 cfg.DISPATCHER.add_handler(scrape_handler)
 
+# os.system('python Classes.py')
 cfg.UPDATER.start_polling()
 cfg.LOGGER.info('Bet_Bot started.')
 cfg.UPDATER.idle()

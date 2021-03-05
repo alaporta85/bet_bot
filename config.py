@@ -28,10 +28,12 @@ PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
 LOGGER = log.set_logging()
 
 # PLAY
-LIM_LOW = 1
+LIM_LOW = 1.4
 LIM_HIGH = 3.2
-N_BETS = 5
+N_BETS = 6
 DEFAULT_EUROS = 5
+WEEKDAYS = {'lun': 1, 'mar': 2, 'mer': 3, 'gio': 4,
+            'ven': 5, 'sab': 6, 'dom': 7}
 
 # UPDATING
 BETS_FILTER = 'Ultimi 3 Mesi'

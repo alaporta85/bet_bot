@@ -411,6 +411,14 @@ def insert_new_bet_entry() -> int:
     return get_pending_bet_id()
 
 
+def is_float(any_string: str) -> bool:
+    try:
+        float(any_string.replace(',', '.'))
+        return True
+    except ValueError:
+        return False
+
+
 def jaccard_result(in_opt: str, all_opt: list, ngrm: int) -> str:
 
     """
@@ -476,20 +484,11 @@ def match_is_out_of_range(match_date: datetime) -> bool:
     return True if hours_diff > cfg.HOURS_RANGE else False
 
 
-def matches_per_day(weekday: str) -> str:
+def matches_per_day(dt: datetime) -> str:
 
     """
     Return a message containing all the matches scheduled for that day.
     """
-
-    weekdays = {'lun': 1, 'mar': 2, 'mer': 3, 'gio': 4,
-                'ven': 5, 'sab': 6, 'dom': 7}
-
-    if weekday.lower() not in weekdays:
-        return 'Giorno non valido'
-
-    isoweekday = weekdays[weekday]
-    dt = weekday_to_dt(isoweekday=isoweekday)
 
     message = ''
     all_leagues = dbf.db_select(table='leagues', columns=['name'], where='')
@@ -557,6 +556,20 @@ def prediction_to_delete(nickname: str) -> int:
             where=f'{cond1} AND {cond2} AND {cond3}')
 
     return 0 if not confirmed else confirmed[-1]
+
+
+def qrange_input_is_wrong(user_input):
+    args = user_input[0].split('_')
+    if len(args) != 3:
+        return 'Formato non corretto. Ex: sab_1.8_2'
+    elif args[0] not in cfg.WEEKDAYS:
+        return f'"{args[0]}" non è un giorno valido. Ex: sab_1.8_2'
+    elif not is_float(args[1]):
+        return f'"{args[1]}" non è una quota valida. Ex: sab_1.8_2'
+    elif not is_float(args[2]):
+        return f'"{args[2]}" non è una quota valida. Ex: sab_1.8_2'
+    else:
+        return ''
 
 
 def quote_outside_limits(nickname: str) -> bool:
@@ -706,12 +719,16 @@ def update_to_play_table(nickname: str, bet_id: int) -> None:
                   values=[pred_id, url, dt, panel, field, bet])
 
 
+def from_dayname_to_iso(dayname: str) -> int:
+
+    return cfg.WEEKDAYS[dayname] if dayname.lower() in cfg.WEEKDAYS else 0
+
+
 def weekday_to_dt(isoweekday: int) -> datetime:
 
     dt = datetime.date.today()
     while dt.isoweekday() != isoweekday:
         dt += datetime.timedelta(1)
-
     return dt
 
 
