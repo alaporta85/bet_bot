@@ -396,14 +396,14 @@ def find_all_matches(brow: webdriver, league_name: str) -> [webdriver]:
 	return brow.find_elements_by_xpath(matches_path)
 
 
-def get_money_after(brow: webdriver, before: float, euros: int) -> float:
+def get_money_after(brow: webdriver, before: float) -> float:
 
 	after = get_budget(brow)
 
 	# Verify money has the new value. If not, refresh the value and check again
 	# up to N times
 	c = count(1)
-	while next(c) < 100 and after != (before - euros):
+	while next(c) < 100 and after == before:
 		refresh_money(brow)
 		time.sleep(2)
 		after = get_budget(brow)
@@ -529,6 +529,7 @@ def insert_euros(brow: webdriver, euros: int) -> None:
 	               'input[@ng-model="amountSelect.amount"]')
 	euros_box = brow.find_element_by_xpath(input_euros)
 	scroll_to_element(brow, euros_box)
+	time.sleep(3)
 	euros_box.send_keys(euros)
 	euros_box.send_keys(Keys.ARROW_LEFT)
 	euros_box.send_keys(Keys.BACKSPACE)

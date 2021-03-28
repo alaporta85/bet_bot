@@ -478,10 +478,14 @@ def play(bot, update, args):
     sf.place_bet(brow)
 
     # Budget after playing
-    money_after = sf.get_money_after(brow, before=money_before, euros=euros)
+    money_after = sf.get_money_after(brow, before=money_before)
 
-    if money_after == money_before - euros:
+    if money_after < money_before:
         cfg.LOGGER.info('PLAY - Bet has been played.')
+
+        if money_after != money_before - euros:
+            msg = "L'importo scommesso è diverso da quello selezionato."
+            bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
 
         bet_id = utl.get_pending_bet_id()
 
@@ -503,7 +507,7 @@ def play(bot, update, args):
         # Print the summary
         msg = 'Scommessa giocata correttamente.\n\n'
         msg += utl.create_list_of_matches(bet_id=bet_id)
-        msg += f'\nVincita: <b>{prize*euros} €</b>\n\n\n'
+        msg += f'\nVincita: <b>{prize*euros: .2f} €</b>\n\n\n'
         msg += f'\nBudget aggiornato: <b>{money_after} €</b>'
         bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
     else:
@@ -758,7 +762,7 @@ cfg.DISPATCHER.add_handler(matiz_handler)
 cfg.DISPATCHER.add_handler(fischia_handler)
 cfg.DISPATCHER.add_handler(scrape_handler)
 
-# os.system('python Classes.py')
+os.system('python Classes.py')
 cfg.UPDATER.start_polling()
 cfg.LOGGER.info('Bet_Bot started.')
 cfg.UPDATER.idle()
