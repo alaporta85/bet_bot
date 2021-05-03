@@ -527,12 +527,16 @@ def insert_euros(brow: webdriver, euros: int) -> None:
 
 	input_euros = ('.//div[@class="price-container-input"]/' +
 	               'input[@ng-model="amountSelect.amount"]')
+	time.sleep(3)
 	euros_box = brow.find_element_by_xpath(input_euros)
 	scroll_to_element(brow, euros_box)
 	time.sleep(3)
 	euros_box.send_keys(euros)
+	time.sleep(1)
 	euros_box.send_keys(Keys.ARROW_LEFT)
+	time.sleep(1)
 	euros_box.send_keys(Keys.BACKSPACE)
+	time.sleep(1)
 
 
 def login(brow: webdriver) -> webdriver:

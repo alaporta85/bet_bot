@@ -23,13 +23,13 @@ def close_all_headers(browser: webdriver) -> webdriver:
 		icon.click()
 
 
-def active_notop_headers(browser: webdriver) -> list:
-	headers_path = './/div[contains(@class, "event__header event")]'
-	return browser.find_elements_by_xpath(headers_path)
+# def active_notop_headers(browser: webdriver) -> list:
+# 	headers_path = './/div[contains(@class, "event__header event")]'
+# 	return browser.find_elements_by_xpath(headers_path)
 
 
 def active_top_headers(browser: webdriver) -> list:
-	headers_path = './/div[contains(@class, "event__header top event")]'
+	headers_path = './/div[contains(@class, "event__header top")]'
 	return browser.find_elements_by_xpath(headers_path)
 
 

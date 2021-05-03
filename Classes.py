@@ -14,11 +14,6 @@ class Player(object):
 	def __init__(self, name):
 		self.name = name
 		self.color = get_user_color(self.name)
-		# self.bets_played = preds[preds['user'] == self.name].shape[0]
-		# self.quotes_win, self.quotes_lose = self.quotes_win_lose()
-		# self.ratio = f'{len(self.quotes_win)}/{self.bets_played}'
-		# self.perc = round(len(self.quotes_win) / self.bets_played * 100, 1)
-		# self.mean_quote = round(self.quotes_win[1:-1].mean(), 2)
 		self.best_series = self.set_series('WINNING')
 		self.worst_series = self.set_series('LOSING')
 		self.current_series = self.set_series('CURRENT')
@@ -39,8 +34,8 @@ class Player(object):
 		lost = user_euros_lost(nickname=self.name)
 		won = user_euros_won(nickname=self.name)
 		cake_value = lost - won
-
-		return round(max(0, cake_value), 1)
+		return cake_value
+		# return round(max(0, cake_value), 1)
 
 	def set_series(self, label):
 
@@ -92,18 +87,18 @@ def cake() -> None:
 		return round(val/100*sum(euros), 1)
 
 	data = [(name, players[name].cake, players[name].color)
-	        for name in get_people() if players[name].cake]
+	        for name in get_people() if players[name].cake > 0]
 	data.sort(key=lambda x: x[1], reverse=True)
 
 	names = [el[0] for el in data]
 	euros = [el[1] for el in data]
 	colors = [el[2] for el in data]
 
-	plt.axis('equal')
 	explode = [0.04] * len(names)
 	explode[0] = 0.07
 
-	patches, text, autotext = plt.pie(
+	_, ax = plt.subplots(figsize=(6, 6))
+	patches, text, autotext = ax.pie(
 			euros, labels=names, explode=explode, colors=colors,
 			startangle=120, radius=1.5, autopct=real_value)
 
@@ -118,6 +113,14 @@ def cake() -> None:
 		else:
 			text[x].set_fontsize(15)
 			autotext[x].set_fontsize(15)
+
+	invisible = [(name, -1*players[name].cake) for name in get_people()
+				 if players[name].cake < 0]
+	invisible.sort(key=lambda x: x[1], reverse=True)
+	txt = 'Players with bonus:'
+	for pl, bn in invisible:
+		txt += f'\n    - {bn: .1f}, {pl}'
+	plt.text(-.15, 0.99, txt, transform=ax.transAxes, fontsize=10)
 
 	plt.savefig('cake.png', dpi=120, bbox_inches='tight')
 	plt.gcf().clear()
