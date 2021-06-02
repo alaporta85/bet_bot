@@ -24,4 +24,4 @@ six==1.15.0
 tornado==6.1
 tqdm==4.51.0
 tzlocal==2.1
-urllib3==1.25.11
+urllib3==1.26.5
