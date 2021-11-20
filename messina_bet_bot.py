@@ -713,10 +713,10 @@ summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_results)
 
 # Save today quotes and scrape results
-scraping = cfg.UPDATER.job_queue
-scraping.run_repeating(scrape_all_results,
-                       interval=86400,
-                       first=datetime.time(23, 00, 00))
+# scraping = cfg.UPDATER.job_queue
+# scraping.run_repeating(scrape_all_results,
+#                        interval=86400,
+#                        first=datetime.time(23, 00, 00))
 
 # Get rid of outdated matches too late to play
 outdated_matches = cfg.UPDATER.job_queue

@@ -15,7 +15,7 @@ GROUP_ID = -235014519 if not DEBUG else TESTAZZA_ID
 # SELENIUM SCRAPING
 MAIN_PAGE = 'https://www.lottomatica.it/scommesse/avvenimenti'
 ABSOLUTE_PATH = os.getcwd()
-CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
+CHROME_PATH = ABSOLUTE_PATH + '\chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 30
 RECURSIONS = 3
@@ -39,7 +39,7 @@ WEEKDAYS = {'lun': 1, 'mar': 2, 'mer': 3, 'gio': 4,
 BETS_FILTER = 'Ultimi 3 Mesi'
 
 # SCORE
-YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021']
+YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021', '2021-2022']
 
 # SCRAPING
 URL = 'https://www.diretta.it'
