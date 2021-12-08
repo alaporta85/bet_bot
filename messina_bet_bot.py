@@ -474,14 +474,12 @@ def play(bot, update, args):
 
     # Budget before playing
     money_before = sf.get_budget(brow)
-    print(money_before)
 
     # Place bet
     sf.place_bet(brow)
 
     # Budget after playing
     money_after = sf.get_money_after(brow, before=money_before)
-    print(money_after)
 
     if money_after < money_before:
         cfg.LOGGER.info('PLAY - Bet has been played.')
@@ -643,7 +641,6 @@ def update_results(bot, update):
     Once all matches in the bet are concluded, update the database.
     """
 
-    bot.send_message(chat_id=cfg.TESTAZZA_ID, text='aaa')
     bets = utl.get_bets_to_update()
     if not bets:
         msg = 'Nessuna scommessa da aggiornare.'
