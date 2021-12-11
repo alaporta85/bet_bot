@@ -407,6 +407,7 @@ def night_quotes(bot, update):
     Fill the db with the new quotes for all leagues.
     """
 
+    bot.send_message(chat_id=cfg.TESTAZZA_ID, text='Scaricamento quote')
     if utl.get_role(update) == 'Admin':
 
         utl.remove_expired_match_quotes()
@@ -641,6 +642,7 @@ def update_results(bot, update):
     Once all matches in the bet are concluded, update the database.
     """
 
+    bot.send_message(chat_id=cfg.TESTAZZA_ID, text='Aggiornamento db')
     bets = utl.get_bets_to_update()
     if not bets:
         msg = 'Nessuna scommessa da aggiornare.'
@@ -729,13 +731,13 @@ outdated_matches.run_repeating(get_rid_outdated_matches,
 update_quotes = cfg.UPDATER.job_queue
 update_quotes.run_repeating(night_quotes,
                             interval=86400,
-                            first=datetime.time(00, 00, 00))
+                            first=datetime.time(14, 00, 00))
 
 # Update results
 update_tables = cfg.UPDATER.job_queue
 update_tables.run_repeating(update_results,
                             interval=86400,
-                            first=datetime.time(2, 00, 00))
+                            first=datetime.time(17, 00, 00))
 
 cfg.DISPATCHER.add_handler(start_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
