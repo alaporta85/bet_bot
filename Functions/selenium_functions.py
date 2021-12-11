@@ -158,7 +158,9 @@ def extract_bet_name(bet_element: webdriver) -> str:
 
 	name_element = bet_element.find_element_by_xpath(
 			'.//div[@class="selection-name ng-binding"]')
-	name = name_element.get_attribute('innerText').upper().split('(')[0]
+	name = name_element.get_attribute('innerText').upper()
+	if '(' in name:
+		name = name.split('(')[0]
 	return name.strip()
 
 
@@ -175,13 +177,16 @@ def extract_bet_info(bets_container: webdriver) -> [(str, float)]:
 
 	all_bets = extract_all_bets_from_container(bets_container)
 
-	info = []
-	for bet in all_bets:
-		name = extract_bet_name(bet)
-		quote = extract_bet_quote(bet)
-		info.append((name, quote))
+	# info = []
+	# for bet in all_bets:
+	# 	name = extract_bet_name(bet)
+	# 	quote = extract_bet_quote(bet)
+	# 	info.append((name, quote))
+	# return info
 
-	return info
+	names = [extract_bet_name(i) for i in all_bets]
+	quotes = [extract_bet_quote(i) for i in all_bets]
+	return list(zip(names, quotes))
 
 
 def extract_match_datetime(brow: webdriver,
@@ -346,7 +351,6 @@ def insert_quotes(brow: webdriver, last_index: int) -> None:
 	for p_name, p in panels:
 		fields_bets = all_fields_and_bets(p)
 		for field_name, bets in fields_bets:
-
 			all_bets = extract_bet_info(bets_container=bets)
 			for bet_name, quote in all_bets:
 				full_name = f'{field_name}_{bet_name}'
