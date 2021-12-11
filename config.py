@@ -15,7 +15,7 @@ GROUP_ID = -235014519 if not DEBUG else TESTAZZA_ID
 # SELENIUM SCRAPING
 MAIN_PAGE = 'https://www.lottomatica.it/scommesse/avvenimenti'
 ABSOLUTE_PATH = os.getcwd()
-CHROME_PATH = ABSOLUTE_PATH + '\chromedriver'
+CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 30
 RECURSIONS = 3
