@@ -238,13 +238,14 @@ def fix_league_name(league_name: str) -> str:
 def fix_team_name(team_name: str) -> str:
 
     if '*' in team_name:
-        all_teams = dbf.db_select(table='teams',
-                                  columns=['name'],
-                                  where=f'league = "CHAMPIONS LEAGUE"')
+        where = 'league = "CHAMPIONS LEAGUE"'
     else:
-        all_teams = dbf.db_select(table='teams', columns=['name'],
-                                  where=f'league != "CHAMPIONS LEAGUE"')
+        where = 'league != "CHAMPIONS LEAGUE"'
 
+    all_teams = dbf.db_select(table='matches',
+                              columns=['team1', 'team2'], where=where)
+
+    all_teams = [t for el in all_teams for t in el]
     return jaccard_result(in_opt=team_name, all_opt=all_teams, ngrm=3)
 
 

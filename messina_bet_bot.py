@@ -186,8 +186,6 @@ def get(bot, update, args: list):
         return bot.send_message(chat_id=chat_id, text=message)
 
     team = utl.fix_team_name(text.split('_')[0])
-    # TODO fix when team name in league is different from the one in matches.
-    # ZENIT SAN PIETROBURGO vs FK ZENIT SAN PIETROBURGO
     if not team:
         return bot.send_message(chat_id=chat_id,
                                 text='Squadra non riconosciuta')
