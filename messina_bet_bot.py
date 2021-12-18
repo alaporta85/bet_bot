@@ -729,13 +729,13 @@ outdated_matches.run_repeating(get_rid_outdated_matches,
 update_quotes = cfg.UPDATER.job_queue
 update_quotes.run_repeating(night_quotes,
                             interval=86400,
-                            first=datetime.time(14, 00, 00))
+                            first=datetime.time(0, 00, 00))
 
 # Update results
 update_tables = cfg.UPDATER.job_queue
 update_tables.run_repeating(update_results,
                             interval=86400,
-                            first=datetime.time(17, 00, 00))
+                            first=datetime.time(23, 15, 00))
 
 cfg.DISPATCHER.add_handler(start_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
