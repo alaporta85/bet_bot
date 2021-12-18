@@ -68,7 +68,8 @@ class Player(object):
 class Stats(object):
 	def __init__(self):
 
-		for i in cfg.YEARS:
+		for i in cfg.YEARS[-1:]:
+			# TODO manage past years
 			score(i)
 		cake()
 		series()

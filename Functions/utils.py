@@ -620,6 +620,19 @@ def remove_expired_match_quotes() -> None:
             dbf.db_delete(table='quotes', where=f'match = {match_id}')
 
 
+def remove_matches_without_quotes():
+    """
+    Sometimes it happens when matches are postponed, for example.
+    """
+    ids_in_quotes = set(dbf.db_select(table='quotes', columns=['match'],
+                                      where=''))
+    ids_in_matches = set(dbf.db_select(table='matches', columns=['id'],
+                                       where=''))
+    missing = ids_in_matches - ids_in_quotes
+    for miss in missing:
+        dbf.db_delete(table='matches', where=f'id = {miss}')
+
+
 def remove_not_confirmed_before_play() -> str:
     bet_id = get_pending_bet_id()
     if not bet_id:

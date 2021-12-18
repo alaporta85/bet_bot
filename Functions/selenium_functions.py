@@ -277,6 +277,7 @@ def scrape_all_quotes() -> None:
 		cfg.LOGGER.info(f'FILL DB WITH QUOTES - {league} aggiornata: {m}:{s}')
 
 	browser.quit()
+	utl.remove_matches_without_quotes()
 
 
 # TODO try decorator
