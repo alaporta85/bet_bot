@@ -583,7 +583,7 @@ def scrape_all_results(update, context):
 def send_log(update, context):
     chat_id = update.message.chat_id
     return context.bot.send_document(chat_id=chat_id,
-                             document=open('logs/bet_context.bot.log', 'rb'))
+                             document=open('logs/bet_bot.log', 'rb'))
 
 
 def series(update, context):
