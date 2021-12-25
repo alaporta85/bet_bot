@@ -747,7 +747,7 @@ def update_tables(update, context):
     update_tables = cfg.UPDATER.job_queue
     update_tables.run_repeating(update_results,
                             interval=86400,
-                            first=datetime.time(14, 45, 00))
+                            first=datetime.time(21, 55, 00))
 
 cfg.DISPATCHER.add_handler(start_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
