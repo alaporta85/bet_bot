@@ -1,5 +1,6 @@
 import time
 import datetime
+import pytz
 import numpy as np
 from collections import defaultdict
 from nltk.util import ngrams
@@ -392,6 +393,12 @@ def get_role(update) -> str:
         role = 'Admin'
 
     return role
+
+
+def get_start_time(hh: int, mm: int, ss: int):
+    tmp = datetime.datetime.now()
+    tmp = tmp.replace(hour=hh, minute=mm, second=ss)
+    return pytz.timezone('Europe/Rome').localize(tmp)
 
 
 def get_user_chat_id(update) -> int:

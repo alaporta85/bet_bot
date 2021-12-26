@@ -5,8 +5,9 @@ from Functions import logging_file as log
 
 # TELEGRAM BOT
 with open('token.txt', 'r') as f:
-	UPDATER = Updater(token=f.readline())
+	UPDATER = Updater(token=f.readline(), use_context=True)
 DISPATCHER = UPDATER.dispatcher
+JOB_QUEUE = UPDATER.job_queue
 
 DEBUG = False
 TESTAZZA_ID = 67507055
@@ -15,7 +16,7 @@ GROUP_ID = -235014519 if not DEBUG else TESTAZZA_ID
 # SELENIUM SCRAPING
 MAIN_PAGE = 'https://www.lottomatica.it/scommesse/avvenimenti'
 ABSOLUTE_PATH = os.getcwd()
-CHROME_PATH = ABSOLUTE_PATH + '\chromedriver'
+CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 30
 RECURSIONS = 3

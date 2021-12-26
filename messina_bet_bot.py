@@ -7,7 +7,6 @@ import datetime
 
 from telegram.ext import CommandHandler
 
-import Classes
 import utils as utl
 import config as cfg
 import db_functions as dbf
@@ -15,10 +14,13 @@ import sim_update_results as sur
 import sim_scrape_results as ssr
 import stats_functions as stf
 import selenium_functions as sf
+import jobs as jobs
+
 
 def bike(update, context):
     chat_id = update.message.chat_id
-    return context.bot.send_audio(chat_id=chat_id, audio=open('bici.mp3', 'rb'))
+    return context.bot.send_audio(chat_id=chat_id,
+                                  audio=open('bici.mp3', 'rb'))
 
 
 def budget(update, context):
@@ -31,7 +33,8 @@ def budget(update, context):
 
 def cake(update, context):
     chat_id = update.message.chat_id
-    return context.bot.send_photo(chat_id=chat_id, photo=open('cake.png', 'rb'))
+    return context.bot.send_photo(chat_id=chat_id,
+                                  photo=open('cake.png', 'rb'))
 
 
 def cancel(update, context, text: str = ''):
@@ -58,7 +61,8 @@ def cancel(update, context, text: str = ''):
     utl.remove_bet_without_preds()
 
     if not text:
-        return context.bot.send_message(chat_id=chat_id, text='Pronostico eliminato')
+        return context.bot.send_message(chat_id=chat_id,
+                                        text='Pronostico eliminato')
     else:
         return context.bot.send_message(chat_id=chat_id, text=text)
 
@@ -106,15 +110,17 @@ def confirm(update, context):
     utl.update_to_play_table(nickname=user, bet_id=bet_id)
 
     # Notify user in private chat
-    context.bot.send_message(chat_id=chat_id, text='Pronostico aggiunto correttamente')
+    context.bot.send_message(chat_id=chat_id,
+                             text='Pronostico aggiunto correttamente')
 
     # Send summary in group chat
     summary = utl.create_summary_pending_bet()
-    context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=summary)
+    context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
+                             text=summary)
 
     # Play the bet automatically
     if utl.autoplay():
-        return play(update, context, [f'{cfg.DEFAULT_EUROS}'])
+        return play(update, context)
 
 
 def delete(update, context):
@@ -204,9 +210,9 @@ def get(update, context):
             return context.bot.send_message(chat_id=chat_id, text=standard)
 
         context.bot.send_message(parse_mode='MarkdownV2', chat_id=chat_id,
-                         text=f'`{standard}`')
-        return context.bot.send_message(parse_mode='MarkdownV2', chat_id=chat_id,
-                                text=f'`{combo}`')
+                                 text=f'`{standard}`')
+        return context.bot.send_message(parse_mode='MarkdownV2',
+                                        chat_id=chat_id, text=f'`{combo}`')
 
     # Try to recognize the bet sent by user
     bet = text.split('_')[1]
@@ -222,7 +228,8 @@ def get(update, context):
 
     quote = utl.get_bet_quote(match_id=match_id, bet_name=bet)
     if not quote:
-        return context.bot.send_message(chat_id=chat_id, text='Pronostico non quotato')
+        return context.bot.send_message(chat_id=chat_id,
+                                        text='Pronostico non quotato')
 
     bet_id = utl.get_pending_bet_id()
     if not bet_id:
@@ -332,7 +339,8 @@ def match(update, context):
 
 def matiz(update, context):
     chat_id = update.message.chat_id
-    return context.bot.send_photo(chat_id=chat_id, photo=open('matiz.png', 'rb'))
+    return context.bot.send_photo(chat_id=chat_id,
+                                  photo=open('matiz.png', 'rb'))
 
 
 # def new_quotes(update, context, args):  # DONE
@@ -407,26 +415,12 @@ def night_quotes(update, context):
     Fill the db with the new quotes for all leagues.
     """
 
-    context.bot.send_message(chat_id=cfg.TESTAZZA_ID, text='Scaricamento quote')
     if utl.get_role(update) == 'Admin':
-
-        utl.remove_expired_match_quotes()
-
-        # Start scraping
-        t0 = time.time()
-        cfg.LOGGER.info('NIGHT_QUOTES - Aggiornando quote...')
-        sf.scrape_all_quotes()
-        mins, secs = utl.time_needed(t0)
-        cfg.LOGGER.info(f'NIGHT_QUOTES - Tempo totale -> {mins}:{secs}.')
-
-        missing_fields = utl.notify_inactive_fields()
-        if missing_fields:
-            return context.bot.send_message(chat_id=cfg.TESTAZZA_ID,
-                                    text=missing_fields)
-
+        cfg.JOB_QUEUE.run_once(jobs.job_night_quotes, when=3)
     else:
         chat_id = update.message.chat_id
-        return context.bot.send_message(chat_id=chat_id, text='Fatti i cazzi tuoi')
+        return context.bot.send_message(chat_id=chat_id,
+                                        text='Fatti i cazzi tuoi')
 
 
 def play(update, context):
@@ -488,7 +482,8 @@ def play(update, context):
 
         if money_after != money_before - euros:
             msg = "L'importo scommesso è diverso da quello selezionato."
-            context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
+            context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
+                                     text=msg)
 
         bet_id = utl.get_pending_bet_id()
 
@@ -512,7 +507,8 @@ def play(update, context):
         msg += utl.create_list_of_matches(bet_id=bet_id)
         msg += f'\nVincita: <b>{prize*euros: .2f} €</b>\n\n\n'
         msg += f'\nBudget aggiornato: <b>{money_after} €</b>'
-        context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID, text=msg)
+        context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
+                                 text=msg)
     else:
         msg = 'Non è stato possibile giocare la scommessa.'
         context.bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
@@ -544,7 +540,8 @@ def remind(update, context):
 
     chat_id = update.message.chat_id
     message = utl.create_summary_placed_bets()
-    return context.bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
+    return context.bot.send_message(parse_mode='HTML', chat_id=chat_id,
+                                    text=message)
 
 
 def score(update, context):
@@ -593,7 +590,8 @@ def series(update, context):
     """
 
     chat_id = update.message.chat_id
-    return context.bot.send_photo(chat_id=chat_id, photo=open('series.png', 'rb'))
+    return context.bot.send_photo(chat_id=chat_id,
+                                  photo=open('series.png', 'rb'))
 
 
 def sotm(update, context):
@@ -603,14 +601,15 @@ def sotm(update, context):
     """
 
     chat_id = update.message.chat_id
-    return context.bot.send_photo(chat_id=chat_id, photo=open('sotm.png', 'rb'))
+    return context.bot.send_photo(chat_id=chat_id,
+                                  photo=open('sotm.png', 'rb'))
 
 
 def start(update, context):
     chat_id = update.message.chat_id
-    outdated_matches(update, context)
-    update_quotes(update, context)
-    update_tables(update, context)
+    # outdated_matches(update, context)
+    # update_quotes(update, context)
+    # update_tables(update, context)
     return context.bot.send_message(chat_id=chat_id, text="Iannelli suca")
 
 
@@ -628,7 +627,8 @@ def stats(update, context):
     fin_mess = (message_money + message_perc + message_teams +
                 message_bets + message_quotes + message_combos)
 
-    return context.bot.send_message(parse_mode='HTML', chat_id=chat_id, text=fin_mess)
+    return context.bot.send_message(parse_mode='HTML', chat_id=chat_id,
+                                    text=fin_mess)
 
 
 def summary(update, context):
@@ -639,60 +639,13 @@ def summary(update, context):
 
     chat_id = update.message.chat_id
     message = utl.create_summary_pending_bet()
-    return context.bot.send_message(parse_mode='HTML', chat_id=chat_id, text=message)
+    return context.bot.send_message(parse_mode='HTML', chat_id=chat_id,
+                                    text=message)
 
 
-def update_results(update, context):
-
-    """
-    Once all matches in the bet are concluded, update the database.
-    """
-
-    context.bot.send_message(chat_id=cfg.TESTAZZA_ID, text='Aggiornamento db')
-    bets = utl.get_bets_to_update()
-    if not bets:
-        msg = 'Nessuna scommessa da aggiornare.'
-        return context.bot.send_message(chat_id=update.message.chat_id,
-                                text=msg)
-
-    # Go to main page
-    brow = sf.open_browser()
-    brow.get(cfg.MAIN_PAGE)
-    time.sleep(5)
-    brow.refresh()
-    time.sleep(5)
-
-    # Login
-    sf.login(brow)
-
-    budget = sf.get_budget(brow)
-    utl.update_budget(budget=budget)
-
-    sf.open_profile_options(brow)
-
-    sf.open_profile_history(brow)
-
-    sf.set_time_filter(brow)
-
-    sf.show_bets_history(brow)
-
-    sf.update_database(brow, bets)
-
-    brow.quit()
-
-    dt = datetime.datetime.now()
-    last_update = (f'*Last update:\n   {dt.day}/{dt.month}/{dt.year} ' +
-                   f'at {dt.hour}:{dt.minute}')
-    dbf.db_update(table='last_results_update',
-                  columns=['message'],
-                  values=[last_update],
-                  where='')
-
-    os.system('python Classes.py')
-    cfg.LOGGER.info('UPDATE - Database aggiornato correttamente.')
-
-    context.bot.send_photo(chat_id=cfg.GROUP_ID,
-                   photo=open(f'score_{cfg.YEARS[-1]}.png', 'rb'))
+def update_score(update, context):
+    cfg.JOB_QUEUE.run_once(jobs.job_update_score, when=3,
+                           context=update.message.chat_id)
 
 
 bici_handler = CommandHandler('bici', bike)
@@ -719,7 +672,7 @@ sotm_handler = CommandHandler('sotm', sotm)
 start_handler = CommandHandler('start', start)
 stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
-update_handler = CommandHandler('update', update_results)
+update_handler = CommandHandler('update', update_score)
 
 # Save today quotes and scrape results
 # scraping = cfg.UPDATER.job_queue
@@ -729,25 +682,19 @@ update_handler = CommandHandler('update', update_results)
 
 # Get rid of outdated matches too late to play
 
-def outdated_matches(update, context):
-    outdated_matches = cfg.UPDATER.job_queue
-    outdated_matches.run_repeating(get_rid_outdated_matches,
-                               interval=86400,
-                               first=datetime.time(22, 30, 00))
+# def outdated_matches(update, context):
+#     outdated_matches = cfg.UPDATER.job_queue
+#     outdated_matches.run_repeating(get_rid_outdated_matches,
+#                                interval=86400,
+#                                first=datetime.time(22, 30, 00))
 
-def update_quotes(update, context):
-    # Scrape quotes
-    update_quotes = cfg.UPDATER.job_queue
-    update_quotes.run_repeating(night_quotes,
-                                interval=86400,
-                                first=datetime.time(0, 00, 00))
+# Update database
+cfg.JOB_QUEUE.run_repeating(jobs.job_update_score, interval=86400,
+                            first=utl.get_start_time(hh=18, mm=3, ss=30))
 
-def update_tables(update, context):
-        # Update results
-    update_tables = cfg.UPDATER.job_queue
-    update_tables.run_repeating(update_results,
-                            interval=86400,
-                            first=datetime.time(21, 55, 00))
+# # Scrape quotes
+cfg.JOB_QUEUE.run_repeating(jobs.job_night_quotes, interval=86400,
+                            first=utl.get_start_time(hh=18, mm=37, ss=30))
 
 cfg.DISPATCHER.add_handler(start_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
