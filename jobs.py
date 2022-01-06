@@ -56,8 +56,8 @@ def job_update_score(context):
     os.system('python Classes.py')
     cfg.LOGGER.info('UPDATE - Database aggiornato correttamente.')
 
-    # context.bot.send_photo(chat_id=cfg.GROUP_ID,
-    #                photo=open(f'score_{cfg.YEARS[-1]}.png', 'rb'))
+    context.bot.send_photo(chat_id=cfg.GROUP_ID,
+                   photo=open(f'score_{cfg.YEARS[-1]}.png', 'rb'))
 
 
 def job_night_quotes(context):
