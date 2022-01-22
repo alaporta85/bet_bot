@@ -690,11 +690,11 @@ update_handler = CommandHandler('update', update_score)
 
 # Update database
 cfg.JOB_QUEUE.run_repeating(jobs.job_update_score, interval=86400,
-                            first=utl.get_start_time(hh=18, mm=57, ss=0))
+                            first=utl.get_start_time(hh=0, mm=1, ss=0))
 
 # # Scrape quotes
 cfg.JOB_QUEUE.run_repeating(jobs.job_night_quotes, interval=86400,
-                            first=utl.get_start_time(hh=18, mm=37, ss=30))
+                            first=utl.get_start_time(hh=0, mm=45, ss=0))
 
 cfg.DISPATCHER.add_handler(start_handler)
 # cfg.DISPATCHER.add_handler(info_handler)
