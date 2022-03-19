@@ -488,6 +488,8 @@ def play(update, context):
             msg = "L'importo scommesso è diverso da quello selezionato."
             context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
                                      text=msg)
+            cfg.LOGGER.info(f'PLAY - {msg}. Money before: {money_before}, euros placed: {euros},'
+                            f'money after: {money_after}')
 
         bet_id = utl.get_pending_bet_id()
 

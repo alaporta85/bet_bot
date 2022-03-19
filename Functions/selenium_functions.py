@@ -7,6 +7,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
+
+import config
 from Functions import db_functions as dbf
 import config as cfg
 import utils as utl
@@ -269,8 +271,8 @@ def scrape_all_quotes() -> None:
 	"""
 
 	browser = None
-	leagues = dbf.db_select(table='leagues', columns=['name'], where='')
-	for league in leagues:
+	# leagues = dbf.db_select(table='leagues', columns=['name'], where='')
+	for league in cfg.LEAGUES:
 		start = time.time()
 		browser = scrape_league_quotes(brow=browser, league_name=league)
 		m, s = utl.time_needed(start)
