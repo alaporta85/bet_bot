@@ -16,7 +16,7 @@ GROUP_ID = -235014519 if not DEBUG else TESTAZZA_ID
 # SELENIUM SCRAPING
 MAIN_PAGE = 'https://www.lottomatica.it/scommesse/avvenimenti'
 ABSOLUTE_PATH = os.getcwd()
-CHROME_PATH = ABSOLUTE_PATH + '\chromedriver'
+CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 30
 RECURSIONS = 3
@@ -45,10 +45,10 @@ YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021', '2021-20
 # SCRAPING
 URL = 'https://www.diretta.it'
 LEAGUES = [
-    # 'ITALIA: Serie A',
-    'OLANDA: Eredivisie',
+    'ITALIA: Serie A',
+    'SPAGNA: LaLiga',
+    'INGHILTERRA: Premier League',
     'GERMANIA: Bundesliga',
-    # 'SPAGNA: LaLiga',
     'FRANCIA: Ligue 1',
-    # 'INGHILTERRA: Premier League',
+    'OLANDA: Eredivisie',
     'EUROPA: Champions League - Play Off']

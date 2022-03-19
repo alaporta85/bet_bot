@@ -272,7 +272,8 @@ def scrape_all_quotes() -> None:
 
 	browser = None
 	# leagues = dbf.db_select(table='leagues', columns=['name'], where='')
-	for league in cfg.LEAGUES:
+	for lg in cfg.LEAGUES:
+		league = lg.split(': ')[1].upper()
 		start = time.time()
 		browser = scrape_league_quotes(brow=browser, league_name=league)
 		m, s = utl.time_needed(start)
