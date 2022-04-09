@@ -329,7 +329,7 @@ def insert_match(brow: webdriver, league_name: str,
 	"""
 
 	team1, team2 = extract_teams_names(brow, league_name=league_name)
-	lg_name = 'LIGA' if 'LIGA' in league_name else league_name
+	lg_name = 'LIGA' if league_name == 'LALIGA' else league_name
 
 	utl.remove_existing_match_quotes(team_one=team1, team_two=team2)
 
