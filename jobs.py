@@ -76,6 +76,7 @@ def job_night_quotes(context):
     sf.scrape_all_quotes()
     mins, secs = utl.time_needed(t0)
     cfg.LOGGER.info(f'NIGHT_QUOTES - Tempo totale -> {mins}:{secs}.')
+    # TODO remove match if quotes not present (internet problems)
 
     missing_fields = utl.notify_inactive_fields()
     if missing_fields:

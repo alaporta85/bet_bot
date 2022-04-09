@@ -329,6 +329,7 @@ def insert_match(brow: webdriver, league_name: str,
 	"""
 
 	team1, team2 = extract_teams_names(brow, league_name=league_name)
+	lg_name = 'LIGA' if 'LIGA' in league_name else league_name
 
 	utl.remove_existing_match_quotes(team_one=team1, team_two=team2)
 
@@ -336,7 +337,7 @@ def insert_match(brow: webdriver, league_name: str,
 	last_id = dbf.db_insert(
 			table='matches',
 			columns=['league', 'team1', 'team2', 'date', 'url'],
-			values=[league_name, team1, team2, match_dt, brow.current_url],
+			values=[lg_name, team1, team2, match_dt, brow.current_url],
 			last_index=True)
 
 	return last_id
