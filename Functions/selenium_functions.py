@@ -313,7 +313,8 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 		                       match_dt=match_dt)
 
 		# Fill "quotes" table in the db
-		insert_quotes(brow, last_id)
+		# insert_quotes(brow, last_id)
+		fast_insert_quotes(brow, last_id)
 
 		return_to_league_page(brow=brow)
 
@@ -367,6 +368,34 @@ def insert_quotes(brow: webdriver, last_index: int) -> None:
 						columns=['match', 'panel', 'bet', 'quote'],
 						values=[last_index, p_name, full_name, quote])
 				already_added.append(full_name)
+
+
+def fast_insert_quotes(brow: webdriver, last_index: int) -> None:
+
+	"""
+	Insert the quotes in the database.
+	"""
+
+	panels = open_panels(brow=brow, specific_panel='')
+
+	# Associate each field with its corresponding bets
+	values = []
+	already_added = []
+	for p_name, p in panels:
+		fields_bets = all_fields_and_bets(p)
+		for field_name, bets in fields_bets:
+			all_bets = extract_bet_info(bets_container=bets)
+			for bet_name, quote in all_bets:
+				full_name = f'{field_name}_{bet_name}'
+				if full_name in already_added:
+					continue
+
+				values.append((last_index, p_name, full_name, quote))
+				already_added.append(full_name)
+
+	dbf.db_insertmany(table='quotes',
+	                  columns=['match', 'panel', 'bet', 'quote'],
+	                  values=values)
 
 
 def all_fields_and_bets(panel: webdriver) -> [(str, webdriver)]:

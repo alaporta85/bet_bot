@@ -50,6 +50,23 @@ def db_insert(table: str, columns: list, values: list, last_index=False):
         return last_id
 
 
+def db_insertmany(table: str, columns: list, values: list):
+
+    """
+    Insert a new row in the table.
+    """
+
+    db, c = start_db()
+
+    cols = ', '.join(columns)
+    vals = ', '.join(['?' for _ in values[0]])
+    query = f'INSERT INTO {table} ({cols}) VALUES ({vals})'
+
+    c.executemany(query, values)
+    db.commit()
+    db.close()
+
+
 def db_select(table: str, columns: list, where: str) -> list:
 
     """

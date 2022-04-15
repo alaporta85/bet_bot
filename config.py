@@ -46,9 +46,10 @@ YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021', '2021-20
 URL = 'https://www.diretta.it'
 LEAGUES = [
     'ITALIA: Serie A',
-    'SPAGNA: LaLiga',
-    'INGHILTERRA: Premier League',
-    'GERMANIA: Bundesliga',
-    'FRANCIA: Ligue 1',
-    'OLANDA: Eredivisie',
-    'EUROPA: Champions League - Play Off']
+    # 'SPAGNA: LaLiga',
+    # 'INGHILTERRA: Premier League',
+    # 'GERMANIA: Bundesliga',
+    # 'FRANCIA: Ligue 1',
+    # 'OLANDA: Eredivisie',
+    # 'EUROPA: Champions League - Play Off'
+]
