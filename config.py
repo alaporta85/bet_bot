@@ -40,7 +40,8 @@ WEEKDAYS = {'lun': 1, 'mar': 2, 'mer': 3, 'gio': 4,
 BETS_FILTER = 'Ultimi 3 Mesi'
 
 # SCORE
-YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021', '2021-2022']
+YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021',
+         '2021-2022', '2022-2023']
 
 # SCRAPING
 URL = 'https://www.diretta.it'
