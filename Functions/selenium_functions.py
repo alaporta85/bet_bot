@@ -191,15 +191,11 @@ def extract_bet_info(bets_container: webdriver) -> [(str, float)]:
 	return list(zip(names, quotes))
 
 
-def extract_match_datetime(brow: webdriver,
-                           match_obj: webdriver) -> datetime:
+def extract_match_datetime(match_obj: webdriver) -> datetime:
 
-	scroll_to_element(brow, match_obj)
-
-	data = match_obj.find_element_by_xpath(
-			'.//div[@class="event-date ng-binding"]').text
-	ddmmyy, hhmm = data.split(' - ')
-	day, month, year = ddmmyy.split('/')
+	data = match_obj.get_attribute('data-evndate')
+	ddmmyy, hhmm = data.split()
+	day, month, year = ddmmyy.split('-')
 	hour, minute = hhmm.split(':')
 
 	match_datetime = f'{year}-{month}-{day} {hour}:{minute}:00'
@@ -210,10 +206,10 @@ def extract_match_datetime(brow: webdriver,
 def extract_teams_names(brow: webdriver, league_name: str) -> (str, str):
 
 	# Extract the text with the two teams
-	teams_cont = './/div[@class="event-name ng-binding"]'
-	teams = None
-	while not teams:
-		teams = brow.find_element_by_xpath(teams_cont).text.upper()
+	teams_cont_path = './/span[@class="sport-title-dtl"]'
+	wait_visible(brow=brow, element_path=teams_cont_path)
+	teams_cont = brow.find_element_by_xpath(teams_cont_path)
+	teams = teams_cont.text.upper()
 
 	# Split them and add an '*' to their name if it is a Champions League match
 	team1, team2 = teams.split(' - ')
@@ -290,7 +286,7 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 		brow = open_browser()
 	brow.get(utl.get_league_url(league_name))
 	brow.refresh()
-	time.sleep(5)
+	time.sleep(10)
 
 	for i in range(cfg.MATCHES_TO_SCRAPE):
 		matches = find_all_matches(brow=brow, league_name=league_name)
@@ -298,14 +294,21 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 		# Select the match or continue to the next league if done
 		try:
 			match = matches[i]
+
+			# Double scroll_to_element, it doesn't work with just one
+			scroll_to_element(brow, match)
+			time.sleep(5)
+			scroll_to_element(brow, match)
 		except IndexError:
 			break
 
-		match_dt = extract_match_datetime(brow, match)
+		match_dt = extract_match_datetime(match)
 		if utl.match_is_out_of_range(match_dt):
 			break
-		else:
-			match.click()
+
+		path_to_click = './/li[@class="count-bet"]/a'
+		wait_clickable(brow=brow, element_path=path_to_click)
+		match.find_element_by_xpath(path_to_click).click()
 
 		# Fill "matches" table in the db
 		last_id = insert_match(brow=brow,
@@ -376,12 +379,14 @@ def fast_insert_quotes(brow: webdriver, last_index: int) -> None:
 	Insert the quotes in the database.
 	"""
 
-	panels = open_panels(brow=brow, specific_panel='')
+	panels = brow.find_elements_by_xpath(
+			'.//ul[@class="sport nav nav-tabs"]/li["@taborder"]')
 
 	# Associate each field with its corresponding bets
 	values = []
 	already_added = []
-	for p_name, p in panels:
+	for p in panels:
+		p_name = p.get_attribute('innerText')
 		fields_bets = all_fields_and_bets(p)
 		for field_name, bets in fields_bets:
 			all_bets = extract_bet_info(bets_container=bets)
@@ -396,6 +401,34 @@ def fast_insert_quotes(brow: webdriver, last_index: int) -> None:
 	dbf.db_insertmany(table='quotes',
 	                  columns=['match', 'panel', 'bet', 'quote'],
 	                  values=values)
+
+
+# def fast_insert_quotes(brow: webdriver, last_index: int) -> None:
+#
+# 	"""
+# 	Insert the quotes in the database.
+# 	"""
+#
+# 	panels = open_panels(brow=brow, specific_panel='')
+#
+# 	# Associate each field with its corresponding bets
+# 	values = []
+# 	already_added = []
+# 	for p_name, p in panels:
+# 		fields_bets = all_fields_and_bets(p)
+# 		for field_name, bets in fields_bets:
+# 			all_bets = extract_bet_info(bets_container=bets)
+# 			for bet_name, quote in all_bets:
+# 				full_name = f'{field_name}_{bet_name}'
+# 				if full_name in already_added:
+# 					continue
+#
+# 				values.append((last_index, p_name, full_name, quote))
+# 				already_added.append(full_name)
+#
+# 	dbf.db_insertmany(table='quotes',
+# 	                  columns=['match', 'panel', 'bet', 'quote'],
+# 	                  values=values)
 
 
 def all_fields_and_bets(panel: webdriver) -> [(str, webdriver)]:
@@ -424,7 +457,7 @@ def all_fields_and_bets(panel: webdriver) -> [(str, webdriver)]:
 
 def find_all_matches(brow: webdriver, league_name: str) -> [webdriver]:
 
-	matches_path = './/div[@class="block-event event-description"]'
+	matches_path = './/tr[@data-evndate]'
 	try:
 		wait_clickable(brow, matches_path)
 	except TimeoutException:
@@ -657,7 +690,7 @@ def wait_clickable(brow: webdriver, element_path: str) -> None:
 					(By.XPATH, element_path)))
 
 
-def wait_visible(brow: webdriver, element: webdriver) -> None:
+def wait_visible(brow: webdriver, element_path: str) -> None:
 
 	"""
 	Forces the script to wait for the element to be visible before doing
@@ -666,4 +699,4 @@ def wait_visible(brow: webdriver, element: webdriver) -> None:
 
 	WebDriverWait(brow,
 	              cfg.WAIT).until(EC.visibility_of_element_located(
-					(By.XPATH, element)))
+					(By.XPATH, element_path)))

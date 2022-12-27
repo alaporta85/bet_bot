@@ -33,7 +33,7 @@ def all_at_once(n):
 				  values=values)
 
 
-N = 15
+N = 1500
 
 dbf.empty_table('prova')
 t0 = time.time()

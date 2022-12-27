@@ -413,6 +413,7 @@ def matiz(update, context):
 # 		logger.info(f'NEW_QUOTES - Whole process took {mins}:{secs}.')
 
 
+# DONE
 def night_quotes(update, context):
 
     """
