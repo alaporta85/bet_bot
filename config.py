@@ -1,11 +1,12 @@
 import os
+import db_functions as dbf
 from telegram.ext import Updater
 from Functions import logging_file as log
 
 
 # TELEGRAM BOT
 with open('token.txt', 'r') as f:
-	UPDATER = Updater(token=f.readline(), use_context=True)
+    UPDATER = Updater(token=f.readline(), use_context=True)
 DISPATCHER = UPDATER.dispatcher
 JOB_QUEUE = UPDATER.job_queue
 
@@ -19,11 +20,9 @@ ABSOLUTE_PATH = os.getcwd()
 CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 30
-RECURSIONS = 3
-HOURS_RANGE = 1000
-PANELS_TO_USE = ["piu' giocate", 'under/over', 'goal', 'combo',
-                 'combo parziale/finale', 'combo doppia chance',
-                 'tempo 1', 'tempo 2', 'parziale e finale']
+HOURS_RANGE = 240
+PANELS_TO_USE = ['PRINCIPALI', 'U/O', 'PRIMO TEMPO', 'SECONDO TEMPO',
+                 '1°TEMPO/FINALE', 'COMBO']
 
 # LOGGING
 LOGGER = log.set_logging()
@@ -45,12 +44,8 @@ YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021',
 
 # SCRAPING
 URL = 'https://www.diretta.it'
-LEAGUES = [
-    'ITALIA: Serie A',
-    'SPAGNA: LaLiga',
-    'INGHILTERRA: Premier League',
-    'GERMANIA: Bundesliga',
-    'FRANCIA: Ligue 1',
-    'OLANDA: Eredivisie',
-    'EUROPA: Champions League - Play Off'
-]
+LEAGUES = dbf.db_select(
+        table='leagues',
+        columns=['name'],
+        where='is_active=1'
+)

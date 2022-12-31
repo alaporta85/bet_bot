@@ -1,14 +1,13 @@
 import time
 from datetime import datetime
 from itertools import count
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 
-import config
 from Functions import db_functions as dbf
 import config as cfg
 import utils as utl
@@ -21,9 +20,7 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 	Click the bet button and add it to the basket.
 	"""
 
-	_, panel = open_panels(brow=brow, specific_panel=panel_name)[0]
-
-	field_bets = all_fields_and_bets(panel=panel)
+	field_bets = all_fields_and_bets(brow=brow)
 
 	bets_container = [b for f, b in field_bets if f == field_name][0]
 
@@ -148,43 +145,22 @@ def update_database(brow: webdriver, bets_to_update: list):
 
 
 def extract_all_bets_from_container(bets_container: webdriver) -> [webdriver]:
-
-	bets_ngclass = "{'active':selection.selected}"
-	all_bets = bets_container.find_elements_by_xpath(
-			f'.//div[@ng-class="{bets_ngclass}"]')
-
-	return all_bets
+	return bets_container.find_elements_by_xpath('.//td')
 
 
 def extract_bet_name(bet_element: webdriver) -> str:
-
-	name_element = bet_element.find_element_by_xpath(
-			'.//div[@class="selection-name ng-binding"]')
-	name = name_element.get_attribute('innerText').upper()
-	if '(' in name:
-		name = name.split('(')[0]
+	name = bet_element.find_elements_by_xpath('.//span')[0].text
 	return name.strip()
 
 
 def extract_bet_quote(bet_element: webdriver) -> float:
-
-	quote_element = bet_element.find_element_by_xpath(
-					'.//div[@class="selection-price"]')
-	quote = quote_element.get_attribute('innerText').upper()
-
-	return float(quote)
+	quote = bet_element.find_elements_by_xpath('.//span')[1].text
+	return float(quote.strip())
 
 
 def extract_bet_info(bets_container: webdriver) -> [(str, float)]:
 
 	all_bets = extract_all_bets_from_container(bets_container)
-
-	# info = []
-	# for bet in all_bets:
-	# 	name = extract_bet_name(bet)
-	# 	quote = extract_bet_quote(bet)
-	# 	info.append((name, quote))
-	# return info
 
 	names = [extract_bet_name(i) for i in all_bets]
 	quotes = [extract_bet_quote(i) for i in all_bets]
@@ -267,65 +243,77 @@ def scrape_all_quotes() -> None:
 	"""
 
 	browser = None
-	# leagues = dbf.db_select(table='leagues', columns=['name'], where='')
-	for lg in cfg.LEAGUES:
-		league = lg.split(': ')[1].upper()
+	for league in cfg.LEAGUES:
 		start = time.time()
 		browser = scrape_league_quotes(brow=browser, league_name=league)
 		m, s = utl.time_needed(start)
-		cfg.LOGGER.info(f'FILL DB WITH QUOTES - {league} aggiornata: {m}:{s}')
+		cfg.LOGGER.info('FILL DB WITH QUOTES - '
+		                f'{league} aggiornata: {m}:{s} mins')
 
 	browser.quit()
 	utl.remove_matches_without_quotes()
 
 
-# TODO try decorator
 def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 
+	# Open league url
 	if not brow:
 		brow = open_browser()
 	brow.get(utl.get_league_url(league_name))
-	brow.refresh()
 	time.sleep(10)
 
+	try:
+		# Deny cookies
+		deny_path = './/button[@class="onetrust-close-btn-handler ' \
+		            'banner-close-button ot-close-link"]'
+		brow.find_element_by_xpath(deny_path).click()
+	except NoSuchElementException:
+		pass
+
+	path_to_click = './/li[@class="count-bet"]/a'
 	for i in range(cfg.MATCHES_TO_SCRAPE):
-		matches = find_all_matches(brow=brow, league_name=league_name)
 
-		# Select the match or continue to the next league if done
+		# Matches have to be retrieved at each iteration
 		try:
-			match = matches[i]
-
-			# Double scroll_to_element, it doesn't work with just one
-			scroll_to_element(brow, match)
-			time.sleep(5)
-			scroll_to_element(brow, match)
+			match = find_all_matches(brow=brow, league_name=league_name)[i]
 		except IndexError:
 			break
 
+		# Double scroll_to_element, it doesn't work with just one
+		scroll_to_element(brow, match)
+		time.sleep(2)
+		scroll_to_element(brow, match)
+		time.sleep(2)
+		wait_clickable(brow=brow, element_path=path_to_click)
+
+		# Extract date and time info
 		match_dt = extract_match_datetime(match)
+
+		# If match is too far away go to next league. Since mathces are sorted
+		# by time also following matches will be too far away
 		if utl.match_is_out_of_range(match_dt):
 			break
 
-		path_to_click = './/li[@class="count-bet"]/a'
-		wait_clickable(brow=brow, element_path=path_to_click)
+		# Go to match details
 		match.find_element_by_xpath(path_to_click).click()
+		time.sleep(5)
 
 		# Fill "matches" table in the db
-		last_id = insert_match(brow=brow,
-		                       league_name=league_name,
-		                       match_dt=match_dt)
+		last_id = insert_match(
+				brow=brow,
+				league_name=league_name,
+				match_dt=match_dt
+		)
 
 		# Fill "quotes" table in the db
-		# insert_quotes(brow, last_id)
-		fast_insert_quotes(brow, last_id)
-
-		return_to_league_page(brow=brow)
+		insert_quotes(brow, last_id)
+		brow.back()
+		time.sleep(3)
 
 	return brow
 
 
-def insert_match(brow: webdriver, league_name: str,
-                 match_dt: datetime) -> int:
+def insert_match(brow: webdriver, league_name: str, match_dt: datetime) -> int:
 
 	"""
 	Insert all details relative to a single match into the 'matches' table of
@@ -353,41 +341,22 @@ def insert_quotes(brow: webdriver, last_index: int) -> None:
 	Insert the quotes in the database.
 	"""
 
-	panels = open_panels(brow=brow, specific_panel='')
-
-	# Associate each field with its corresponding bets
-	already_added = []
-	for p_name, p in panels:
-		fields_bets = all_fields_and_bets(p)
-		for field_name, bets in fields_bets:
-			all_bets = extract_bet_info(bets_container=bets)
-			for bet_name, quote in all_bets:
-				full_name = f'{field_name}_{bet_name}'
-				if full_name in already_added:
-					continue
-
-				dbf.db_insert(
-						table='quotes',
-						columns=['match', 'panel', 'bet', 'quote'],
-						values=[last_index, p_name, full_name, quote])
-				already_added.append(full_name)
-
-
-def fast_insert_quotes(brow: webdriver, last_index: int) -> None:
-
-	"""
-	Insert the quotes in the database.
-	"""
-
+	# Filter panels
 	panels = brow.find_elements_by_xpath(
-			'.//ul[@class="sport nav nav-tabs"]/li["@taborder"]')
+			'.//ul[@class="sport nav nav-tabs"]//a')
+	panels = [p for p in panels if
+	          p.get_attribute('innerText') in cfg.PANELS_TO_USE]
 
 	# Associate each field with its corresponding bets
 	values = []
 	already_added = []
 	for p in panels:
+
+		p.click()
+		time.sleep(3)
+
 		p_name = p.get_attribute('innerText')
-		fields_bets = all_fields_and_bets(p)
+		fields_bets = all_fields_and_bets(brow=brow)
 		for field_name, bets in fields_bets:
 			all_bets = extract_bet_info(bets_container=bets)
 			for bet_name, quote in all_bets:
@@ -403,35 +372,7 @@ def fast_insert_quotes(brow: webdriver, last_index: int) -> None:
 	                  values=values)
 
 
-# def fast_insert_quotes(brow: webdriver, last_index: int) -> None:
-#
-# 	"""
-# 	Insert the quotes in the database.
-# 	"""
-#
-# 	panels = open_panels(brow=brow, specific_panel='')
-#
-# 	# Associate each field with its corresponding bets
-# 	values = []
-# 	already_added = []
-# 	for p_name, p in panels:
-# 		fields_bets = all_fields_and_bets(p)
-# 		for field_name, bets in fields_bets:
-# 			all_bets = extract_bet_info(bets_container=bets)
-# 			for bet_name, quote in all_bets:
-# 				full_name = f'{field_name}_{bet_name}'
-# 				if full_name in already_added:
-# 					continue
-#
-# 				values.append((last_index, p_name, full_name, quote))
-# 				already_added.append(full_name)
-#
-# 	dbf.db_insertmany(table='quotes',
-# 	                  columns=['match', 'panel', 'bet', 'quote'],
-# 	                  values=values)
-
-
-def all_fields_and_bets(panel: webdriver) -> [(str, webdriver)]:
+def all_fields_and_bets(brow: webdriver) -> [(str, webdriver)]:
 
 	# Select all fields we want to scrape
 	fields_in_db = dbf.db_select(table='fields',
@@ -441,10 +382,10 @@ def all_fields_and_bets(panel: webdriver) -> [(str, webdriver)]:
 	fields_names = [f for i in fields_in_db for f, _ in (i.split('_'),)]
 	fields_names = set(fields_names)
 
-	all_fields_path = './/div[@class="market-info"]/div'
-	all_bets_path = './/div[@class="market-selections"]'
-	fields = panel.find_elements_by_xpath(all_fields_path)
-	bets = panel.find_elements_by_xpath(all_bets_path)
+	all_fields_path = './/div[@class="accordion-title sport-heading"]'
+	all_bets_path = './/div[@class="accordion-body"]'
+	fields = brow.find_elements_by_xpath(all_fields_path)
+	bets = brow.find_elements_by_xpath(all_bets_path)
 
 	field_bets = []
 	for field, bet_group in zip(fields, bets):
@@ -482,40 +423,6 @@ def get_money_after(brow: webdriver, before: float) -> float:
 	return after
 
 
-def open_panels(brow: webdriver, specific_panel: str = '') -> list:
-
-	all_panels_path = '//div[@class="item-group ng-scope"]'
-	wait_visible(brow, all_panels_path)
-	all_panels = brow.find_elements_by_xpath(all_panels_path)
-
-	panel_name_path = './/div[contains(@class, "group-name")]'
-	buttons = [p.find_element_by_xpath(panel_name_path) for p in all_panels]
-
-	# When playing the bet only the right panel is opened
-	if specific_panel:
-		pairs = [(all_panels[x], buttons[x]) for x in range(len(buttons)) if
-		         buttons[x].get_attribute('innerText').strip().lower() ==
-		         specific_panel]
-
-	# while when scraping quotes all the valid panels are opened
-	else:
-		pairs = [(all_panels[x], buttons[x]) for x in range(len(buttons)) if
-		         buttons[x].get_attribute('innerText').strip().lower() in
-		         cfg.PANELS_TO_USE]
-
-	for _, b in pairs:
-		scroll_to_element(brow, b)
-		panel_name = b.text
-		WebDriverWait(
-				brow, cfg.WAIT).until(
-				EC.element_to_be_clickable((By.LINK_TEXT, panel_name)))
-		if 'active' not in b.get_attribute('class'):
-			b.find_element_by_xpath('.//a').click()
-			time.sleep(1)
-
-	return [(b.get_attribute('innerText').strip().lower(), p) for p, b in pairs]
-
-
 def refresh_money(brow: webdriver) -> None:
 
 	refresh_path = './/user-balance-refresh-btn'
@@ -524,15 +431,6 @@ def refresh_money(brow: webdriver) -> None:
 	refresh = brow.find_element_by_xpath(refresh_path)
 	scroll_to_element(brow, refresh)
 	refresh.click()
-
-
-def return_to_league_page(brow: webdriver) -> None:
-
-	back_path = './/a[@class="back-competition ng-scope"]'
-	back = brow.find_element_by_xpath(back_path)
-	scroll_to_element(brow, back)
-	wait_clickable(brow, back_path)
-	back.click()
 
 
 def place_bet(brow: webdriver) -> None:

@@ -705,7 +705,7 @@ def time_needed(start: time) -> (int, int):
     end = time.time() - start
     mins = int(end // 60)
     secs = round(end % 60)
-    return mins, secs
+    return str(mins).zfill(2), str(secs).zfill(2)
 
 
 def update_budget(budget: float) -> None:
