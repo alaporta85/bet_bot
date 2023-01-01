@@ -7,17 +7,12 @@ import datetime
 
 from telegram.ext import CommandHandler
 
-# from Functions import db_functions as dbf
-# from Functions import utils as utl
-# from Functions import stats_functions as stf
-# from Functions import selenium_functions as sf
 import utils as utl
 import config as cfg
 import db_functions as dbf
-import sim_update_results as sur
-import sim_scrape_results as ssr
+import scraping_functions as scrf
+import play_update_functions as plupf
 import stats_functions as stf
-import selenium_functions as sf
 import jobs as jobs
 
 
@@ -453,34 +448,34 @@ def play(update, context):
                                text=live_info.format(0, n_bets)).message_id
 
     # Go to main page
-    brow = sf.open_browser()
+    brow = scrf.open_browser()
     brow.get(cfg.MAIN_PAGE)
     time.sleep(5)
 
     # Add all predictions
     for i, (url, panel, field, bet) in enumerate(available, 1):
         brow.get(url)
-        sf.add_bet_to_basket(brow, panel, field, bet)
+        plupf.add_bet_to_basket(brow, panel, field, bet)
         context.bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                               text=live_info.format(i, n_bets))
 
     # Insert euros to bet
-    sf.insert_euros(brow, euros)
+    plupf.insert_euros(brow, euros)
 
     # Login
-    brow = sf.login(brow=brow)
+    brow = plupf.login(brow=brow)
     live_info = f'Pronostici aggiunti: {n_bets}/{n_bets}\n\nLogged in'
     context.bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                           text=live_info)
 
     # Budget before playing
-    money_before = sf.get_budget(brow)
+    money_before = plupf.get_budget(brow)
 
     # Place bet
-    sf.place_bet(brow)
+    plupf.place_bet(brow)
 
     # Budget after playing
-    money_after = sf.get_money_after(brow, before=money_before)
+    money_after = plupf.get_money_after(brow, before=money_before)
 
     if money_after < money_before:
         cfg.LOGGER.info('PLAY - Bet has been played.')
@@ -489,7 +484,8 @@ def play(update, context):
             msg = "L'importo scommesso è diverso da quello selezionato."
             context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
                                      text=msg)
-            cfg.LOGGER.info(f'PLAY - {msg}. Money before: {money_before}, euros placed: {euros},'
+            cfg.LOGGER.info(f'PLAY - {msg}. Money before: {money_before}, '
+                            f'euros placed: {euros},'
                             f'money after: {money_after}')
 
         bet_id = utl.get_pending_bet_id()
@@ -575,15 +571,6 @@ def score(update, context):
                 text='Formato incorrecto. Ex: 2017-2018 or "general"')
 
 
-def scrape_all_results(update, context):
-
-    sur.add_expired_quotes()
-
-    ssr.scrape_results()
-
-    sur.add_labels()
-
-
 def send_log(update, context):
     chat_id = update.message.chat_id
     return context.bot.send_document(chat_id=chat_id,
@@ -614,9 +601,6 @@ def sotm(update, context):
 
 def start(update, context):
     chat_id = update.message.chat_id
-    # outdated_matches(update, context)
-    # update_quotes(update, context)
-    # update_tables(update, context)
     return context.bot.send_message(chat_id=chat_id, text="Iannelli suca")
 
 
@@ -673,27 +657,12 @@ play_handler = CommandHandler('play', play)
 qrange_handler = CommandHandler('qrange', qrange)
 remind_handler = CommandHandler('remind', remind)
 score_handler = CommandHandler('score', score)
-scrape_handler = CommandHandler('scrape', scrape_all_results)
 series_handler = CommandHandler('series', series)
 sotm_handler = CommandHandler('sotm', sotm)
 start_handler = CommandHandler('start', start)
 stats_handler = CommandHandler('stats', stats)
 summary_handler = CommandHandler('summary', summary)
 update_handler = CommandHandler('update', update_score)
-
-# Save today quotes and scrape results
-# scraping = cfg.UPDATER.job_queue
-# scraping.run_repeating(scrape_all_results,
-#                        interval=86400,
-#                        first=datetime.time(23, 00, 00))
-
-# Get rid of outdated matches too late to play
-
-# def outdated_matches(update, context):
-#     outdated_matches = cfg.UPDATER.job_queue
-#     outdated_matches.run_repeating(get_rid_outdated_matches,
-#                                interval=86400,
-#                                first=datetime.time(22, 30, 00))
 
 # Update database
 cfg.JOB_QUEUE.run_repeating(jobs.job_update_score, interval=86400,
@@ -727,7 +696,6 @@ cfg.DISPATCHER.add_handler(log_handler)
 cfg.DISPATCHER.add_handler(remind_handler)
 cfg.DISPATCHER.add_handler(matiz_handler)
 cfg.DISPATCHER.add_handler(fischia_handler)
-cfg.DISPATCHER.add_handler(scrape_handler)
 
 os.system('python Classes.py')
 cfg.UPDATER.start_polling()

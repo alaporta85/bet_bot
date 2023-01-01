@@ -1,5 +1,6 @@
 import config as cfg
-import selenium_functions as sf
+import scraping_functions as scrf
+import play_update_functions as plupf
 import utils as utl
 import datetime
 import time
@@ -21,27 +22,27 @@ def job_update_score(context):
         return context.bot.send_message(chat_id=context.job.context, text=msg)
 
     # Go to main page
-    brow = sf.open_browser()
+    brow = scrf.open_browser()
     brow.get(cfg.MAIN_PAGE)
     time.sleep(5)
     brow.refresh()
     time.sleep(5)
 
     # Login
-    sf.login(brow)
+    plupf.login(brow)
 
-    budget = sf.get_budget(brow)
+    budget = plupf.get_budget(brow)
     utl.update_budget(budget=budget)
 
-    sf.open_profile_options(brow)
+    plupf.open_profile_options(brow)
 
-    sf.open_profile_history(brow)
+    plupf.open_profile_history(brow)
 
-    sf.set_time_filter(brow)
+    plupf.set_time_filter(brow)
 
-    sf.show_bets_history(brow)
+    plupf.show_bets_history(brow)
 
-    sf.update_database(brow, bets)
+    plupf.update_database(brow, bets)
 
     brow.quit()
 
@@ -73,10 +74,12 @@ def job_night_quotes(context):
     # Start scraping
     t0 = time.time()
     cfg.LOGGER.info('NIGHT_QUOTES - Aggiornando quote...')
-    sf.scrape_all_quotes()
+    scrf.scrape_all_quotes()
     mins, secs = utl.time_needed(t0)
     cfg.LOGGER.info(f'NIGHT_QUOTES - Tempo totale -> {mins}:{secs}.')
-    # TODO remove match if quotes not present (internet problems)
+
+    # Remove match if quotes not present (internet problems)
+    utl.remove_matches_without_quotes()
 
     missing_fields = utl.notify_inactive_fields()
     if missing_fields:

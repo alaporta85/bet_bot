@@ -21,8 +21,19 @@ CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 30
 HOURS_RANGE = 240
-PANELS_TO_USE = ['PRINCIPALI', 'U/O', 'PRIMO TEMPO', 'SECONDO TEMPO',
-                 '1°TEMPO/FINALE', 'COMBO']
+PANELS_TO_USE = [
+    'PRINCIPALI',
+    'U/O',
+    'PRIMO TEMPO',
+    'SECONDO TEMPO',
+    '1°TEMPO/FINALE',
+    'COMBO'
+]
+LEAGUES = dbf.db_select(
+        table='leagues',
+        columns=['name'],
+        where='is_active=1'
+)
 
 # LOGGING
 LOGGER = log.set_logging()
@@ -41,11 +52,3 @@ BETS_FILTER = 'Ultimi 3 Mesi'
 # SCORE
 YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021',
          '2021-2022', '2022-2023']
-
-# SCRAPING
-URL = 'https://www.diretta.it'
-LEAGUES = dbf.db_select(
-        table='leagues',
-        columns=['name'],
-        where='is_active=1'
-)

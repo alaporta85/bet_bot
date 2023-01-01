@@ -320,17 +320,19 @@ def insert_match(brow: webdriver, league_name: str, match_dt: datetime) -> int:
 	the db.
 	"""
 
+	# Teams names
 	team1, team2 = extract_teams_names(brow, league_name=league_name)
-	lg_name = 'LIGA' if league_name == 'LALIGA' else league_name
 
+	# Remove old quotes of the same match
 	utl.remove_existing_match_quotes(team_one=team1, team_two=team2)
 
-	# We need the id of the match to update the quotes later
+	# Id of the match is used to associate quotes to the correct match
 	last_id = dbf.db_insert(
 			table='matches',
 			columns=['league', 'team1', 'team2', 'date', 'url'],
-			values=[lg_name, team1, team2, match_dt, brow.current_url],
-			last_index=True)
+			values=[league_name, team1, team2, match_dt, brow.current_url],
+			last_index=True
+	)
 
 	return last_id
 
