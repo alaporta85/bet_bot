@@ -11,6 +11,16 @@ import config as cfg
 import utils as utl
 
 
+def deny_cookies(brow: webdriver) -> None:
+	try:
+		deny_path = './/button[@class="onetrust-close-btn-handler ' \
+		            'banner-close-button ot-close-link"]'
+		wait_clickable(brow=brow, element_path=deny_path)
+		brow.find_element_by_xpath(deny_path).click()
+	except NoSuchElementException:
+		pass
+
+
 def extract_all_bets_from_container(bets_container: webdriver) -> [webdriver]:
 	return bets_container.find_elements_by_xpath('.//td')
 
@@ -63,6 +73,17 @@ def extract_teams_names(brow: webdriver, league_name: str) -> (str, str):
 	return team1.strip(), team2.strip()
 
 
+def get_panels(brow: webdriver, specific_name: str) -> [webdriver]:
+	# Filter panels
+	panels = brow.find_elements_by_xpath(
+			'.//ul[@class="sport nav nav-tabs"]//a')
+
+	if not specific_name:
+		return [p for p in panels if
+		        p.get_attribute('innerText') in cfg.PANELS_TO_USE]
+	return [p for p in panels if p.get_attribute('innerText') == specific_name]
+
+
 def open_browser() -> webdriver:
 
 	brow = webdriver.Chrome(cfg.CHROME_PATH)
@@ -94,15 +115,10 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 	if not brow:
 		brow = open_browser()
 	brow.get(utl.get_league_url(league_name))
-	time.sleep(10)
+	time.sleep(5)
 
-	try:
-		# Deny cookies
-		deny_path = './/button[@class="onetrust-close-btn-handler ' \
-		            'banner-close-button ot-close-link"]'
-		brow.find_element_by_xpath(deny_path).click()
-	except NoSuchElementException:
-		pass
+	# Deny cookies
+	deny_cookies(brow=brow)
 
 	path_to_click = './/li[@class="count-bet"]/a'
 	for i in range(cfg.MATCHES_TO_SCRAPE):
@@ -115,9 +131,6 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 
 		# Double scroll_to_element, it doesn't work with just one
 		scroll_to_element(brow, match)
-		time.sleep(2)
-		scroll_to_element(brow, match)
-		time.sleep(2)
 		wait_clickable(brow=brow, element_path=path_to_click)
 
 		# Extract date and time info
@@ -177,11 +190,8 @@ def insert_quotes(brow: webdriver, last_index: int) -> None:
 	Insert the quotes in the database.
 	"""
 
-	# Filter panels
-	panels = brow.find_elements_by_xpath(
-			'.//ul[@class="sport nav nav-tabs"]//a')
-	panels = [p for p in panels if
-	          p.get_attribute('innerText') in cfg.PANELS_TO_USE]
+	# Panels
+	panels = get_panels(brow=brow, specific_name='')
 
 	# Associate each field with its corresponding bets
 	values = []
@@ -254,7 +264,11 @@ def scroll_to_element(brow: webdriver, element: webdriver,
 	"""
 
 	script = f'return arguments[0].scrollIntoView({position});'
+
 	brow.execute_script(script, element)
+	time.sleep(2)
+	brow.execute_script(script, element)
+	time.sleep(2)
 
 
 def wait_clickable(brow: webdriver, element_path: str) -> None:

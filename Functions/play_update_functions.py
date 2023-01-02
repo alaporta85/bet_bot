@@ -8,7 +8,7 @@ import config as cfg
 import utils as utl
 from scraping_functions import (
 	scroll_to_element, wait_visible, wait_clickable, all_fields_and_bets,
-	extract_all_bets_from_container, extract_bet_name
+	extract_all_bets_from_container, extract_bet_name, get_panels
 )
 
 
@@ -19,6 +19,10 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 	Click the bet button and add it to the basket.
 	"""
 
+	panel = get_panels(brow=brow, specific_name=panel_name)[0]
+	panel.click()
+	time.sleep(3)
+
 	field_bets = all_fields_and_bets(brow=brow)
 
 	bets_container = [b for f, b in field_bets if f == field_name][0]
@@ -27,9 +31,9 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 	for bet in bets_group:
 		if extract_bet_name(bet_element=bet) == bet_name:
 			scroll_to_element(brow, bet)
-			time.sleep(2)
 			bet.click()
 			time.sleep(5)
+			break
 
 	return brow
 
@@ -202,10 +206,9 @@ def refresh_money(brow: webdriver) -> None:
 
 def place_bet(brow: webdriver) -> None:
 
-	button_location = './/div[@class="buttons-betslip"]'
+	button_location = './/button[@id="widget-ticket-scommetti"]'
 	button = brow.find_element_by_xpath(button_location)
 	scroll_to_element(brow, button)
-	time.sleep(5)
 	button.click()
 	time.sleep(10)
 
@@ -261,17 +264,16 @@ def insert_euros(brow: webdriver, euros: int) -> None:
 	Fill the euros box in the website when playing the bet.
 	"""
 
-	input_euros = ('.//div[@class="price-container-input"]/' +
-	               'input[@ng-model="amountSelect.amount"]')
-	time.sleep(3)
+	input_euros = './/input[@id="couponTotStake"]'
+	wait_visible(brow=brow, element_path=input_euros)
 	euros_box = brow.find_element_by_xpath(input_euros)
 	scroll_to_element(brow, euros_box)
-	time.sleep(3)
+
+	euros_box.send_keys(3*Keys.ARROW_RIGHT)
+	time.sleep(1)
+	euros_box.send_keys(5*Keys.BACKSPACE)
+	time.sleep(1)
 	euros_box.send_keys(euros)
-	time.sleep(1)
-	euros_box.send_keys(Keys.ARROW_LEFT)
-	time.sleep(1)
-	euros_box.send_keys(Keys.BACKSPACE)
 	time.sleep(1)
 
 
@@ -288,16 +290,16 @@ def login(brow: webdriver) -> webdriver:
 	password = credentials[1][10:]
 
 	# Click the login button
-	button_path = './/button[@class="btn btn-default btn-accedi"]'
+	button_path = './/button[@id="btnAccediHeader"]'
 	button = brow.find_element_by_xpath(button_path)
 	scroll_to_element(brow, button)
 	wait_clickable(brow, button_path)
 	button.click()
 
 	# Find the boxes to insert username and password
-	user_path = './/input[@autocomplete="username"]'
-	pass_path = './/input[@autocomplete="current-password"]'
-	accedi_path = './/button[@id="signin-button"]'
+	user_path = './/input[@id="username"]'
+	pass_path = './/input[@id="password"]'
+	accedi_path = './/div[@class="RegDivBtn"]/button'
 	wait_visible(brow, user_path)
 	wait_visible(brow, pass_path)
 	user = brow.find_element_by_xpath(user_path)
@@ -307,8 +309,7 @@ def login(brow: webdriver) -> webdriver:
 	user.send_keys(username)
 	passw.send_keys(password)
 	wait_clickable(brow, accedi_path)
-	accedi = brow.find_element_by_xpath(accedi_path)
-	accedi.click()
+	brow.find_element_by_xpath(accedi_path).click()
 	time.sleep(20)
 
 	return brow
@@ -320,11 +321,12 @@ def get_budget(brow: webdriver) -> float:
 	Extract the text from the HTML element and return it as a float.
 	"""
 
-	money_path = './/span[@class="user-balance ng-binding"]'
+	money_path = './/span[@class="saldo-tot"]'
 	money_el = brow.find_element_by_xpath(money_path)
 
 	money_value = None
 	while not money_value:
 		money_value = money_el.get_attribute('innerText')
 
+	money_value = money_value.split()[0]
 	return float(money_value.replace(',', '.'))

@@ -31,15 +31,15 @@ def add_quotes_1x2(matches: list) -> list:
         q1 = dbf.db_select(
                 table='quotes',
                 columns=['quote'],
-                where=f'match = {match_id} AND bet = "ESITO FINALE 1X2_1"')[0]
+                where=f'match = {match_id} AND bet = "1X2_1"')[0]
         qx = dbf.db_select(
                 table='quotes',
                 columns=['quote'],
-                where=f'match = {match_id} AND bet = "ESITO FINALE 1X2_X"')[0]
+                where=f'match = {match_id} AND bet = "1X2_X"')[0]
         q2 = dbf.db_select(
                 table='quotes',
                 columns=['quote'],
-                where=f'match = {match_id} AND bet = "ESITO FINALE 1X2_2"')[0]
+                where=f'match = {match_id} AND bet = "1X2_2"')[0]
 
         q1 = format(q1, '.2f').rjust(5)
         qx = format(qx, '.2f').rjust(5)

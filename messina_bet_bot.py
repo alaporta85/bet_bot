@@ -255,35 +255,6 @@ def get(update, context):
     return context.bot.send_message(chat_id=chat_id, text=message)
 
 
-def get_rid_outdated_matches(bot):
-
-    preds_to_remove = dbf.db_select(table='to_play',
-                                    columns=['pred_id', 'date'],
-                                    where='')
-
-    preds_to_remove = [(pred_id, utl.str_to_dt(dt_as_string=pred_dt)) for
-                       pred_id, pred_dt in preds_to_remove]
-
-    preds_to_remove = [pred_id for pred_id, pred_dt in preds_to_remove
-                       if pred_dt < datetime.datetime.now()]
-
-    for pred_id in preds_to_remove:
-        dbf.db_delete(table='to_play', where=f'pred_id={pred_id}')
-
-        bet_id = dbf.db_select(table='predictions',
-                               columns=['bet_id'],
-                               where=f'id = {pred_id}')[0]
-        bet_status = dbf.db_select(table='bets',
-                                   columns=['status'],
-                                   where=f'id = {bet_id}')[0]
-
-        if bet_status == 'Pending':
-            dbf.db_delete(table='predictions',
-                          where=f'id={pred_id}')
-
-    utl.remove_bet_without_preds()
-
-
 # def info(update, context):
 #
 #     # TODO rewrite message
@@ -431,9 +402,9 @@ def play(update, context):
 
     # Check matches to play
     available = utl.get_preds_available_to_play()
-    pending_txt = utl.remove_not_confirmed_before_play()
-    too_late_txt = utl.remove_too_late_before_play()
     if not available:
+        pending_txt = utl.remove_not_confirmed_before_play()
+        too_late_txt = utl.remove_too_late_before_play()
         message = f'{pending_txt}\n{too_late_txt}\n\nNessun pronostico attivo'
         return context.bot.send_message(chat_id=cfg.GROUP_ID, text=message)
 
@@ -450,6 +421,8 @@ def play(update, context):
     # Go to main page
     brow = scrf.open_browser()
     brow.get(cfg.MAIN_PAGE)
+    time.sleep(5)
+    scrf.deny_cookies(brow=brow)
     time.sleep(5)
 
     # Add all predictions
