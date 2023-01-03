@@ -31,7 +31,7 @@ def job_update_score(context):
     # Login
     plupf.login(brow)
 
-    budget = plupf.get_budget(brow)
+    budget = plupf.get_budget_from_website(brow)
     utl.update_budget(budget=budget)
 
     plupf.open_profile_options(brow)

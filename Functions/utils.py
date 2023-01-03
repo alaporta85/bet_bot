@@ -278,6 +278,11 @@ def get_bets_to_update() -> list:
     return bets
 
 
+def get_budget_from_db() -> float:
+    return dbf.db_select(
+            table='last_results_update', columns=['budget'], where='')[0]
+
+
 def get_confirmed_matches(league_name: str) -> list:
 
     bet_id = get_pending_bet_id()

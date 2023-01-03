@@ -24,9 +24,7 @@ def bike(update, context):
 
 def budget(update, context):
     chat_id = update.message.chat_id
-    budget = dbf.db_select(table='last_results_update',
-                           columns=['budget'],
-                           where='')[0]
+    budget = utl.get_budget_from_db()
     return context.bot.send_message(chat_id=chat_id, text=f'{budget}€')
 
 
@@ -394,6 +392,105 @@ def night_quotes(update, context):
                                         text='Fatti i cazzi tuoi')
 
 
+# def play(update, context):
+#
+#     """
+#     Play the bet online.
+#     """
+#
+#     # Check matches to play
+#     available = utl.get_preds_available_to_play()
+#     if not available:
+#         pending_txt = utl.remove_not_confirmed_before_play()
+#         too_late_txt = utl.remove_too_late_before_play()
+#         message = f'{pending_txt}\n{too_late_txt}\n\nNessun pronostico attivo'
+#         return context.bot.send_message(chat_id=cfg.GROUP_ID, text=message)
+#
+#     args = context.args
+#     # Euros to bet
+#     euros = utl.euros_to_play(args)
+#
+#     # Message to update
+#     n_bets = len(available)
+#     live_info = 'Pronostici aggiunti: {}/{}'
+#     mess_id = context.bot.send_message(chat_id=cfg.GROUP_ID,
+#                                text=live_info.format(0, n_bets)).message_id
+#
+#     # Go to main page
+#     brow = scrf.open_browser()
+#     brow.get(cfg.MAIN_PAGE)
+#     time.sleep(5)
+#     scrf.deny_cookies(brow=brow)
+#     time.sleep(5)
+#
+#     # Add all predictions
+#     for i, (url, panel, field, bet) in enumerate(available, 1):
+#         brow.get(url)
+#         plupf.add_bet_to_basket(brow, panel, field, bet)
+#         context.bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
+#                               text=live_info.format(i, n_bets))
+#
+#     # Insert euros to bet
+#     plupf.insert_euros(brow, euros)
+#
+#     # Login
+#     brow = plupf.login(brow=brow)
+#     live_info = f'Pronostici aggiunti: {n_bets}/{n_bets}\n\nLogged in'
+#     context.bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
+#                           text=live_info)
+#
+#     # Budget before playing
+#     money_before = plupf.get_budget(brow)
+#
+#     # Place bet
+#     plupf.place_bet(brow)
+#
+#     # Budget after playing
+#     money_after = plupf.get_money_after(brow, before=money_before)
+#
+#     if money_after < money_before:
+#         cfg.LOGGER.info('PLAY - Bet has been played.')
+#
+#         if money_after != money_before - euros:
+#             msg = "L'importo scommesso è diverso da quello selezionato."
+#             context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
+#                                      text=msg)
+#             cfg.LOGGER.info(f'PLAY - {msg}. Money before: {money_before}, '
+#                             f'euros placed: {euros},'
+#                             f'money after: {money_after}')
+#
+#         # Retrieve bet_id
+#         bet_id = utl.get_pending_bet_id()
+#
+#         # Update bet table
+#         dbf.db_update(
+#                 table='bets',
+#                 columns=['date', 'euros', 'status'],
+#                 values=[datetime.datetime.now().replace(microsecond=0),
+#                         euros, 'Placed'],
+#                 where=f'id = {bet_id}')
+#
+#         # Empty table with bets
+#         dbf.empty_table(table='to_play')
+#
+#         # Update table with budget
+#         utl.update_budget(budget=money_after)
+#
+#         # Send summary
+#         prize = utl.get_quotes_prod(bet_id=bet_id)
+#         msg = 'Scommessa giocata correttamente.\n\n'
+#         msg += utl.create_list_of_matches(bet_id=bet_id)
+#         msg += f'\nVincita: <b>{prize*euros: .2f} €</b>\n\n\n'
+#         msg += f'\nBudget aggiornato: <b>{money_after} €</b>'
+#         context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
+#                                  text=msg)
+#     else:
+#         msg = 'Non è stato possibile giocare la scommessa.'
+#         context.bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
+#
+#     brow.quit()
+
+
 def play(update, context):
 
     """
@@ -441,53 +538,37 @@ def play(update, context):
     context.bot.edit_message_text(chat_id=cfg.GROUP_ID, message_id=mess_id,
                           text=live_info)
 
-    # Budget before playing
-    money_before = plupf.get_budget(brow)
-
     # Place bet
     plupf.place_bet(brow)
 
-    # Budget after playing
-    money_after = plupf.get_money_after(brow, before=money_before)
+    cfg.LOGGER.info('PLAY - Bet has been played.')
 
-    if money_after < money_before:
-        cfg.LOGGER.info('PLAY - Bet has been played.')
+    # Retrieve bet_id
+    bet_id = utl.get_pending_bet_id()
 
-        if money_after != money_before - euros:
-            msg = "L'importo scommesso è diverso da quello selezionato."
-            context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
-                                     text=msg)
-            cfg.LOGGER.info(f'PLAY - {msg}. Money before: {money_before}, '
-                            f'euros placed: {euros},'
-                            f'money after: {money_after}')
+    # Update bet table
+    dbf.db_update(
+            table='bets',
+            columns=['date', 'euros', 'status'],
+            values=[datetime.datetime.now().replace(microsecond=0),
+                    euros, 'Placed'],
+            where=f'id = {bet_id}')
 
-        bet_id = utl.get_pending_bet_id()
+    # Empty table with bets
+    dbf.empty_table(table='to_play')
 
-        prize = utl.get_quotes_prod(bet_id=bet_id)
+    # Update table with budget
+    new_budget = round(utl.get_budget_from_db() - euros, 2)
+    utl.update_budget(budget=new_budget)
 
-        # Update bet table
-        dt = datetime.datetime.now().replace(microsecond=0)
-        dbf.db_update(
-                table='bets',
-                columns=['date', 'euros', 'status'],
-                values=[dt, euros, 'Placed'],
-                where=f'id = {bet_id}')
-
-        # Empty table with bets
-        dbf.empty_table(table='to_play')
-
-        utl.update_budget(budget=money_after)
-
-        # Print the summary
-        msg = 'Scommessa giocata correttamente.\n\n'
-        msg += utl.create_list_of_matches(bet_id=bet_id)
-        msg += f'\nVincita: <b>{prize*euros: .2f} €</b>\n\n\n'
-        msg += f'\nBudget aggiornato: <b>{money_after} €</b>'
-        context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
-                                 text=msg)
-    else:
-        msg = 'Non è stato possibile giocare la scommessa.'
-        context.bot.send_message(chat_id=cfg.GROUP_ID, text=msg)
+    # Send summary
+    prize = utl.get_quotes_prod(bet_id=bet_id)
+    msg = 'Scommessa giocata correttamente.\n\n'
+    msg += utl.create_list_of_matches(bet_id=bet_id)
+    msg += f'\nVincita: <b>{prize*euros: .2f} €</b>\n\n\n'
+    msg += f'\nBudget aggiornato: <b>{new_budget} €</b>'
+    context.bot.send_message(parse_mode='HTML', chat_id=cfg.GROUP_ID,
+                             text=msg)
 
     brow.quit()
 

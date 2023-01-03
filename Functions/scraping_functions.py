@@ -1,6 +1,6 @@
 import time
 from datetime import datetime
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -17,7 +17,7 @@ def deny_cookies(brow: webdriver) -> None:
 		            'banner-close-button ot-close-link"]'
 		wait_clickable(brow=brow, element_path=deny_path)
 		brow.find_element_by_xpath(deny_path).click()
-	except NoSuchElementException:
+	except TimeoutException:
 		pass
 
 
@@ -114,11 +114,15 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 	# Open league url
 	if not brow:
 		brow = open_browser()
+		close_popup = True
+	else:
+		close_popup = False
 	brow.get(utl.get_league_url(league_name))
 	time.sleep(5)
 
-	# Deny cookies
-	deny_cookies(brow=brow)
+	if close_popup:
+		# Deny cookies
+		deny_cookies(brow=brow)
 
 	path_to_click = './/li[@class="count-bet"]/a'
 	for i in range(cfg.MATCHES_TO_SCRAPE):
@@ -131,6 +135,9 @@ def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 
 		# Double scroll_to_element, it doesn't work with just one
 		scroll_to_element(brow, match)
+		time.sleep(2)
+		scroll_to_element(brow, match)
+		time.sleep(2)
 		wait_clickable(brow=brow, element_path=path_to_click)
 
 		# Extract date and time info
@@ -266,9 +273,6 @@ def scroll_to_element(brow: webdriver, element: webdriver,
 	script = f'return arguments[0].scrollIntoView({position});'
 
 	brow.execute_script(script, element)
-	time.sleep(2)
-	brow.execute_script(script, element)
-	time.sleep(2)
 
 
 def wait_clickable(brow: webdriver, element_path: str) -> None:

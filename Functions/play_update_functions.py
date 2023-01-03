@@ -1,5 +1,4 @@
 import time
-from itertools import count
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 
@@ -31,6 +30,9 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 	for bet in bets_group:
 		if extract_bet_name(bet_element=bet) == bet_name:
 			scroll_to_element(brow, bet)
+			time.sleep(2)
+			scroll_to_element(brow, bet)
+			time.sleep(2)
 			bet.click()
 			time.sleep(5)
 			break
@@ -179,29 +181,30 @@ def filter_by_date(web_bets: [webdriver], db_bets: [tuple]) -> [webdriver]:
 	return filtered
 
 
-def get_money_after(brow: webdriver, before: float) -> float:
+# def get_money_after(brow: webdriver, before: float) -> float:
+#
+# 	after = get_budget_from_website(brow)
+#
+# 	# Verify money has the new value. If not, refresh the value and check again
+# 	# up to N times
+# 	c = 1
+# 	while c < 2 and after == before:
+# 		refresh_money(brow)
+# 		time.sleep(2)
+# 		after = get_budget_from_website(brow)
+# 		c += 1
+#
+# 	return after
 
-	after = get_budget(brow)
 
-	# Verify money has the new value. If not, refresh the value and check again
-	# up to N times
-	c = count(1)
-	while next(c) < 100 and after == before:
-		refresh_money(brow)
-		time.sleep(2)
-		after = get_budget(brow)
-
-	return after
-
-
-def refresh_money(brow: webdriver) -> None:
-
-	refresh_path = './/user-balance-refresh-btn'
-
-	wait_clickable(brow, refresh_path)
-	refresh = brow.find_element_by_xpath(refresh_path)
-	scroll_to_element(brow, refresh)
-	refresh.click()
+# def refresh_money(brow: webdriver) -> None:
+#
+# 	refresh_path = './/user-balance-refresh-btn'
+#
+# 	wait_clickable(brow, refresh_path)
+# 	refresh = brow.find_element_by_xpath(refresh_path)
+# 	scroll_to_element(brow, refresh)
+# 	refresh.click()
 
 
 def place_bet(brow: webdriver) -> None:
@@ -209,6 +212,7 @@ def place_bet(brow: webdriver) -> None:
 	button_location = './/button[@id="widget-ticket-scommetti"]'
 	button = brow.find_element_by_xpath(button_location)
 	scroll_to_element(brow, button)
+	time.sleep(2)
 	button.click()
 	time.sleep(10)
 
@@ -315,7 +319,7 @@ def login(brow: webdriver) -> webdriver:
 	return brow
 
 
-def get_budget(brow: webdriver) -> float:
+def get_budget_from_website(brow: webdriver) -> float:
 
 	"""
 	Extract the text from the HTML element and return it as a float.
