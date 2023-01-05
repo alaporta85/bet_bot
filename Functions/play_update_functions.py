@@ -4,7 +4,6 @@ from selenium import webdriver
 
 import db_functions as dbf
 import config as cfg
-import utils as utl
 from scraping_functions import (
 	scroll_to_element, wait_visible, wait_clickable, all_fields_and_bets,
 	extract_all_bets_from_container, extract_bet_name, get_panels
@@ -40,63 +39,6 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 	return brow
 
 
-def get_bet_status(bet: webdriver) -> str:
-
-	text = bet.find_elements_by_xpath('.//td')[2].text
-	if text == 'Vincente':
-		return 'WINNING'
-	elif text == 'Non Vincente':
-		return 'LOSING'
-	else:
-		return ''
-
-
-# def open_details(brow: webdriver, bet: webdriver) -> tuple:
-#
-# 	details = bet.find_element_by_xpath('.//a')
-# 	scroll_to_element(brow, details)
-# 	details.click()
-# 	time.sleep(3)
-#
-# 	new_window = brow.window_handles[-1]
-# 	brow.switch_to_window(new_window)
-# 	time.sleep(1)
-#
-# 	return new_window, brow
-
-
-# def cross_check_teams(table: webdriver, bets_db: list) -> (int, tuple):
-#
-# 	preds_list = table.find_elements_by_xpath('.//tr[@class="ng-scope"]')
-# 	teams_web = []
-# 	preds_details = []
-# 	for pred in preds_list:
-# 		match = pred.find_element_by_xpath('.//td[6]').text
-# 		team1, team2 = match.strip().split(' - ')
-# 		quote = float(pred.find_element_by_xpath('.//td[10]').text)
-# 		result = pred.find_element_by_xpath('.//td[11]').text
-# 		label_element = pred.find_element_by_xpath(
-# 				'.//div[contains(@class,"ng-scope")]')
-# 		label = label_element.get_attribute('ng-switch-when')
-#
-# 		teams_web.append(team1)
-# 		teams_web.append(team2)
-# 		preds_details.append((team1, team2, quote, result, label))
-# 	teams_web.sort()
-#
-# 	for bet_db_id, _ in bets_db:
-# 		teams_db = dbf.db_select(table='predictions',
-# 								 columns=['team1', 'team2'],
-# 								 where=f'bet_id = {bet_db_id}')
-# 		teams_db = [t for i in teams_db for t in i]
-# 		teams_db.sort()
-# 		if teams_web == teams_db:
-# 			return bet_db_id, preds_details
-# 		else:
-# 			continue
-# 	return 0, []
-
-
 def cross_check_teams(all_matches: [webdriver], bet_id: int) -> list:
 
 	teams_web = []
@@ -126,46 +68,36 @@ def cross_check_teams(all_matches: [webdriver], bet_id: int) -> list:
 		return []
 
 
-def get_prize(brow: webdriver) -> float:
-
-	prize_table = ('//div[@class="col-md-5 col-lg-5 col-xs-5 ' +
-				   'pull-right pull-down"]')
-
-	prize_el = brow.find_elements_by_xpath(prize_table + '//tr/td')[7]
-	prize_value = prize_el.text[:-1].replace('.', '').replace(',', '.')
-	return float(prize_value)
-
-
 def update_database(brow: webdriver, bet_id: int) -> None:
 
 	bets_path = './/div[contains(@class, "row body-cnt-storico")]'
 	bets_list = brow.find_elements_by_xpath(bets_path)
 	bets_list = filter_by_state(list_of_bets=bets_list)
 
-	# bets_list = filter_by_date(web_bets=bets_list, db_bets=bet_to_update)
-
 	for bet in bets_list:
 
-		# status = get_bet_status(bet=bet)
-		# if not status:
-		# 	continue
-
-		# main_window = brow.current_window_handle
-		# new_window, brow = open_details(brow=brow, bet=bet)
 		scroll_to_element(brow=brow, element=bet)
 		time.sleep(2)
-		bet.click()
-		time.sleep(5)
 
+		# Save main info
+		bet_info = bet.text.upper().split('\n')
+
+		# Click and wait
+		bet.click()
+		time.sleep(10)
+
+		# Extract all predictions from website
 		matches_path = './/div[@class="row dettaglioEvento "]'
 		wait_visible(brow, matches_path)
 		matches = brow.find_elements_by_xpath(matches_path)
 
+		# Make sure it is the right bet
 		preds = cross_check_teams(all_matches=matches, bet_id=bet_id)
 		if not preds:
 			brow.back()
 			continue
 
+		# Update predictions table
 		for tm1, tm2, quote, result, label in preds:
 			dbf.db_update(table='predictions',
 						  columns=['quote', 'result', 'label'],
@@ -173,77 +105,23 @@ def update_database(brow: webdriver, bet_id: int) -> None:
 						  where=(f'bet_id = {bet_id} AND ' +
 						         f'team1 = "{tm1}" AND team2 = "{tm2}"'))
 
-		prize = get_prize(brow=brow)
+		# Update bets table
+		prize = float(bet_info[6].replace(',', '.').replace(' €', ''))
+		status = 'WINNING' if bet_info[3] == 'VINCENTE' else 'LOSING'
 		dbf.db_update(table='bets',
 					  columns=['prize', 'result'],
 					  values=[prize, status],
 					  where=f'id = {bet_id}')
 
-		brow.close()
-		brow.switch_to_window(main_window)
-
-
-def filter_by_color(brow: webdriver) -> list:
-
-	table_path = './/table[@id="tabellaRisultatiTransazioni"]'
-	wait_visible(brow, table_path)
-	bets_list = brow.find_elements_by_xpath(table_path +
-	                                        '//tr[@class="ng-scope"]')
-
-	color_path = './/td[contains(@class,"state state")]'
-	filtered = []
-	for bet in bets_list:
-		c = bet.find_element_by_xpath(color_path).get_attribute('class')
-		if 'blue' not in c:
-			filtered.append(bet)
-
-	return filtered
+		# Close bet
+		close_path = './/h5/button[@class="close"]'
+		brow.find_element_by_xpath(close_path).click()
+		time.sleep(5)
 
 
 def filter_by_state(list_of_bets: list) -> [webdriver]:
 	return [bet for bet in list_of_bets if
 	        'Vincente' in bet.text or 'Perdente' in bet.text]
-
-
-def filter_by_date(web_bets: [webdriver], db_bets: [tuple]) -> [webdriver]:
-
-	db_dates = [utl.str_to_dt(d).date() for _, d in db_bets]
-
-	filtered = []
-	path = './/td[@class="ng-binding"]'
-	for bet in web_bets:
-		dt = bet.find_element_by_xpath(path).text[:10]
-		dt = utl.str_to_dt(dt, '%d/%m/%Y').date()
-		if dt in db_dates:
-			filtered.append(bet)
-
-	return filtered
-
-
-# def get_money_after(brow: webdriver, before: float) -> float:
-#
-# 	after = get_budget_from_website(brow)
-#
-# 	# Verify money has the new value. If not, refresh the value and check again
-# 	# up to N times
-# 	c = 1
-# 	while c < 2 and after == before:
-# 		refresh_money(brow)
-# 		time.sleep(2)
-# 		after = get_budget_from_website(brow)
-# 		c += 1
-#
-# 	return after
-
-
-# def refresh_money(brow: webdriver) -> None:
-#
-# 	refresh_path = './/user-balance-refresh-btn'
-#
-# 	wait_clickable(brow, refresh_path)
-# 	refresh = brow.find_element_by_xpath(refresh_path)
-# 	scroll_to_element(brow, refresh)
-# 	refresh.click()
 
 
 def place_bet(brow: webdriver) -> None:
@@ -285,18 +163,6 @@ def set_time_filter(brow: webdriver) -> None:
 	wait_clickable(brow, path)
 	brow.find_element_by_xpath(path).click()
 	time.sleep(5)
-
-
-# def show_bets_history(brow: webdriver) -> None:
-#
-# 	path = ('.//div[@class="btn-group btn-group-justified"]' +
-# 				   '/a[@class="btn button-submit"]')
-# 	wait_clickable(brow, path)
-#
-# 	button = brow.find_element_by_xpath(path)
-# 	scroll_to_element(brow, button)
-# 	button.click()
-# 	time.sleep(5)
 
 
 def insert_euros(brow: webdriver, euros: int) -> None:
