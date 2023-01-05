@@ -84,11 +84,19 @@ def get_panels(brow: webdriver, specific_name: str) -> [webdriver]:
 	return [p for p in panels if p.get_attribute('innerText') == specific_name]
 
 
-def open_browser() -> webdriver:
+def open_browser(url: str) -> webdriver:
 
 	brow = webdriver.Chrome(cfg.CHROME_PATH)
 	brow.set_window_size(1200, 850)
 	time.sleep(3)
+
+	brow.get(url)
+	time.sleep(5)
+
+	# Deny cookies
+	deny_cookies(brow=brow)
+	time.sleep(5)
+
 	return brow
 
 
@@ -112,17 +120,12 @@ def scrape_all_quotes() -> None:
 def scrape_league_quotes(brow: webdriver, league_name: str) -> webdriver:
 
 	# Open league url
+	league_url = utl.get_league_url(league_name)
 	if not brow:
-		brow = open_browser()
-		close_popup = True
+		brow = open_browser(url=league_url)
 	else:
-		close_popup = False
-	brow.get(utl.get_league_url(league_name))
-	time.sleep(5)
-
-	if close_popup:
-		# Deny cookies
-		deny_cookies(brow=brow)
+		brow.get(league_url)
+		time.sleep(5)
 
 	path_to_click = './/li[@class="count-bet"]/a'
 	for i in range(cfg.MATCHES_TO_SCRAPE):

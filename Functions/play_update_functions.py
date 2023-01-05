@@ -51,50 +51,79 @@ def get_bet_status(bet: webdriver) -> str:
 		return ''
 
 
-def open_details(brow: webdriver, bet: webdriver) -> tuple:
+# def open_details(brow: webdriver, bet: webdriver) -> tuple:
+#
+# 	details = bet.find_element_by_xpath('.//a')
+# 	scroll_to_element(brow, details)
+# 	details.click()
+# 	time.sleep(3)
+#
+# 	new_window = brow.window_handles[-1]
+# 	brow.switch_to_window(new_window)
+# 	time.sleep(1)
+#
+# 	return new_window, brow
 
-	details = bet.find_element_by_xpath('.//a')
-	scroll_to_element(brow, details)
-	details.click()
-	time.sleep(3)
 
-	new_window = brow.window_handles[-1]
-	brow.switch_to_window(new_window)
-	time.sleep(1)
+# def cross_check_teams(table: webdriver, bets_db: list) -> (int, tuple):
+#
+# 	preds_list = table.find_elements_by_xpath('.//tr[@class="ng-scope"]')
+# 	teams_web = []
+# 	preds_details = []
+# 	for pred in preds_list:
+# 		match = pred.find_element_by_xpath('.//td[6]').text
+# 		team1, team2 = match.strip().split(' - ')
+# 		quote = float(pred.find_element_by_xpath('.//td[10]').text)
+# 		result = pred.find_element_by_xpath('.//td[11]').text
+# 		label_element = pred.find_element_by_xpath(
+# 				'.//div[contains(@class,"ng-scope")]')
+# 		label = label_element.get_attribute('ng-switch-when')
+#
+# 		teams_web.append(team1)
+# 		teams_web.append(team2)
+# 		preds_details.append((team1, team2, quote, result, label))
+# 	teams_web.sort()
+#
+# 	for bet_db_id, _ in bets_db:
+# 		teams_db = dbf.db_select(table='predictions',
+# 								 columns=['team1', 'team2'],
+# 								 where=f'bet_id = {bet_db_id}')
+# 		teams_db = [t for i in teams_db for t in i]
+# 		teams_db.sort()
+# 		if teams_web == teams_db:
+# 			return bet_db_id, preds_details
+# 		else:
+# 			continue
+# 	return 0, []
 
-	return new_window, brow
 
+def cross_check_teams(all_matches: [webdriver], bet_id: int) -> list:
 
-def cross_check_teams(table: webdriver, bets_db: list) -> (int, tuple):
-
-	preds_list = table.find_elements_by_xpath('.//tr[@class="ng-scope"]')
 	teams_web = []
 	preds_details = []
-	for pred in preds_list:
-		match = pred.find_element_by_xpath('.//td[6]').text
-		team1, team2 = match.strip().split(' - ')
-		quote = float(pred.find_element_by_xpath('.//td[10]').text)
-		result = pred.find_element_by_xpath('.//td[11]').text
-		label_element = pred.find_element_by_xpath(
-				'.//div[contains(@class,"ng-scope")]')
-		label = label_element.get_attribute('ng-switch-when')
+	for match in all_matches:
+		_, _, teams, _, pred, quote, result, _ = match.text.upper().split('\n')
+		team1, team2 = teams.strip().split(' - ')
+		quote = float(quote.replace(',', '.'))
+		label = 'WINNING' if pred == result else 'LOSING'
+
+		# Result has to be formatted after label definition
+		result = result.replace('-', '+')
 
 		teams_web.append(team1)
 		teams_web.append(team2)
 		preds_details.append((team1, team2, quote, result, label))
 	teams_web.sort()
 
-	for bet_db_id, _ in bets_db:
-		teams_db = dbf.db_select(table='predictions',
-								 columns=['team1', 'team2'],
-								 where=f'bet_id = {bet_db_id}')
-		teams_db = [t for i in teams_db for t in i]
-		teams_db.sort()
-		if teams_web == teams_db:
-			return bet_db_id, preds_details
-		else:
-			continue
-	return 0, []
+	teams_db = dbf.db_select(table='predictions',
+							 columns=['team1', 'team2'],
+							 where=f'bet_id = {bet_id}')
+	teams_db = [t for i in teams_db for t in i]
+	teams_db.sort()
+	if teams_web == teams_db:
+		return preds_details
+	else:
+		return []
 
 
 def get_prize(brow: webdriver) -> float:
@@ -107,29 +136,34 @@ def get_prize(brow: webdriver) -> float:
 	return float(prize_value)
 
 
-def update_database(brow: webdriver, bets_to_update: list):
+def update_database(brow: webdriver, bet_id: int) -> None:
 
-	bets_list = filter_by_color(brow)
+	bets_path = './/div[contains(@class, "row body-cnt-storico")]'
+	bets_list = brow.find_elements_by_xpath(bets_path)
+	bets_list = filter_by_state(list_of_bets=bets_list)
 
-	bets_list = filter_by_date(web_bets=bets_list, db_bets=bets_to_update)
+	# bets_list = filter_by_date(web_bets=bets_list, db_bets=bet_to_update)
 
 	for bet in bets_list:
 
-		status = get_bet_status(bet=bet)
-		if not status:
-			continue
+		# status = get_bet_status(bet=bet)
+		# if not status:
+		# 	continue
 
-		main_window = brow.current_window_handle
-		new_window, brow = open_details(brow=brow, bet=bet)
+		# main_window = brow.current_window_handle
+		# new_window, brow = open_details(brow=brow, bet=bet)
+		scroll_to_element(brow=brow, element=bet)
+		time.sleep(2)
+		bet.click()
+		time.sleep(5)
 
-		path = './/table[@class="bet-detail"]'
-		wait_visible(brow, path)
-		details = brow.find_element_by_xpath(path)
+		matches_path = './/div[@class="row dettaglioEvento "]'
+		wait_visible(brow, matches_path)
+		matches = brow.find_elements_by_xpath(matches_path)
 
-		bet_id, preds = cross_check_teams(table=details, bets_db=bets_to_update)
-		if not bet_id:
-			brow.close()
-			brow.switch_to_window(main_window)
+		preds = cross_check_teams(all_matches=matches, bet_id=bet_id)
+		if not preds:
+			brow.back()
 			continue
 
 		for tm1, tm2, quote, result, label in preds:
@@ -164,6 +198,11 @@ def filter_by_color(brow: webdriver) -> list:
 			filtered.append(bet)
 
 	return filtered
+
+
+def filter_by_state(list_of_bets: list) -> [webdriver]:
+	return [bet for bet in list_of_bets if
+	        'Vincente' in bet.text or 'Perdente' in bet.text]
 
 
 def filter_by_date(web_bets: [webdriver], db_bets: [tuple]) -> [webdriver]:
@@ -219,47 +258,45 @@ def place_bet(brow: webdriver) -> None:
 
 def open_profile_history(brow: webdriver) -> None:
 
-	path = './/a[@title="Movimenti e giocate"]'
+	path = './/a[@id="listBet"]'
 	wait_clickable(brow, path)
-	button = brow.find_element_by_xpath(path)
-	button.click()
+	brow.find_element_by_xpath(path).click()
 	time.sleep(5)
 
 
 def open_profile_options(brow: webdriver) -> None:
 
-	path = './/a[@title="Profilo"]'
+	path = './/i[@id="iconMenuDestra"]'
 	wait_clickable(brow, path)
-	button = brow.find_element_by_xpath(path)
-	button.click()
+	brow.find_element_by_xpath(path).click()
 	time.sleep(5)
 
 
 def set_time_filter(brow: webdriver) -> None:
 
-	path = ('.//div[@id="movement-filters"]/div[@id="games-filter"]' +
-	        '//label[@class="radio-inline"]')
-	wait_visible(brow, path)
-
-	all_filters = brow.find_elements_by_xpath(path)
-
-	right_filter = [f for f in all_filters if
-	                f.get_attribute('innerText').strip() == cfg.BETS_FILTER][0]
-	scroll_to_element(brow, right_filter)
-	right_filter.click()
-	time.sleep(5)
-
-
-def show_bets_history(brow: webdriver) -> None:
-
-	path = ('.//div[@class="btn-group btn-group-justified"]' +
-				   '/a[@class="btn button-submit"]')
+	# Click time option
+	path = f'.//option[@value="{cfg.BETS_FILTER}"]'
 	wait_clickable(brow, path)
+	brow.find_element_by_xpath(path).click()
+	time.sleep(2)
 
-	button = brow.find_element_by_xpath(path)
-	scroll_to_element(brow, button)
-	button.click()
+	# Update bet table
+	path = './/button[@id="btn-formGiocate"]'
+	wait_clickable(brow, path)
+	brow.find_element_by_xpath(path).click()
 	time.sleep(5)
+
+
+# def show_bets_history(brow: webdriver) -> None:
+#
+# 	path = ('.//div[@class="btn-group btn-group-justified"]' +
+# 				   '/a[@class="btn button-submit"]')
+# 	wait_clickable(brow, path)
+#
+# 	button = brow.find_element_by_xpath(path)
+# 	scroll_to_element(brow, button)
+# 	button.click()
+# 	time.sleep(5)
 
 
 def insert_euros(brow: webdriver, euros: int) -> None:

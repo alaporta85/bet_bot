@@ -275,7 +275,7 @@ def get_bets_to_update() -> list:
     if not bets:
         cfg.LOGGER.info('Nessuna scommessa da aggiornare.')
 
-    return bets
+    return [b for b, _ in bets]
 
 
 def get_budget_from_db() -> float:

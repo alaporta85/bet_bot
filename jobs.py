@@ -22,11 +22,7 @@ def job_update_score(context):
         return context.bot.send_message(chat_id=context.job.context, text=msg)
 
     # Go to main page
-    brow = scrf.open_browser()
-    brow.get(cfg.MAIN_PAGE)
-    time.sleep(5)
-    brow.refresh()
-    time.sleep(5)
+    brow = scrf.open_browser(url=cfg.MAIN_PAGE)
 
     # Login
     plupf.login(brow)
@@ -40,9 +36,9 @@ def job_update_score(context):
 
     plupf.set_time_filter(brow)
 
-    plupf.show_bets_history(brow)
-
-    plupf.update_database(brow, bets)
+    # plupf.show_bets_history(brow)
+    for bet_id in bets:
+        plupf.update_database(brow=brow, bet_id=bet_id)
 
     brow.quit()
 

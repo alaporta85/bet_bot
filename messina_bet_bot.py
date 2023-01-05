@@ -516,11 +516,7 @@ def play(update, context):
                                text=live_info.format(0, n_bets)).message_id
 
     # Go to main page
-    brow = scrf.open_browser()
-    brow.get(cfg.MAIN_PAGE)
-    time.sleep(5)
-    scrf.deny_cookies(brow=brow)
-    time.sleep(5)
+    brow = scrf.open_browser(url=cfg.MAIN_PAGE)
 
     # Add all predictions
     for i, (url, panel, field, bet) in enumerate(available, 1):

@@ -10,7 +10,7 @@ with open('token.txt', 'r') as f:
 DISPATCHER = UPDATER.dispatcher
 JOB_QUEUE = UPDATER.job_queue
 
-DEBUG = False
+DEBUG = True
 TESTAZZA_ID = 67507055
 GROUP_ID = -235014519 if not DEBUG else TESTAZZA_ID
 
@@ -47,7 +47,7 @@ WEEKDAYS = {'lun': 1, 'mar': 2, 'mer': 3, 'gio': 4,
             'ven': 5, 'sab': 6, 'dom': 7}
 
 # UPDATING
-BETS_FILTER = 'Ultimi 3 Mesi'
+BETS_FILTER = 7
 
 # SCORE
 YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021',
