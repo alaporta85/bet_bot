@@ -10,7 +10,7 @@ with open('token.txt', 'r') as f:
 DISPATCHER = UPDATER.dispatcher
 JOB_QUEUE = UPDATER.job_queue
 
-DEBUG = True
+DEBUG = False
 TESTAZZA_ID = 67507055
 GROUP_ID = -235014519 if not DEBUG else TESTAZZA_ID
 
@@ -20,7 +20,7 @@ ABSOLUTE_PATH = os.getcwd()
 CHROME_PATH = ABSOLUTE_PATH + '/chromedriver'
 MATCHES_TO_SCRAPE = 100
 WAIT = 30
-HOURS_RANGE = 120
+HOURS_RANGE = 72
 PANELS_TO_USE = [
     'PRINCIPALI',
     'U/O',

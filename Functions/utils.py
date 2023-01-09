@@ -10,6 +10,72 @@ import db_functions as dbf
 import config as cfg
 
 
+# FORMATTING
+def adjust_text_width(text: str, length: int) -> str:
+
+    if length <= len(text):
+        return text
+
+    extra_spaces = length - len(text)
+    return text.replace(':', f':{" "*extra_spaces}')
+
+
+def str_to_dt(dt_as_string: str, style: str = '%Y-%m-%d %H:%M:%S') -> datetime:
+    return datetime.datetime.strptime(dt_as_string, style)
+
+
+def weekday_to_dt(isoweekday: int) -> datetime:
+
+    dt = datetime.date.today()
+    while dt.isoweekday() != isoweekday:
+        dt += datetime.timedelta(1)
+    return dt
+
+
+def fix_bet_name(bet_name: str) -> str:
+
+    vals2replace = [(' ', ''), ('*', ''), (',', '.'), ('+', ''),
+                    ('TEMPO', 'T'), ('TP', 'T'),
+                    ('1T', 'PT'), ('2T', 'ST'),
+                    ('GG', 'GOAL'), ('GOL', 'GOAL'),
+                    ('NG', 'NOGOAL'), ('NOGOL', 'NOGOAL'),
+                    ('HANDICAP', 'H'), ('HAND', 'H')]
+    for old, new in vals2replace:
+        bet_name = bet_name.replace(old, new)
+
+    all_alias = dbf.db_select(table='fields', columns=['alias'], where='')
+    return jaccard_result(in_opt=bet_name, all_opt=all_alias, ngrm=2)
+
+
+def fix_league_name(league_name: str) -> str:
+    all_leagues = dbf.db_select(table='leagues', columns=['name'], where='')
+    return jaccard_result(in_opt=league_name, all_opt=all_leagues, ngrm=3)
+
+
+def fix_team_name(team_name: str) -> str:
+
+    if '*' in team_name:
+        where = 'league = "CHAMPIONS LEAGUE"'
+    else:
+        where = 'league != "CHAMPIONS LEAGUE"'
+
+    all_teams = dbf.db_select(table='matches',
+                              columns=['team1', 'team2'], where=where)
+
+    all_teams = [t for el in all_teams for t in el]
+    return jaccard_result(in_opt=team_name, all_opt=all_teams, ngrm=3)
+
+
+def from_dayname_to_iso(dayname: str) -> int:
+
+    return cfg.WEEKDAYS[dayname] if dayname.lower() in cfg.WEEKDAYS else 0
+
+
+
+
+
+
+
 def add_short_names(matches: list) -> list:
 
     new_format = []
@@ -47,15 +113,6 @@ def add_quotes_1x2(matches: list) -> list:
         matches_quotes.append((date, team1, team2, q1, qx, q2))
 
     return matches_quotes
-
-
-def adjust_text_width(text: str, length: int) -> str:
-
-    if length <= len(text):
-        return text
-
-    extra_spaces = length - len(text)
-    return text.replace(':', f':{" "*extra_spaces}')
 
 
 def all_bets_per_team(team_name: str) -> str:
@@ -187,19 +244,6 @@ def create_summary_placed_bets() -> str:
     return 'Nessuna scommessa attiva'
 
 
-def datetime_to_time(matches: list) -> list:
-
-    new_format = []
-    for dt_str, team1, team2, quote1, quotex, quote2 in matches:
-        dt = str_to_dt(dt_str)
-        hh = str(dt.hour).zfill(2)
-        mm = str(dt.minute).zfill(2)
-
-        new_format.append((f'{hh}:{mm}', team1, team2, quote1, quotex, quote2))
-
-    return new_format
-
-
 def euros_to_play(command_input: list) -> int:
 
     if not command_input:
@@ -216,38 +260,17 @@ def euros_to_play(command_input: list) -> int:
         return cfg.DEFAULT_EUROS
 
 
-def fix_bet_name(bet_name: str) -> str:
+def extract_time_from_datetime(matches: list) -> list:
 
-    vals2replace = [(' ', ''), ('*', ''), (',', '.'), ('+', ''),
-                    ('TEMPO', 'T'), ('TP', 'T'),
-                    ('1T', 'PT'), ('2T', 'ST'),
-                    ('GG', 'GOAL'), ('GOL', 'GOAL'),
-                    ('NG', 'NOGOAL'), ('NOGOL', 'NOGOAL'),
-                    ('HANDICAP', 'H'), ('HAND', 'H')]
-    for old, new in vals2replace:
-        bet_name = bet_name.replace(old, new)
+    new_format = []
+    for dt_str, team1, team2, quote1, quotex, quote2 in matches:
+        dt = str_to_dt(dt_str)
+        hh = str(dt.hour).zfill(2)
+        mm = str(dt.minute).zfill(2)
 
-    all_alias = dbf.db_select(table='fields', columns=['alias'], where='')
-    return jaccard_result(in_opt=bet_name, all_opt=all_alias, ngrm=2)
+        new_format.append((f'{hh}:{mm}', team1, team2, quote1, quotex, quote2))
 
-
-def fix_league_name(league_name: str) -> str:
-    all_leagues = dbf.db_select(table='leagues', columns=['name'], where='')
-    return jaccard_result(in_opt=league_name, all_opt=all_leagues, ngrm=3)
-
-
-def fix_team_name(team_name: str) -> str:
-
-    if '*' in team_name:
-        where = 'league = "CHAMPIONS LEAGUE"'
-    else:
-        where = 'league != "CHAMPIONS LEAGUE"'
-
-    all_teams = dbf.db_select(table='matches',
-                              columns=['team1', 'team2'], where=where)
-
-    all_teams = [t for el in all_teams for t in el]
-    return jaccard_result(in_opt=team_name, all_opt=all_teams, ngrm=3)
+    return new_format
 
 
 def get_bet_quote(match_id: int, bet_name: str) -> float:
@@ -305,7 +328,7 @@ def get_info_to_print(league_name: str, datetime: datetime) -> list:
 
     available = [i for i in all_matches if i[1:] not in confirmed]
     available = add_quotes_1x2(matches=available)
-    available = datetime_to_time(matches=available)
+    available = extract_time_from_datetime(matches=available)
     available = add_short_names(matches=available)
 
     return available
@@ -702,10 +725,6 @@ def remove_too_late_before_play() -> str:
     return too_late_message
 
 
-def str_to_dt(dt_as_string: str, style: str = '%Y-%m-%d %H:%M:%S') -> datetime:
-    return datetime.datetime.strptime(dt_as_string, style)
-
-
 def time_needed(start: time) -> (int, int):
     end = time.time() - start
     mins = int(end // 60)
@@ -743,19 +762,6 @@ def update_to_play_table(nickname: str, bet_id: int) -> None:
     dbf.db_insert(table='to_play',
                   columns=['pred_id', 'url', 'date', 'panel', 'field', 'bet'],
                   values=[pred_id, url, dt, panel, field, bet])
-
-
-def from_dayname_to_iso(dayname: str) -> int:
-
-    return cfg.WEEKDAYS[dayname] if dayname.lower() in cfg.WEEKDAYS else 0
-
-
-def weekday_to_dt(isoweekday: int) -> datetime:
-
-    dt = datetime.date.today()
-    while dt.isoweekday() != isoweekday:
-        dt += datetime.timedelta(1)
-    return dt
 
 
 def wrong_chat(chat_id: int) -> bool:

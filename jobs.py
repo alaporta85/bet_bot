@@ -16,6 +16,7 @@ def job_update_score(context):
 
     context.bot.send_message(chat_id=cfg.TESTAZZA_ID, text='Aggiornamento db')
 
+    # Check in database for bets to update
     bets = utl.get_bets_to_update()
     if not bets:
         msg = 'Nessuna scommessa da aggiornare.'
@@ -27,29 +28,32 @@ def job_update_score(context):
     # Login
     plupf.login(brow)
 
+    # Get budget and update database
     budget = plupf.get_budget_from_website(brow)
     utl.update_budget(budget=budget)
 
+    # Go to most recent bets
     plupf.open_profile_options(brow)
-
     plupf.open_profile_history(brow)
-
     plupf.set_time_filter(brow)
 
-    # plupf.show_bets_history(brow)
+    # Update data relative to to each bet
     for bet_id in bets:
         plupf.update_database(brow=brow, bet_id=bet_id)
-
     brow.quit()
 
+    # Save date and time to keep track of the last update
     dt = datetime.datetime.now()
-    last_update = (f'*Last update:\n   {dt.day}/{dt.month}/{dt.year} ' +
-                   f'at {dt.hour}:{dt.minute}')
-    dbf.db_update(table='last_results_update',
-                  columns=['message'],
-                  values=[last_update],
-                  where='')
+    hh, mm = str(dt.hour).zfill(2), str(dt.minute).zfill(2)
+    msg = f'*Last update:\n\t{dt.day}/{dt.month}/{dt.year} at {hh}:{mm}'
+    dbf.db_update(
+            table='last_results_update',
+            columns=['message'],
+            values=[msg],
+            where=''
+    )
 
+    # Run code to update plot
     os.system('python Classes.py')
     cfg.LOGGER.info('UPDATE - Database aggiornato correttamente.')
 
@@ -77,6 +81,7 @@ def job_night_quotes(context):
     # Remove match if quotes not present (internet problems)
     utl.remove_matches_without_quotes()
 
+    # Notify about fields in database not found in the webpage
     missing_fields = utl.notify_inactive_fields()
     if missing_fields:
         return context.bot.send_message(chat_id=cfg.TESTAZZA_ID,

@@ -13,18 +13,16 @@ from scraping_functions import (
 def add_bet_to_basket(brow: webdriver, panel_name: str,
                       field_name: str, bet_name: str) -> webdriver:
 
-	"""
-	Click the bet button and add it to the basket.
-	"""
-
+	# Go to the specific panel
 	panel = get_panels(brow=brow, specific_name=panel_name)[0]
 	panel.click()
 	time.sleep(3)
 
+	# Locate the right html element
 	field_bets = all_fields_and_bets(brow=brow)
-
 	bets_container = [b for f, b in field_bets if f == field_name][0]
 
+	# Click the right bet
 	bets_group = extract_all_bets_from_container(bets_container=bets_container)
 	for bet in bets_group:
 		if extract_bet_name(bet_element=bet) == bet_name:
@@ -40,9 +38,19 @@ def add_bet_to_basket(brow: webdriver, panel_name: str,
 
 
 def cross_check_teams(all_matches: [webdriver], bet_id: int) -> list:
+	"""
+	Check whether the bet in the webpage is the same as the one to update.
+	If all teams in the web bet are the same as the teams in the database bet
+	than a list with all predictions is returned.
+	"""
 
+	# Teams found in the web bet
 	teams_web = []
+
+	# Predictions with al ldetails
 	preds_details = []
+
+	# Extract teams and details from web bet
 	for match in all_matches:
 		_, _, teams, _, pred, quote, result, _ = match.text.upper().split('\n')
 		team1, team2 = teams.strip().split(' - ')
@@ -57,11 +65,14 @@ def cross_check_teams(all_matches: [webdriver], bet_id: int) -> list:
 		preds_details.append((team1, team2, quote, result, label))
 	teams_web.sort()
 
+	# Extract teams from database bet
 	teams_db = dbf.db_select(table='predictions',
 							 columns=['team1', 'team2'],
 							 where=f'bet_id = {bet_id}')
 	teams_db = [t for i in teams_db for t in i]
 	teams_db.sort()
+
+	# Return details if the two bets match else an empty list
 	if teams_web == teams_db:
 		return preds_details
 	else:
@@ -117,6 +128,7 @@ def update_database(brow: webdriver, bet_id: int) -> None:
 		close_path = './/h5/button[@class="close"]'
 		brow.find_element_by_xpath(close_path).click()
 		time.sleep(5)
+		break
 
 
 def filter_by_state(list_of_bets: list) -> [webdriver]:
@@ -223,10 +235,6 @@ def login(brow: webdriver) -> webdriver:
 
 
 def get_budget_from_website(brow: webdriver) -> float:
-
-	"""
-	Extract the text from the HTML element and return it as a float.
-	"""
 
 	money_path = './/span[@class="saldo-tot"]'
 	money_el = brow.find_element_by_xpath(money_path)
