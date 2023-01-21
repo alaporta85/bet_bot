@@ -181,6 +181,7 @@ def insert_match(brow: webdriver, league_name: str, match_dt: datetime) -> int:
 	team1, team2 = extract_teams_names(brow, league_name=league_name)
 
 	# Remove old quotes of the same match
+	# TODO REMOVE RIGHT BEFORE INSERTING NEW QUOTES
 	utl.remove_existing_match_quotes(team_one=team1, team_two=team2)
 
 	# Id of the match is used to associate quotes to the correct match
