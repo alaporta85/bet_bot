@@ -54,6 +54,7 @@ def cross_check_teams(all_matches: [webdriver], bet_id: int) -> list:
 	for match in all_matches:
 		_, _, teams, _, pred, quote, result, _ = match.text.upper().split('\n')
 		team1, team2 = teams.strip().split(' - ')
+		pred = pred.replace('GOL', 'GG')
 		quote = float(quote.replace(',', '.'))
 		label = 'WINNING' if pred == result else 'LOSING'
 
