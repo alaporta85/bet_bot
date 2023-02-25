@@ -344,7 +344,7 @@ def series() -> None:
 	red_arrows = [i for i, g in enumerate(series_neg) if g[1] == 'Ongoing']
 	series_neg, _ = zip(*series_neg)
 
-	plot_height = max((max(series_pos), max(series_neg)))
+	plot_height = max((max(series_pos), max(series_neg))) + 2
 
 	bar_width = 0.4
 	fig, ax = plt.subplots(figsize=(10, 7))
@@ -496,3 +496,4 @@ preds = get_preds_as_df()
 
 players = {name: Player(name) for name in get_people()}
 stats = Stats()
+series()
