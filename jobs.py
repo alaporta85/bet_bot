@@ -45,7 +45,7 @@ def job_update_score(context):
     # Save date and time to keep track of the last update
     dt = datetime.datetime.now()
     hh, mm = str(dt.hour).zfill(2), str(dt.minute).zfill(2)
-    msg = f'*Last update:\n\t{dt.day}/{dt.month}/{dt.year} at {hh}:{mm}'
+    msg = f'Last update:\n\t{dt.day}/{dt.month}/{dt.year} at {hh}:{mm}'
     dbf.db_update(
             table='last_results_update',
             columns=['message'],

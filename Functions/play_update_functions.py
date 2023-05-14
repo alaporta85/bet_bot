@@ -1,4 +1,5 @@
 import time
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 
@@ -106,7 +107,7 @@ def update_database(brow: webdriver, bet_id: int) -> None:
 		# Make sure it is the right bet
 		preds = cross_check_teams(all_matches=matches, bet_id=bet_id)
 		if not preds:
-			brow.back()
+			ActionChains(brow).send_keys(Keys.ESCAPE).perform()
 			continue
 
 		# Update predictions table

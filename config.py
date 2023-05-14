@@ -47,7 +47,7 @@ WEEKDAYS = {'lun': 1, 'mar': 2, 'mer': 3, 'gio': 4,
             'ven': 5, 'sab': 6, 'dom': 7}
 
 # UPDATING
-BETS_FILTER = 7
+BETS_FILTER = 30
 
 # SCORE
 YEARS = ['general', '2017-2018', '2018-2019', '2019-2020', '2020-2021',
