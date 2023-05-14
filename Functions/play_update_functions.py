@@ -57,7 +57,9 @@ def cross_check_teams(all_matches: [webdriver], bet_id: int) -> list:
 		team1, team2 = teams.strip().split(' - ')
 		pred = pred.replace('GOL', 'GG')
 		quote = float(quote.replace(',', '.'))
-		label = 'WINNING' if pred == result else 'LOSING'
+		won_lost = match.find_element_by_xpath(
+				'.//span[contains(@class, "cerchio")]').get_attribute('class')
+		label = 'WINNING' if 'Won' in won_lost else 'LOSING'
 
 		# Result has to be formatted after label definition
 		result = result.replace('-', '+')
